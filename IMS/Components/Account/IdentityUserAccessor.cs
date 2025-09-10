@@ -1,5 +1,5 @@
+using Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Identity;
-using IMS.Data;
 
 namespace IMS.Components.Account;
 

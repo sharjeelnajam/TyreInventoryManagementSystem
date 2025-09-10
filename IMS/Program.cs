@@ -5,7 +5,9 @@ using IMS.Components;
 using IMS.Components.Account;
 using Shared.MultiTenancy;
 using Infrastructure.Identity;
+using Infrastructure.Persistence;
 using Infrastructure.Persistence.Data;
+using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,8 +20,7 @@ builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
-
-// ✅ Authentication with Identity
+//  Authentication with Identity
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = IdentityConstants.ApplicationScheme;
@@ -27,29 +28,36 @@ builder.Services.AddAuthentication(options =>
 })
     .AddIdentityCookies();
 
-// ✅ Database connection
+//  Claims Factory (TenantId claim inject karega)
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
+
+//  Tenant Provider
+builder.Services.AddScoped<ITenantProvider, BlazorTenantProvider>();
+
+//  MultiTenant SaveChanges Interceptor
+builder.Services.AddScoped<MultiTenantSaveChangesInterceptor>();
+
+//  Database connection with interceptor
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+{
+    options.UseSqlServer(connectionString);
+    options.AddInterceptors(sp.GetRequiredService<MultiTenantSaveChangesInterceptor>());
+});
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// ✅ Identity with ApplicationUser
-builder.Services.AddIdentityCore<ApplicationUser>(options =>
+//  Identity with ApplicationUser
+builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
     options.Password.RequiredLength = 6;
     options.Password.RequireDigit = true;
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddSignInManager()
     .AddDefaultTokenProviders();
-
-// ✅ Tenant Provider
-builder.Services.AddScoped<ITenantProvider, BlazorTenantProvider>();
-
 
 var app = builder.Build();
 

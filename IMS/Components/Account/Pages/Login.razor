@@ -94,6 +94,20 @@
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");
+
+            // ✅ Current user load karo
+            var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
+
+            if (user != null)
+            {
+                // ✅ Tenant claim add karna (agar missing ho to)
+                var claims = await SignInManager.UserManager.GetClaimsAsync(user);
+                if (!claims.Any(c => c.Type == "TenantId"))
+                {
+                    await SignInManager.UserManager.AddClaimAsync(user, new System.Security.Claims.Claim("TenantId", user.TenantId.ToString()));
+                }
+            }
+
             RedirectManager.RedirectTo(ReturnUrl);
         }
         else if (result.RequiresTwoFactor)

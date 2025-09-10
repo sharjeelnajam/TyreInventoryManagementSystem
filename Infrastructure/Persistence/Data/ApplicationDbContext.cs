@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Infrastructure.Persistence;
 using Infrastructure.Persistence.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -14,10 +15,14 @@ using System.Threading.Tasks;
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
     private readonly ITenantProvider _tenantProvider;
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ITenantProvider tenantProvider)
+    private readonly MultiTenantSaveChangesInterceptor _tenantInterceptor;
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ITenantProvider tenantProvider,
+        MultiTenantSaveChangesInterceptor tenantInterceptor)
         : base(options)
     {
         _tenantProvider = tenantProvider;
+        _tenantInterceptor = tenantInterceptor;
+
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +38,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
             modelBuilder.Entity(et.ClrType).HasQueryFilter(lambda);
         }
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        // ✅ Ensure interceptor is added to the EF pipeline
+        optionsBuilder.AddInterceptors(_tenantInterceptor);
+        base.OnConfiguring(optionsBuilder);
     }
     // Example: Add your DbSets here
     // public DbSet<Product> Products { get; set; }

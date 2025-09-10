@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using IMS.Components.Account.Pages;
 using IMS.Components.Account.Pages.Manage;
-using IMS.Data;
+using Infrastructure.Persistence.Data;
 
 namespace Microsoft.AspNetCore.Routing;
 
