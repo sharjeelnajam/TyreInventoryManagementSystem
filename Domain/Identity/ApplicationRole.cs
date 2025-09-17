@@ -5,10 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Infrastructure.Persistence.Data
+namespace Domain.Identity
 {
    public class ApplicationRole : IdentityRole<Guid>
     {
-        public Guid TenantId { get; set; }
+        public Guid? TenantId { get; set; }
     }
 }

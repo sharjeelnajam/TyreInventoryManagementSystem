@@ -6,8 +6,9 @@ using IMS.Components.Account;
 using Shared.MultiTenancy;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
-using Infrastructure.Persistence.Data;
 using Microsoft.Extensions.DependencyInjection;
+using Domain.Identity;
+using Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,13 +21,6 @@ builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
-//  Authentication with Identity
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = IdentityConstants.ApplicationScheme;
-    options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-})
-    .AddIdentityCookies();
 
 //  Claims Factory (TenantId claim inject karega)
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
@@ -36,6 +30,7 @@ builder.Services.AddScoped<ITenantProvider, BlazorTenantProvider>();
 
 //  MultiTenant SaveChanges Interceptor
 builder.Services.AddScoped<MultiTenantSaveChangesInterceptor>();
+builder.Services.AddScoped<ITenantService, TenantService>();
 
 //  Database connection with interceptor
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -58,13 +53,15 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+builder.Services.AddTransient<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseMigrationsEndPoint();
+    //app.UseMigrationsEndPoint();
 }
 else
 {

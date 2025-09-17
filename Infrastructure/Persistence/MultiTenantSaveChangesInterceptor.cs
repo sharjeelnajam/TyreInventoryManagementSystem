@@ -2,29 +2,18 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Shared.MultiTenancy;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Infrastructure.Persistence
 {
-
-    public class MultiTenantSaveChangesInterceptor : SaveChangesInterceptor
+    public class MultiTenantSaveChangesInterceptor(ITenantProvider tenantProvider) : SaveChangesInterceptor
     {
-        private readonly ITenantProvider _tenantProvider;
-
-        public MultiTenantSaveChangesInterceptor(ITenantProvider tenantProvider)
-        {
-            _tenantProvider = tenantProvider;
-        }
+        private readonly ITenantProvider _tenantProvider = tenantProvider;
 
         public override InterceptionResult<int> SavingChanges(
             DbContextEventData eventData,
             InterceptionResult<int> result)
         {
-            ApplyTenantId(eventData.Context);
+            ApplyTenantAndAudit(eventData.Context);
             return base.SavingChanges(eventData, result);
         }
 
@@ -33,22 +22,42 @@ namespace Infrastructure.Persistence
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
         {
-            ApplyTenantId(eventData.Context);
+            ApplyTenantAndAudit(eventData.Context);
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }
 
-        private void ApplyTenantId(DbContext? context)
+        private void ApplyTenantAndAudit(DbContext? context)
         {
             if (context == null) return;
 
-            foreach (var entry in context.ChangeTracker.Entries<TenantEntity>())
+            var now = DateTime.UtcNow;
+
+            foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())
             {
-                if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
+                // TenantId assign if entity is MultiTenantEntity
+                if (entry.Entity is MultiTenantEntity multiTenantEntity)
                 {
-                    if (entry.Entity.TenantId == Guid.Empty)
+                    if (entry.State == EntityState.Added && multiTenantEntity.TenantId == Guid.Empty)
                     {
-                        entry.Entity.TenantId = _tenantProvider.TenantId;
+                        multiTenantEntity.TenantId = _tenantProvider.TenantId;
                     }
+                }
+
+                // Audit fields
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        entry.Entity.CreatedAt = now;
+                        break;
+
+                    case EntityState.Modified:
+                        entry.Entity.UpdatedAt = now;
+                        break;
+
+                    case EntityState.Deleted:
+                        entry.State = EntityState.Modified; // soft delete
+                        entry.Entity.DeletedAt = now;
+                        break;
                 }
             }
         }

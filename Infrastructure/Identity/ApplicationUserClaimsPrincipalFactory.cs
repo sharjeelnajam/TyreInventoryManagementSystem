@@ -1,4 +1,4 @@
-﻿using Infrastructure.Persistence.Data;
+﻿using Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using System;
@@ -25,7 +25,7 @@ namespace Infrastructure.Identity
             var identity = await base.GenerateClaimsAsync(user);
 
             // TenantId ko claim me inject karna
-            if (!string.IsNullOrEmpty(user.TenantId.ToString()))
+            if (user.TenantId != Guid.Empty)
             {
                 identity.AddClaim(new Claim("TenantId", user.TenantId.ToString()));
             }

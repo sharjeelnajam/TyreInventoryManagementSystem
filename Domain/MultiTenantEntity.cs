@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Domain
 {
-    public abstract class TenantEntity
+    public class MultiTenantEntity : BaseEntity
     {
         public Guid TenantId { get; set; }
     }

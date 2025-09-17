@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 using IMS.Components.Account.Pages;
 using IMS.Components.Account.Pages.Manage;
-using Infrastructure.Persistence.Data;
+using Domain.Identity;
 
 namespace Microsoft.AspNetCore.Routing;
 
@@ -40,13 +40,22 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
             return TypedResults.Challenge(properties, [provider]);
         });
 
-        accountGroup.MapPost("/Logout", async (
-            ClaimsPrincipal user,
-            SignInManager<ApplicationUser> signInManager,
-            [FromForm] string returnUrl) =>
+        //accountGroup.MapPost("/Logout", async (
+        //    ClaimsPrincipal user,
+        //    SignInManager<ApplicationUser> signInManager,
+        //    [FromForm] string returnUrl) =>
+        //{
+        //    await signInManager.SignOutAsync();
+        //    return TypedResults.LocalRedirect($"~/{returnUrl}");
+        //});
+
+        accountGroup.MapGet("/Logout", async (
+    HttpContext context,
+    SignInManager<ApplicationUser> signInManager) =>
         {
             await signInManager.SignOutAsync();
-            return TypedResults.LocalRedirect($"~/{returnUrl}");
+            context.Response.Cookies.Delete(".AspNetCore.Antiforgery");
+            return TypedResults.LocalRedirect("~/Account/Login");
         });
 
         var manageGroup = accountGroup.MapGroup("/Manage").RequireAuthorization();

@@ -3,7 +3,7 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Text
 @using System.Text.Encodings.Web
-@using Infrastructure.Persistence.Data
+@using Domain.Identity;
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Security.Claims
@@ -28,7 +28,6 @@
         <StatusMessage Message="@Message" />
         <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
             <hr />
             <ValidationSummary class="text-danger" role="alert" />
             <div class="form-floating mb-3">
@@ -51,8 +50,6 @@
     </div>
     <div class="col-md-6 col-md-offset-2">
         <section>
-            <h3>Use another service to register.</h3>
-            <hr />
             <ExternalLoginPicker />
         </section>
     </div>
@@ -74,7 +71,7 @@
         var user = CreateUser();
 
         // Assign TenantId from provider
-        user.TenantId = user.TenantId = Guid.NewGuid();
+        user.TenantId = Guid.NewGuid();
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();

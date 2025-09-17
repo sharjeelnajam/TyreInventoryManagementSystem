@@ -6,9 +6,33 @@
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                 <div class="top-row px-4">
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="Account/Manage">
+                        <span class="bi bi-person-fill-nav-menu me-0" aria-hidden="true"></span>   @context.User.Identity?.Name
+                    </NavLink>
+                </div>
+                @*                 <div class="nav-item px-3">
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                        <button type="submit" class="nav-link">
+                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
+                </div> *@
+
+
+                <div class="nav-item px-3">
+                    <a class="nav-link" href="/Account/Logout">
+                        <span class="bi bi-arrow-bar-left-nav-menu"></span> Logout
+                    </a>
+                </div>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
         <article class="content px-4">
             @Body

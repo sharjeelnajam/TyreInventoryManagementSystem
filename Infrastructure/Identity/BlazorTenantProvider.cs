@@ -1,10 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
 using Shared.MultiTenancy;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace Infrastructure.Identity
 {
@@ -21,12 +17,20 @@ namespace Infrastructure.Identity
         {
             get
             {
-                var authState = _authStateProvider.GetAuthenticationStateAsync().GetAwaiter().GetResult();
-                var user = authState.User;
-                var claimValue = user?.FindFirst("tid")?.Value;
+                var authState = _authStateProvider.GetAuthenticationStateAsync()
+                                                  .ConfigureAwait(false)
+                                                  .GetAwaiter()
+                                                  .GetResult();
 
-                if (!string.IsNullOrWhiteSpace(claimValue) && Guid.TryParse(claimValue, out var tid))
-                    return tid;
+                ClaimsPrincipal user = authState.User;
+
+                if (user?.Identity?.IsAuthenticated == true)
+                {
+                    var claimValue = user.FindFirst("TenantId")?.Value;
+
+                    if (!string.IsNullOrWhiteSpace(claimValue) && Guid.TryParse(claimValue, out var tid))
+                        return tid;
+                }
 
                 throw new UnauthorizedAccessException("Tenant could not be resolved from the current user.");
             }
