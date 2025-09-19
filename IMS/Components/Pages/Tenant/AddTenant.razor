@@ -7,94 +7,65 @@
 
 <PageTitle>@(IsEditMode ? "Edit Tenant" : "Add Tenant")</PageTitle>
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
-            <div class="card shadow-lg border-0 rounded-4">
-                <div class="card-header bg-gradient bg-primary text-white py-3 d-flex align-items-center">
-                    <i class="bi @(IsEditMode ? "bi-pencil-square" : "bi-plus-circle") fs-3 me-2"></i>
-                    <h4 class="mb-0 fw-semibold">@(IsEditMode ? "Edit Tenant" : "Add Tenant")</h4>
-                </div>
-                <div class="card-body p-5">
-                    <EditForm Model="@tenant" OnValidSubmit="@HandleValidSubmit">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary class="text-danger mb-4" />
+<h3 class="mb-3">@(IsEditMode ? "Edit Tenant" : "Add Tenant")</h3>
 
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <InputText class="form-control shadow-sm" id="tenantName" @bind-Value="tenant.Name" placeholder="Name" />
-                                    <label for="tenantName" class="text-muted">Name</label>
-                                </div>
-                                <ValidationMessage For="@(() => tenant.Name)" class="text-danger small mt-1" />
-                            </div>
+<EditForm Model="@tenant" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
 
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <InputText class="form-control shadow-sm" id="domain" @bind-Value="tenant.Domain" placeholder="Domain" />
-                                    <label for="domain" class="text-muted">Domain</label>
-                                </div>
-                                <ValidationMessage For="@(() => tenant.Domain)" class="text-danger small mt-1" />
-                            </div>
+    <div class="card shadow p-4">
+        <div class="row">
 
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <InputText class="form-control shadow-sm" id="tenantEmail" @bind-Value="tenant.Email" placeholder="Email" />
-                                    <label for="tenantEmail" class="text-muted">Email</label>
-                                </div>
-                            </div>
+            <!-- ✅ Name -->
+            <div class="col-md-6 mb-3">
+                <label>Name</label>
+                <InputText @bind-Value="tenant.Name" class="form-control" />
+                <ValidationMessage For="@(() => tenant.Name)" class="text-danger small" />
+            </div>
 
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <InputText class="form-control shadow-sm" id="phone" @bind-Value="tenant.PhoneNumber" placeholder="Phone" />
-                                    <label for="phone" class="text-muted">Phone</label>
-                                </div>
-                            </div>
+            <!-- ✅ Domain -->
+            <div class="col-md-6 mb-3">
+                <label>Domain</label>
+                <InputText @bind-Value="tenant.Domain" class="form-control" />
+                <ValidationMessage For="@(() => tenant.Domain)" class="text-danger small" />
+            </div>
 
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <InputText class="form-control shadow-sm" id="city" @bind-Value="tenant.City" placeholder="City" />
-                                    <label for="city" class="text-muted">City</label>
-                                </div>
-                            </div>
+            <!-- ✅ Email -->
+            <div class="col-md-6 mb-3">
+                <label>Email</label>
+                <InputText @bind-Value="tenant.Email" class="form-control" />
+                <ValidationMessage For="@(() => tenant.Email)" class="text-danger small" />
+            </div>
 
-                            <div class="col-md-6">
-                                <div class="form-floating">
-                                    <InputText class="form-control shadow-sm" id="address" @bind-Value="tenant.Address" placeholder="Address" />
-                                    <label for="address" class="text-muted">Address</label>
-                                </div>
-                            </div>
-                        </div>
+            <!-- ✅ Phone -->
+            <div class="col-md-6 mb-3">
+                <label>Phone</label>
+                <InputText @bind-Value="tenant.PhoneNumber" class="form-control" />
+                <ValidationMessage For="@(() => tenant.PhoneNumber)" class="text-danger small" />
+            </div>
 
-                        <div class="d-flex justify-content-end mt-5 gap-3">
-                            <button type="submit" class="btn btn-success btn-sm px-3 shadow-sm">
-                                <i class="bi bi-save me-2"></i> Save
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm px-3 shadow-sm" @onclick="Cancel">
-                                <i class="bi bi-x-circle me-2"></i> Cancel
-                            </button>
-                        </div>
-                    </EditForm>
-                </div>
+            <!-- ✅ City -->
+            <div class="col-md-6 mb-3">
+                <label>City</label>
+                <InputText @bind-Value="tenant.City" class="form-control" />
+                <ValidationMessage For="@(() => tenant.City)" class="text-danger small" />
+            </div>
+
+            <!-- ✅ Address -->
+            <div class="col-md-6 mb-3">
+                <label>Address</label>
+                <InputTextArea @bind-Value="tenant.Address" class="form-control" />
+                <ValidationMessage For="@(() => tenant.Address)" class="text-danger small" />
             </div>
         </div>
+
+        <!-- ✅ Buttons -->
+        <div class="d-flex justify-content-end mt-3">
+            <button type="submit" class="btn btn-success me-2">💾 Save</button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">⬅ Back</button>
+        </div>
     </div>
-</div>
+</EditForm>
 
-<style>
-    .form-floating label {
-        opacity: 0.7; /* labels ki halka transparency */
-    }
-
-    .form-control:focus + label {
-        opacity: 1; /* focus hone par clear ho jaye */
-        color: #0d6efd;
-    }
-
-    .card {
-        background: #ffffff;
-    }
-</style>
 
 @code {
     [Parameter] public Guid? Id { get; set; }

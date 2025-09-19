@@ -1,6 +1,9 @@
 ﻿using Domain;
+using Domain.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,11 +14,17 @@ namespace Infrastructure.Services
 {
     public class TenantService : ITenantService
     {
+        private readonly RoleManager<ApplicationRole> _roleManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ApplicationDbContext _context;
+        private readonly ITenantProvider _tenantProvider;
 
-        public TenantService(ApplicationDbContext context)
+        public TenantService(ApplicationDbContext context, ITenantProvider tenantProvider, RoleManager<ApplicationRole> applicationRole, UserManager<ApplicationUser> applicationUser)
         {
             _context = context;
+            _tenantProvider = tenantProvider;
+            _userManager = applicationUser;
+            _roleManager = applicationRole;
         }
 
         public async Task<Tenant> GetTenantByIdAsync(Guid id)
@@ -72,7 +81,6 @@ namespace Infrastructure.Services
 
             var tenant = new Tenant
             {
-                Id = Guid.NewGuid(),
                 Name = ten.Name.Trim(),
                 Domain = ten.Domain.Trim().ToLower(),
                 Email = ten.Email.Trim(),
@@ -83,6 +91,29 @@ namespace Infrastructure.Services
 
             _context.Tenants.Add(tenant);
             await _context.SaveChangesAsync();
+            // 3. Tenant ke liye Admin User create karo
+            var adminUser = new ApplicationUser
+            {
+                UserName = ten.Email,
+                Email = ten.Email,
+                TenantId = _tenantProvider.TenantId,   // yahan Tenant assign kiya
+                EmailConfirmed = true
+            };
+
+            var result = await _userManager.CreateAsync(adminUser, "Admin@123");
+
+            if (!result.Succeeded)
+                throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+            // 4. Role ensure karo (agar Admin role exist nahi karta to create karo)
+            if (_roleManager.Roles.FirstOrDefault(r => r.Name == "Admin" && r.TenantId == _tenantProvider.TenantId) == null)
+            {
+                await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = _tenantProvider.TenantId });
+            }
+
+            // 5. User ko Admin role do
+            await _userManager.AddToRoleAsync(adminUser, "Admin");
+
             return tenant;
         }
 

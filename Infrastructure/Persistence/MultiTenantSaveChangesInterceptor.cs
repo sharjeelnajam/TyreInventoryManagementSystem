@@ -35,9 +35,9 @@ namespace Infrastructure.Persistence
             foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())
             {
                 // TenantId assign if entity is MultiTenantEntity
-                if (entry.Entity is MultiTenantEntity multiTenantEntity)
+                if (entry.Entity is BaseEntity multiTenantEntity)
                 {
-                    if (entry.State == EntityState.Added && multiTenantEntity.TenantId == Guid.Empty)
+                    if (entry.State == EntityState.Added && multiTenantEntity.TenantId == null && _tenantProvider.TenantId != Guid.Empty)
                     {
                         multiTenantEntity.TenantId = _tenantProvider.TenantId;
                     }

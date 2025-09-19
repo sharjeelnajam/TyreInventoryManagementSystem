@@ -26,6 +26,13 @@ namespace Infrastructure.Identity
 
                 if (user?.Identity?.IsAuthenticated == true)
                 {
+                    // Check SuperAdmin Role
+                    if (user.IsInRole("SuperAdmin"))
+                    {
+                        // SuperAdmin ka TenantId fix ya Guid.Empty
+                        return Guid.Empty;
+                    }
+
                     var claimValue = user.FindFirst("TenantId")?.Value;
 
                     if (!string.IsNullOrWhiteSpace(claimValue) && Guid.TryParse(claimValue, out var tid))

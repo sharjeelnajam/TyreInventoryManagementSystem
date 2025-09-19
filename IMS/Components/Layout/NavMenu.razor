@@ -43,6 +43,16 @@
                 </div>
             </NotAuthorized>
         </AuthorizeView>
+
+     
+            <AuthorizeView Roles="Admin">
+                 <Authorized>
+                <NavLink class="nav-link d-flex align-items-center" href="/staff">
+                    <span class="bi bi-person-fill-nav-menu"></span>
+                    <span>Staff</span>
+                </NavLink>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
 <style>

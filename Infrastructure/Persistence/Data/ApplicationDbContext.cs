@@ -103,6 +103,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     // Example: Add your DbSets here
 
     public DbSet<Tenant> Tenants { get; set; }
+    public DbSet<Staff> Staff { get; set; }
     // public DbSet<Product> Products { get; set; }
 }
 

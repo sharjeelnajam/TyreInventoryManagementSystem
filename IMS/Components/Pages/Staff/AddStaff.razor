@@ -1,0 +1,144 @@
+﻿@page "/staff/addedit/{Id:guid?}"
+@using Domain
+@using Infrastructure.Services
+@inject IStaffService StaffService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<h3 class="mb-3">➕ @Title</h3>
+
+<EditForm Model="staff" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <div class="card shadow p-4">
+        <div class="row">
+            <!-- Personal Info -->
+            <div class="col-md-6 mb-3">
+                <label>Name</label>
+                <InputText @bind-Value="staff.Name" class="form-control" />
+                <ValidationMessage For="@(() => staff.Name)" />
+            </div>
+            <div class="col-md-6 mb-3">
+                <label>Email</label>
+                <InputText @bind-Value="staff.Email" class="form-control" />
+                <ValidationMessage For="@(() => staff.Email)" />
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Phone Number</label>
+                <InputText @bind-Value="staff.PhoneNumber" class="form-control" />
+                <ValidationMessage For="@(() => staff.PhoneNumber)" />
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>City</label>
+                <InputText @bind-Value="staff.City" class="form-control" />
+                <ValidationMessage For="@(() => staff.City)" />
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>CNIC</label>
+                <InputText @bind-Value="staff.CNIC" class="form-control" />
+            </div>
+
+            <!-- Contact Info -->
+            <div class="col-md-6 mb-3">
+                <label>Date of Birth</label>
+                <InputDate @bind-Value="staff.DateOfBirth" class="form-control" />
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label>Gender</label>
+                <InputSelect @bind-Value="staff.Gender" class="form-control">
+                    <option value="">-- Select Gender --</option>
+                    <option>Male</option>
+                    <option>Female</option>
+                    <option>Other</option>
+                </InputSelect>
+            </div>
+
+           
+
+            <div class="col-md-6 mb-3">
+                <label>Country</label>
+                <InputText @bind-Value="staff.Country" class="form-control" />
+            </div>
+
+            <div class="col-md-12 mb-3">
+                <label>Address</label>
+                <InputTextArea @bind-Value="staff.Address" class="form-control" />
+            </div>
+
+            <!-- Job Info -->
+            <div class="col-md-6 mb-3">
+                <label>Hire Date</label>
+                <InputDate @bind-Value="staff.HireDate" class="form-control" />
+            </div>
+
+            <!-- Salary Info -->
+            <div class="col-md-4 mb-3">
+                <label>Salary</label>
+                <InputNumber @bind-Value="staff.Salary" class="form-control" />
+                <ValidationMessage For="@(() => staff.Salary)" />
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary me-2">💾 Save</button>
+            <button type="button" class="btn btn-secondary" @onclick="GoBack">⬅ Back</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private Staff staff = new();
+    private string Title = "Add"; // Default is Add
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id.HasValue)
+        {
+            var existingStaff = await StaffService.GetStaffByIdAsync(Id.Value);
+            if (existingStaff != null)
+            {
+                staff = existingStaff;
+                Title = "Edit";
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (Id.HasValue)
+        {
+            var success = await StaffService.UpdateStaffAsync(staff);
+            if (success)
+            {
+                NavigationManager.NavigateTo("/staff");
+            }
+            else
+            {
+                Console.WriteLine("Failed to update staff.");
+            }
+        }
+        else
+        {
+            var success = await StaffService.AddStaffAsync(staff);
+            if (success)
+            {
+                NavigationManager.NavigateTo("/staff");
+            }
+            else
+            {
+                Console.WriteLine("Failed to add staff.");
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/staff");
+    }
+}

@@ -20,5 +20,9 @@ namespace Domain
         public Guid? DeletedBy { get; set; }
 
         public bool IsDeleted { get; set; } = false;
+
+        public Guid? TenantId { get; set; }
+
+        public Tenant? Tenant { get; set; }
     }
 }
