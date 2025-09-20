@@ -1,0 +1,113 @@
+﻿@page "/products/addedit/{Id:guid?}"
+@using Domain
+@using Infrastructure.Services
+@inject IProductService ProductService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h3 class="fw-bold mb-3">
+    <i class="bi bi-box-seam me-2"></i> @(product.Id == Guid.Empty ? "Add" : "Edit")
+</h3>
+
+<EditForm Model="@product" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Product Name</label>
+            <InputText class="form-control" @bind-Value="product.ProductName" />
+            <ValidationMessage For="@(() => product.ProductName)" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Brand</label>
+            <InputText class="form-control" @bind-Value="product.Brand" />
+            <ValidationMessage For="@(() => product.Brand)" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Tyre Size</label>
+            <InputText class="form-control" @bind-Value="product.TyreSize" />
+            <ValidationMessage For="@(() => product.TyreSize)" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Tread Depth (mm)</label>
+            <InputNumber class="form-control" @bind-Value="product.TreadDepth" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Purchase Price</label>
+            <InputNumber class="form-control" @bind-Value="product.PurchasePrice" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Selling Price</label>
+            <InputNumber class="form-control" @bind-Value="product.SellingPrice" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Quantity</label>
+            <InputNumber class="form-control" @bind-Value="product.Quantity" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Date of Manufacture (DOT)</label>
+            <InputDate class="form-control" @bind-Value="product.DOT" />
+        </div>
+        <div class="col-md-12 mb-3">
+            <label class="form-label">Description</label>
+            <InputTextArea class="form-control" @bind-Value="product.Description" />
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Barcode</label>
+            <InputText class="form-control" @bind-Value="product.Barcode" />
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        <i class="bi bi-save me-1"></i> Save
+    </button>
+    <button type="button" class="btn btn-secondary ms-2" @onclick="GoBack">
+        Cancel
+    </button>
+</EditForm>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    private Product product = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id.HasValue) // route me Id aya to load karo
+        {
+            var existing = await ProductService.GetByIdAsync(Id.Value);
+            if (existing != null)
+                product = existing;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (Id.HasValue) // agar Id aya hai to update hoga
+        {
+            var updated = await ProductService.UpdateAsync(product);
+            if (updated != null)
+            {
+                Navigation.NavigateTo("/products");
+            }
+            else
+            {
+                Console.WriteLine("Failed to update product.");
+            }
+        }
+        else // Id nahi aya to naya product add hoga
+        {
+            var added = await ProductService.AddAsync(product);
+            if (added != null)
+            {
+                Navigation.NavigateTo("/products");
+            }
+            else
+            {
+                Console.WriteLine("Failed to add product.");
+            }
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/products");
+}
+

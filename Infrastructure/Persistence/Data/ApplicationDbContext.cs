@@ -30,20 +30,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         base.OnModelCreating(modelBuilder);
 
 
-        //// ✅ ApplicationUser configuration
-        //modelBuilder.Entity<ApplicationUser>(entity =>
-        //{
-        //    // Index TenantId (fast lookups ke liye)
-        //    entity.HasIndex(u => u.TenantId);
-
-        //    // Relationship: Tenant → Users
-        //    entity.HasOne(u => u.Tenant)
-        //          .WithMany(t => t.Users)
-        //          .HasForeignKey(u => u.TenantId)
-        //          .OnDelete(DeleteBehavior.Restrict);
-        //});
-
-
          // Apply Tenant Query Filters for all entities inheriting MultiTenantEntity
         foreach (var et in modelBuilder.Model.GetEntityTypes()
             .Where(t => typeof(MultiTenantEntity).IsAssignableFrom(t.ClrType)))
@@ -93,17 +79,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             UserId = superAdminUserId
         });
     }
-
-    //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    //{
-    //    // ✅ Ensure interceptor is added to the EF pipeline
-    //    optionsBuilder.AddInterceptors(_tenantInterceptor);
-    //    base.OnConfiguring(optionsBuilder);
-    //}
     // Example: Add your DbSets here
 
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<Staff> Staff { get; set; }
-    // public DbSet<Product> Products { get; set; }
+    public DbSet<Product> Products { get; set; }
 }
 

@@ -32,6 +32,7 @@ builder.Services.AddScoped<ITenantProvider, BlazorTenantProvider>();
 builder.Services.AddScoped<MultiTenantSaveChangesInterceptor>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 //  Database connection with interceptor
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")

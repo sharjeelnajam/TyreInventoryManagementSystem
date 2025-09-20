@@ -29,6 +29,18 @@
             </AuthorizeView>
         </div>
 
+        <div class="nav-item px-3">
+            <AuthorizeView Roles="Staff">
+                <Authorized>
+                    <NavLink class="nav-link d-flex align-items-center" href="/products">
+                        <span class="bi bi-circle-nav-menu "></span>Products
+                      
+                    </NavLink>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+
         <AuthorizeView>
             <NotAuthorized>
                 <div class="nav-item px-3">

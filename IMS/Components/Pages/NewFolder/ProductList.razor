@@ -1,0 +1,97 @@
+﻿@page "/products"
+@using Domain
+@using Infrastructure.Services
+@inject IProductService ProductService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Products</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold"><i class="bi bi-box-seam me-2"></i> Product Management</h3>
+        <button class="btn btn-primary" @onclick="AddProduct">
+            <i class="bi bi-plus-circle me-1"></i> Add Product
+        </button>
+    </div>
+
+    @if (products == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Loading products...</p>
+        </div>
+    }
+    else if (!products.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i> No products found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Name</th>
+                        <th>Brand</th>
+                        <th>Tyre Size</th>
+                        <th>Purchase</th>
+                        <th>Selling</th>
+                        <th>Qty</th>
+                        <th>Barcode</th>
+                        <th style="width:150px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in products)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@item.Brand</td>
+                            <td>@item.TyreSize</td>
+                            <td>@item.PurchasePrice</td>
+                            <td>@item.SellingPrice</td>
+                            <td>@item.Quantity</td>
+                            <td>@item.Barcode</td>
+                            <td>
+                                <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
+                                   title="Edit" @onclick="() => EditProduct(item.Id)"></i>
+                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                   title="Delete" @onclick="() => DeleteProduct(item.Id)"></i>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Product>? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await ProductService.GetAllAsync();
+    }
+
+    private void AddProduct() => Navigation.NavigateTo("/products/addedit");
+    private void EditProduct(Guid id) => Navigation.NavigateTo($"/products/addedit/{id}");
+
+    private async Task DeleteProduct(Guid id)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this product?");
+        if (!confirmed)
+            return;
+
+            await ProductService.DeleteAsync(id);
+            products = await ProductService.GetAllAsync();
+            StateHasChanged();
+        
+    }
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = default!;
+}

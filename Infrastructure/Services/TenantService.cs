@@ -29,145 +29,199 @@ namespace Infrastructure.Services
 
         public async Task<Tenant> GetTenantByIdAsync(Guid id)
         {
-            var tenant = await _context.Tenants
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Id == id);
+            try
+            {
+                var tenant = await _context.Tenants
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.Id == id);
 
-            if (tenant == null)
-                throw new KeyNotFoundException($"Tenant with Id '{id}' not found.");
+                if (tenant == null)
+                    throw new KeyNotFoundException($"Tenant with Id '{id}' not found.");
 
-            return tenant;
+                return tenant;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while retrieving the tenant by ID.", ex);
+            }
         }
 
-        /// <summary>
-        /// Get all tenants with owner user details.
-        /// </summary>
         public async Task<List<Tenant>> GetTenantsAsync()
         {
-            return await _context.Tenants.Where(t => t.IsDeleted == false)
-                .AsNoTracking()
-                .ToListAsync();
+            try
+            {
+                return await _context.Tenants
+                    .Where(t => !t.IsDeleted)
+                    .AsNoTracking()
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while retrieving tenants.", ex);
+            }
         }
 
-        /// <summary>
-        /// Get tenant by domain name.
-        /// </summary>
         public async Task<Tenant?> GetTenantByDomainAsync(string domain)
         {
-            if (string.IsNullOrWhiteSpace(domain))
-                return null;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(domain))
+                    return null;
 
-            return await _context.Tenants
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Domain.ToLower() == domain.ToLower());
+                return await _context.Tenants
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.Domain.ToLower() == domain.ToLower());
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while retrieving tenant by domain.", ex);
+            }
         }
 
-        /// <summary>
-        /// Add new tenant. Prevents duplicate domain names.
-        /// </summary>
         public async Task<Tenant> AddTenantAsync(Tenant ten, Guid ownerUserId)
         {
-            if (string.IsNullOrWhiteSpace(ten.Name))
-                throw new ArgumentException("name is required.", nameof(ten.Name));
-
-            if (string.IsNullOrWhiteSpace(ten.Domain))
-                throw new ArgumentException("domain is required.", nameof(ten.Domain));
-
-            var existing = await _context.Tenants
-                .AnyAsync(t => t.Domain.ToLower() == ten.Domain.ToLower());
-
-            if (existing)
-                throw new InvalidOperationException($"A tenant with domain '{ten.Domain}' already exists.");
-
-            var tenant = new Tenant
+            try
             {
-                Name = ten.Name.Trim(),
-                Domain = ten.Domain.Trim().ToLower(),
-                Email = ten.Email.Trim(),
-                PhoneNumber = ten.PhoneNumber,
-                City = ten.City,
-                Address = ten.Address
-            };
+                if (string.IsNullOrWhiteSpace(ten.Name))
+                    throw new ArgumentException("name is required.", nameof(ten.Name));
 
-            _context.Tenants.Add(tenant);
-            await _context.SaveChangesAsync();
-            // 3. Tenant ke liye Admin User create karo
-            var adminUser = new ApplicationUser
-            {
-                UserName = ten.Email,
-                Email = ten.Email,
-                TenantId = _tenantProvider.TenantId,   // yahan Tenant assign kiya
-                EmailConfirmed = true
-            };
+                if (string.IsNullOrWhiteSpace(ten.Domain))
+                    throw new ArgumentException("domain is required.", nameof(ten.Domain));
 
-            var result = await _userManager.CreateAsync(adminUser, "Admin@123");
+                var existing = await _context.Tenants
+                    .AnyAsync(t => t.Domain.ToLower() == ten.Domain.ToLower());
 
-            if (!result.Succeeded)
-                throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
-
-            // 4. Role ensure karo (agar Admin role exist nahi karta to create karo)
-            if (_roleManager.Roles.FirstOrDefault(r => r.Name == "Admin" && r.TenantId == _tenantProvider.TenantId) == null)
-            {
-                await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = _tenantProvider.TenantId });
-            }
-
-            // 5. User ko Admin role do
-            await _userManager.AddToRoleAsync(adminUser, "Admin");
-
-            return tenant;
-        }
-
-        /// <summary>
-        /// Update existing tenant. Null parameters mean "no change".
-        /// </summary>
-        public async Task<Tenant?> UpdateTenantAsync(Tenant ten, Guid? ownerUserId)
-        {
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == ten.Id);
-
-            if (tenant == null)
-                return null;
-
-            if (!string.IsNullOrWhiteSpace(ten.Name))
-                tenant.Name = ten.Name.Trim();
-            if (!string.IsNullOrWhiteSpace(ten.Email))
-                tenant.Email = ten.Email.Trim();
-            if (!string.IsNullOrWhiteSpace(ten.City))
-                tenant.City = ten.City;
-            if (!string.IsNullOrWhiteSpace(ten.PhoneNumber))
-                tenant.PhoneNumber = ten.PhoneNumber;
-            if (!string.IsNullOrWhiteSpace(ten.Address))
-                tenant.Address = ten.Address;
-
-            if (!string.IsNullOrWhiteSpace(ten.Domain))
-            {
-                // check duplicate domain (ignore current tenant)
-                var exists = await _context.Tenants
-                    .AnyAsync(t => t.Domain.ToLower() == ten.Domain.ToLower() && t.Id != ten.Id);
-
-                if (exists)
+                if (existing)
                     throw new InvalidOperationException($"A tenant with domain '{ten.Domain}' already exists.");
 
-                tenant.Domain = ten.Domain.Trim().ToLower();
-            }
+                var tenant = new Tenant
+                {
+                    Name = ten.Name.Trim(),
+                    Domain = ten.Domain.Trim().ToLower(),
+                    Email = ten.Email.Trim(),
+                    PhoneNumber = ten.PhoneNumber,
+                    City = ten.City,
+                    Address = ten.Address,
+                    TenantUrl = GenerateStringUrl()
+                };
 
-            _context.Tenants.Update(tenant);
-            await _context.SaveChangesAsync();
-            return tenant;
+                _context.Tenants.Add(tenant);
+                await _context.SaveChangesAsync();
+                // 3. Tenant ke liye Admin User create karo
+                var adminUser = new ApplicationUser
+                {
+                    UserName = ten.Email,
+                    Email = ten.Email,
+                    TenantId = tenant.Id,   // yahan Tenant assign kiya
+                    EmailConfirmed = true
+                };
+
+                var result = await _userManager.CreateAsync(adminUser, "Admin@123");
+
+                if (!result.Succeeded)
+                    throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                // 4. Role ensure karo (agar Admin role exist nahi karta to create karo)
+                if (_roleManager.Roles.FirstOrDefault(r => r.Name == "Admin" && r.TenantId == tenant.Id) == null)
+                {
+                    await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
+                }
+
+                // 5. User ko Admin role do
+                var adminRole = await _roleManager.Roles.FirstOrDefaultAsync(r => r.Name == "Admin" && r.TenantId == tenant.Id);
+
+                if (adminRole == null)
+                {
+                    await _userManager.AddToRoleAsync(adminUser, "Admin");
+                }
+                else
+                {
+                    throw new Exception("Admin role not found for tenant!");
+                }
+
+                return tenant;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+           
         }
 
-        /// <summary>
-        /// Delete tenant if exists.
-        /// </summary>
+        public async Task<Tenant?> UpdateTenantAsync(Tenant ten, Guid? ownerUserId)
+        {
+            try
+            {
+                var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == ten.Id);
+                if (tenant == null)
+                    return null;
+
+                if (!string.IsNullOrWhiteSpace(ten.Name))
+                    tenant.Name = ten.Name.Trim();
+                if (!string.IsNullOrWhiteSpace(ten.Email))
+                    tenant.Email = ten.Email.Trim();
+                if (!string.IsNullOrWhiteSpace(ten.City))
+                    tenant.City = ten.City;
+                if (!string.IsNullOrWhiteSpace(ten.PhoneNumber))
+                    tenant.PhoneNumber = ten.PhoneNumber;
+                if (!string.IsNullOrWhiteSpace(ten.Address))
+                    tenant.Address = ten.Address;
+
+                if (!string.IsNullOrWhiteSpace(ten.Domain))
+                {
+                    var domainExists = await _context.Tenants
+                        .AnyAsync(t => t.Domain.ToLower() == ten.Domain.ToLower() && t.Id != ten.Id);
+
+                    if (domainExists)
+                        throw new InvalidOperationException($"A tenant with domain '{ten.Domain}' already exists.");
+
+                    tenant.Domain = ten.Domain.Trim().ToLower();
+                }
+
+                _context.Tenants.Update(tenant);
+                await _context.SaveChangesAsync();
+
+                return tenant;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while updating the tenant.", ex);
+            }
+        }
+
         public async Task<bool> DeleteTenantAsync(Guid id)
         {
-            var tenant = await _context.Tenants.FindAsync(id);
-            if (tenant == null)
-                return false;
+            try
+            {
+                var tenant = await _context.Tenants.FindAsync(id);
+                if (tenant == null)
+                    return false;
 
-            tenant.IsDeleted = true;
-            _context.Tenants.Update(tenant);
-            await _context.SaveChangesAsync();
-            return true;
+                tenant.IsDeleted = true;
+                _context.Tenants.Update(tenant);
+                await _context.SaveChangesAsync();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("An error occurred while deleting the tenant.", ex);
+            }
+        }
+
+        private string GenerateStringUrl()
+        {
+            // Guid → byte[]
+            var bytes = Guid.NewGuid().ToByteArray();
+
+            // Base64 → URL Safe
+            string base64 = Convert.ToBase64String(bytes)
+                .Replace("+", "-")   // replace + with -
+                .Replace("/", "_")   // replace / with _
+                .Replace("=", "");   // remove padding
+
+            return base64;
         }
     }
 }
