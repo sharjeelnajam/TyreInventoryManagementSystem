@@ -35,5 +35,7 @@ namespace Domain
         public int Quantity { get; set; }
 
         public string? Barcode { get; set; }
+
+        public ICollection<PurchaseDetail> PurchaseDetails { get; set; }
     }
 }

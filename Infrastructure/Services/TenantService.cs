@@ -124,13 +124,15 @@ namespace Infrastructure.Services
                 // 4. Role ensure karo (agar Admin role exist nahi karta to create karo)
                 if (_roleManager.Roles.FirstOrDefault(r => r.Name == "Admin" && r.TenantId == tenant.Id) == null)
                 {
-                    await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
+                    _context.Roles.Add(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
+                    await _context.SaveChangesAsync();
+                    //await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
                 }
 
                 // 5. User ko Admin role do
                 var adminRole = await _roleManager.Roles.FirstOrDefaultAsync(r => r.Name == "Admin" && r.TenantId == tenant.Id);
 
-                if (adminRole == null)
+                if (adminRole != null)
                 {
                     await _userManager.AddToRoleAsync(adminUser, "Admin");
                 }
@@ -212,7 +214,6 @@ namespace Infrastructure.Services
 
         private string GenerateStringUrl()
         {
-            // Guid → byte[]
             var bytes = Guid.NewGuid().ToByteArray();
 
             // Base64 → URL Safe

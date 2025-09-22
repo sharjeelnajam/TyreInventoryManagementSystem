@@ -1,0 +1,38 @@
+﻿using Domain.Enums;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Domain
+{
+  public  class Customer : BaseEntity
+    {
+        [Required(ErrorMessage = "Customer name is required.")]
+        public string Name { get; set; }
+
+        [Phone(ErrorMessage = "Invalid phone number format.")]
+        [Required(ErrorMessage = "Phone number is required.")]
+        public string Phone { get; set; }
+
+        [EmailAddress(ErrorMessage = "Invalid email address.")]
+        public string Email { get; set; }
+
+        public string? Address { get; set; }
+        public string? City { get; set; }
+
+        public string? VehicleNumber { get; set; }
+
+        public decimal? CreditLimit { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        [Required(ErrorMessage = "Customer type is required.")]
+        public CustomerType CustomerType { get; set; }
+
+        // Navigation
+        public ICollection<Sale> Sales { get; set; }
+    }
+}
