@@ -1,0 +1,105 @@
+﻿@page "/purchases"
+@using Domain
+@using Infrastructure.Services
+@inject IPurchaseService PurchaseService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<h3>Purchases</h3>
+
+<button class="btn btn-primary mb-3" @onclick="OpenAddPurchase">Add Purchase</button>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Purchase #</th>
+            <th>Date</th>
+            <th>Supplier</th>
+            <th>Total</th>
+            <th>Net Amount</th>
+            <th>Status</th>
+            <th>Approved</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (purchases != null)
+        {
+            @foreach (var purchase in purchases)
+            {
+                <tr>
+                    <td>@purchase.PurchaseNumber</td>
+                    <td>@purchase.PurchaseDate.ToShortDateString()</td>
+                    <td>@purchase.Supplier?.Name</td>
+                    <td>@purchase.TotalAmount</td>
+                    <td>@purchase.NetAmount</td>
+                    <td>@purchase.PaymentStatus</td>
+                    <td>@(purchase.IsApproved ? "Yes" : "No")</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" @onclick="() => EditPurchase(purchase.Id)">Edit</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeletePurchase(purchase.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+@if (showForm)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <AddPurchase PurchaseId="@selectedPurchaseId" OnClose="CloseForm" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Purchase> purchases;
+    private bool showForm = false;
+    private Guid? selectedPurchaseId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        purchases = await PurchaseService.GetAllPurchasesAsync();
+    }
+
+    private void OpenAddPurchase()
+    {
+        selectedPurchaseId = null;
+        showForm = true;
+    }
+
+    private void EditPurchase(Guid id)
+    {
+        selectedPurchaseId = id;
+        showForm = true;
+    }
+
+    private async Task DeletePurchase(Guid id)
+    {
+        bool confirm = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure to delete?");
+        if (confirm)
+        {
+            await PurchaseService.DeletePurchaseAsync(id);
+            purchases = await PurchaseService.GetAllPurchasesAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void CloseForm()
+    {
+        showForm = false;
+        _ = LoadPurchases();
+    }
+
+    private async Task LoadPurchases()
+    {
+        purchases = await PurchaseService.GetAllPurchasesAsync();
+        StateHasChanged();
+    }
+}

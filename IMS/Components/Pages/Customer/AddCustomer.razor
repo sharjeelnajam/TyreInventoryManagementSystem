@@ -1,0 +1,72 @@
+﻿@using Domain
+@using Domain.Enums
+@using Infrastructure.Services
+@rendermode InteractiveServer
+@inject ICustomerService CustomerService
+
+<EditForm Model="CustomerModel" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Name</label>
+        <InputText @bind-Value="CustomerModel.Name" class="form-control" />
+        <ValidationMessage For="@(()=>CustomerModel.Name)" />
+    </div>
+
+    <div class="mb-3">
+        <label>Phone</label>
+        <InputText @bind-Value="CustomerModel.Phone" class="form-control" />
+        <ValidationMessage For="@(()=>CustomerModel.Phone)" />
+    </div>
+
+    <div class="mb-3">
+        <label>Email</label>
+        <InputText @bind-Value="CustomerModel.Email" class="form-control" />
+        <ValidationMessage For="@(()=>CustomerModel.Email)" />
+    </div>
+
+    <div class="mb-3">
+        <label>City</label>
+        <InputText @bind-Value="CustomerModel.City" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label>Customer Type</label>
+        <InputSelect @bind-Value="CustomerModel.CustomerType" class="form-select">
+            @foreach (var type in Enum.GetValues(typeof(CustomerType)))
+            {
+                <option value="@type">@type</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="@(()=>CustomerModel.CustomerType)" />
+    </div>
+
+    <div class="form-check mb-3">
+        <InputCheckbox @bind-Value="CustomerModel.IsActive" class="form-check-input" />
+        <label class="form-check-label">Active</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <button type="button" class="btn btn-secondary" @onclick="OnCancelled">Cancel</button>
+</EditForm>
+
+@code {
+    [Parameter] public Customer CustomerModel { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+
+    private async Task HandleValidSubmit()
+    {
+        if (CustomerModel.Id == Guid.Empty)
+        {
+            await CustomerService.AddCustomerAsync(CustomerModel);
+        }
+        else
+        {
+            await CustomerService.UpdateCustomerAsync(CustomerModel);
+        }
+
+        await OnSaved.InvokeAsync();
+    }
+}

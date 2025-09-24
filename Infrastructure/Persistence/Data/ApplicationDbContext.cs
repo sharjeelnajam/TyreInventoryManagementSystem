@@ -84,5 +84,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<Staff> Staff { get; set; }
     public DbSet<Product> Products { get; set; }
+    public DbSet<Supplier> Supplier { get; set; }
+    public DbSet<Customer> Customer { get; set; }
+    public DbSet<Purchase> Purchase { get; set; }
+    public DbSet<PurchaseDetail> PurchaseDetails { get; set; }
 }
 

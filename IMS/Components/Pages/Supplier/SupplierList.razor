@@ -1,0 +1,149 @@
+﻿@page "/suppliers"
+@using Domain
+@using Infrastructure.Services
+@inject ISupplierService SupplierService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+
+<PageTitle>Suppliers</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold"><i class="bi bi-people-fill me-2"></i> Supplier Management</h3>
+        <button class="btn btn-primary" @onclick="AddSupplier">
+            <i class="bi bi-plus-circle me-1"></i> Add
+        </button>
+    </div>
+
+    @if (suppliers == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Loading suppliers...</p>
+        </div>
+    }
+    else if (!suppliers.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i> No suppliers found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>City</th>
+                        <th>Company</th>
+                        <th>Payment Terms</th>
+                        <th>Active</th>
+                        <th style="width:150px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in suppliers)
+                    {
+                        <tr>
+                            <td>@item.Name</td>
+                            <td>@item.Phone</td>
+                            <td>@item.Email</td>
+                            <td>@item.City</td>
+                            <td>@item.CompanyName</td>
+                            <td>@item.PaymentTerms</td>
+                            <td>
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge bg-success">Yes</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">No</span>
+                                }
+                            </td>
+                            <td>
+                                <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
+                                   title="Edit" @onclick="() => EditSupplier(item.Id)"></i>
+                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                   title="Delete" @onclick="() => DeleteSupplier(item.Id)"></i>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (isModalVisible)
+{
+    <AddSupplier Supplier="supplier"
+                  ModalTitle="@modalTitle"
+                  OnSaved="ReloadSuppliers"
+                  OnCancel="CloseModal" />
+}
+
+@code {
+    private List<Supplier>? suppliers;
+    private bool isModalVisible = false;
+    private string modalTitle = "Add Supplier";
+    private Supplier supplier = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSuppliers();
+    }
+
+    private async Task LoadSuppliers()
+    {
+        suppliers = await SupplierService.GetAllAsync();
+    }
+
+    private void AddSupplier()
+    {
+        supplier = new Supplier(); // new supplier
+        modalTitle = "Add Supplier";
+        isModalVisible = true;
+    }
+
+    private async Task EditSupplier(Guid id)
+    {
+        var existingSupplier = await SupplierService.GetByIdAsync(id);
+        if (existingSupplier != null)
+        {
+            supplier = existingSupplier;
+            modalTitle = "Edit";
+            isModalVisible = true;
+        }
+    }
+
+    private async Task DeleteSupplier(Guid id)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this supplier?");
+        if (!confirmed)
+            return;
+
+        var deleted = await SupplierService.DeleteAsync(id);
+        if (deleted)
+        {
+            await LoadSuppliers();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ReloadSuppliers()
+    {
+        await LoadSuppliers();
+        isModalVisible = false;
+    }
+
+    private void CloseModal()
+    {
+        isModalVisible = false;
+    }
+}

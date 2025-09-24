@@ -1,0 +1,144 @@
+﻿@page "/customers"
+@using Domain
+@using Domain.Enums
+@using Infrastructure.Services
+@rendermode InteractiveServer
+@inject ICustomerService CustomerService
+@inject IJSRuntime JSRuntime
+
+<h3>Customers</h3>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="text" class="form-control" placeholder="Search by Name" 
+               @bind="searchName" @bind:event="oninput" />
+    </div>
+    <div class="col-md-4">
+        <select class="form-select" @bind="searchType">
+            <option value="">-- Select Type --</option>
+            @foreach (var type in Enum.GetValues(typeof(CustomerType)))
+            {
+                <option value="@type">@type</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-primary" @onclick="ApplyFilter">Filter</button>
+        <button class="btn btn-success" @onclick="()=>OpenModal(new Customer())">Add Customer</button>
+    </div>
+</div>
+
+<table class="table table-striped table-bordered">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>City</th>
+            <th>Type</th>
+            <th>Active</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (customers == null || customers.Count == 0)
+        {
+            <tr><td colspan="7" class="text-center">No customers found</td></tr>
+        }
+        else
+        {
+            @foreach (var c in customers)
+            {
+                <tr>
+                    <td>@c.Name</td>
+                    <td>@c.Phone</td>
+                    <td>@c.Email</td>
+                    <td>@c.City</td>
+                    <td>@c.CustomerType</td>
+                    <td>@(c.IsActive ? "Yes" : "No")</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning me-1" @onclick="()=>OpenModal(c)">Edit</button>
+                        <button class="btn btn-sm btn-danger" @onclick="()=>DeleteCustomer(c.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<!-- Modal -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" style="background-color:rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <AddCustomer CustomerModel="selectedCustomer" OnSaved="OnSaved" OnCancelled="CloseModal" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Customer> customers = new();
+    private string? searchName;
+    private CustomerType? searchType;
+    private bool showModal = false;
+    private Customer selectedCustomer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        customers = await CustomerService.GetCustomersAsync(searchName, searchType);
+    }
+
+    private async Task ApplyFilter()
+    {
+        await LoadCustomers();
+    }
+
+    private void OpenModal(Customer c)
+    {
+        selectedCustomer = new Customer
+        {
+            Id = c.Id,
+            Name = c.Name,
+            Phone = c.Phone,
+            Email = c.Email,
+            City = c.City,
+            Address = c.Address,
+            VehicleNumber = c.VehicleNumber,
+            CreditLimit = c.CreditLimit,
+            IsActive = c.IsActive,
+            CustomerType = c.CustomerType
+        };
+        showModal = true;
+    }
+
+    private async Task OnSaved()
+    {
+        showModal = false;
+        await LoadCustomers();
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private async Task DeleteCustomer(Guid id)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete this customer?");
+        if (confirmed)
+        {
+            await CustomerService.DeleteCustomerAsync(id);
+            await LoadCustomers();
+        }
+    }
+}

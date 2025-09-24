@@ -33,6 +33,9 @@ builder.Services.AddScoped<MultiTenantSaveChangesInterceptor>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 
 //  Database connection with interceptor
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
