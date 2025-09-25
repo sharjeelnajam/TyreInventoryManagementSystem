@@ -29,19 +29,26 @@
                     <option value="@s.Id">@s.Name</option>
                 }
             </InputSelect>
+            <ValidationMessage For="@(() => Purchase.SupplierId)" />
         </div>
     </div>
 
     <div class="row mt-2">
         <div class="col-md-3">
             <label>Discount</label>
-            <InputNumber @bind-Value="Purchase.Discount" class="form-control"
-                         @oninput="OnPurchaseFieldChanged" />
+            <InputNumber TValue="decimal?"
+                         Value="Purchase.Discount"
+                         ValueChanged="OnDiscountChanged"
+                         ValueExpression="@(() => Purchase.Discount)"
+                         class="form-control" />
         </div>
         <div class="col-md-3">
             <label>Tax</label>
-            <InputNumber @bind-Value="Purchase.TaxAmount" class="form-control"
-                         @oninput="OnPurchaseFieldChanged" />
+            <InputNumber TValue="decimal?"
+                         Value="Purchase.TaxAmount"
+                         ValueChanged="OnTaxChanged"
+                         ValueExpression="@(() => Purchase.TaxAmount)"
+                         class="form-control" />
         </div>
         <div class="col-md-3">
             <label>Total</label>
@@ -92,14 +99,21 @@
                                     <option value="@p.Id">@p.ProductName</option>
                                 }
                             </InputSelect>
+                            <ValidationMessage For="@(() => detail.ProductId)" />
                         </td>
                         <td>
-                            <InputNumber @bind-Value="detail.Quantity" class="form-control"
-                                         @oninput="@((ChangeEventArgs e) => OnItemFieldChanged(detail))" />
+                            <InputNumber TValue="int"
+                                         Value="detail.Quantity"
+                                         ValueChanged="@(v => OnQuantityChanged(detail, v))"
+                                         ValueExpression="@(() => detail.Quantity)"
+                                         class="form-control" />
                         </td>
                         <td>
-                            <InputNumber @bind-Value="detail.UnitPrice" class="form-control"
-                                         @oninput="@((ChangeEventArgs e) => OnItemFieldChanged(detail))" />
+                            <InputNumber TValue="decimal"
+                                         Value="detail.UnitPrice"
+                                         ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
+                                         ValueExpression="@(() => detail.UnitPrice)"
+                                         class="form-control" />
                         </td>
                         <td>@(detail.Quantity * detail.UnitPrice)</td>
                         <td>
@@ -136,8 +150,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        suppliers = await SupplierService.GetAllAsync();
-        products = await ProductService.GetAllAsync();
+        // ek hi scope me sequential await karo
+        suppliers = await LoadSuppliersAsync();
+        products = await LoadProductsAsync();
+
+        Purchase.PurchaseDetails ??= new List<PurchaseDetail>();
 
         if (PurchaseId.HasValue)
         {
@@ -154,9 +171,30 @@
         }
     }
 
+    // helper methods bana diye taki code readable ho
+    private async Task<List<Supplier>> LoadSuppliersAsync()
+    {
+        var list = await SupplierService.GetAllAsync();
+        return list ?? new List<Supplier>();
+    }
+
+    private async Task<List<Product>> LoadProductsAsync()
+    {
+        var list = await ProductService.GetAllAsync();
+        return list ?? new List<Product>();
+    }
+
+
     private void AddDetail()
     {
-        Purchase.PurchaseDetails.Add(new PurchaseDetail { Quantity = 1, UnitPrice = 0 });
+        Purchase.PurchaseDetails.Add(new PurchaseDetail
+            {
+                Id = Guid.NewGuid(),
+                PurchaseId = Purchase.Id,
+                Quantity = 1,
+                UnitPrice = 0,
+                TotalPrice = 0
+            });
         RecalculateTotals();
     }
 
@@ -166,29 +204,50 @@
         RecalculateTotals();
     }
 
-    private void OnItemFieldChanged(PurchaseDetail detail)
+    private void OnQuantityChanged(PurchaseDetail detail, int newValue)
     {
-        // This is called whenever Quantity or UnitPrice is changed
+        detail.Quantity = newValue;
+        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
         RecalculateTotals();
     }
 
-    private void OnPurchaseFieldChanged(ChangeEventArgs e)
+    private void OnUnitPriceChanged(PurchaseDetail detail, decimal newValue)
     {
-        // Called for Discount or TaxAmount changes
+        detail.UnitPrice = newValue;
+        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
         RecalculateTotals();
     }
 
+    private void OnDiscountChanged(decimal? newValue)
+    {
+        Purchase.Discount = newValue ?? 0;
+        RecalculateTotals();
+    }
+
+    private void OnTaxChanged(decimal? newValue)
+    {
+        Purchase.TaxAmount = newValue ?? 0;
+        RecalculateTotals();
+    }
     private void RecalculateTotals()
     {
-        Purchase.TotalAmount = Purchase.PurchaseDetails.Sum(d => d.Quantity * d.UnitPrice);
-        Purchase.NetAmount = Purchase.TotalAmount - (Purchase.Discount ?? 0) + (Purchase.TaxAmount ?? 0);
+
+        if (Purchase.PurchaseDetails == null)
+        {
+            Purchase.TotalAmount = 0;
+            Purchase.NetAmount = 0;
+            return;
+        }
+        var total = Purchase.PurchaseDetails.Sum(d => d.Quantity * d.UnitPrice);
+        Purchase.TotalAmount = total > 0 ? total - Purchase.Discount ?? 0 : 0;
+        Purchase.NetAmount = total > 0 ? total - (Purchase.Discount ?? 0) + (Purchase.TaxAmount ?? 0) : 0;
     }
 
     private async Task SavePurchase()
     {
         // Recalculate totals
-        Purchase.TotalAmount = Purchase.PurchaseDetails.Sum(d => d.Quantity * d.UnitPrice);
-        Purchase.NetAmount = Purchase.TotalAmount - (Purchase.Discount ?? 0) + (Purchase.TaxAmount ?? 0);
+        // Purchase.TotalAmount = Purchase.PurchaseDetails.Sum(d => d.Quantity * d.UnitPrice);
+        // Purchase.NetAmount = Purchase.TotalAmount - (Purchase.Discount ?? 0) + (Purchase.TaxAmount ?? 0);
 
         if (Purchase.Id == Guid.Empty)
             await PurchaseService.AddPurchaseAsync(Purchase);

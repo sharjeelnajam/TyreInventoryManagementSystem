@@ -1,0 +1,103 @@
+﻿@page "/sales"
+@using Domain
+@using Infrastructure.Services
+@inject ISaleService SaleService
+@rendermode InteractiveServer
+
+<h3 class="mb-3">Sales</h3>
+
+<button class="btn btn-primary mb-3" @onclick="OpenAddModal">
+    <i class="bi bi-plus-circle"></i> Add Sale
+</button>
+
+@if (sales == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!sales.Any())
+{
+    <p>No sales found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Sale #</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Total</th>
+                <th>Net Amount</th>
+                <th>Payment Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var sale in sales)
+            {
+                <tr>
+                    <td>@sale.SaleNumber</td>
+                    <td>@sale.SaleDate.ToShortDateString()</td>
+                    <td>@sale.CustomerName</td>
+                    <td>@sale.TotalAmount</td>
+                    <td>@sale.NetAmount</td>
+                    <td>@sale.PaymentStatus</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" @onclick="() => OpenEditModal(sale.Id)">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteSale(sale.Id)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<AddSale 
+    SaleId="selectedSaleId"
+    ShowModal="isModalOpen"
+    OnClose="CloseModal"
+    OnSaved="ReloadSales" />
+
+@code {
+    private List<Sale> sales;
+    private Guid selectedSaleId;
+    private bool isModalOpen = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadSales();
+    }
+
+    private async Task ReloadSales()
+    {
+        sales = await SaleService.GetAllSalesAsync();
+        StateHasChanged();
+    }
+
+    private void OpenAddModal()
+    {
+        selectedSaleId = Guid.Empty;
+        isModalOpen = true;
+    }
+
+    private void OpenEditModal(Guid id)
+    {
+        selectedSaleId = id;
+        isModalOpen = true;
+    }
+
+    private void CloseModal()
+    {
+        isModalOpen = false;
+    }
+
+    private async Task DeleteSale(Guid id)
+    {
+        await SaleService.DeleteSaleAsync(id);
+        await ReloadSales();
+    }
+}
