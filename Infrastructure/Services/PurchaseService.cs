@@ -51,7 +51,6 @@ namespace Infrastructure.Services
                 {
                     foreach (var detail in purchase.PurchaseDetails)
                     {
-                        detail.Id = Guid.NewGuid();
                         detail.PurchaseId = purchase.Id;
                         detail.TotalPrice = detail.Quantity * detail.UnitPrice;
                         purchaseDetails.Add(detail);
@@ -70,62 +69,216 @@ namespace Infrastructure.Services
             }
            
         }
+        //public async Task UpdatePurchaseAsync(Purchase purchase)
+        //{
+        //    try
+        //    {
+        //        var existing = await _context.Purchase
+        //            .Include(p => p.PurchaseDetails)
+        //            .FirstOrDefaultAsync(p => p.Id == purchase.Id);
+
+        //        if (existing == null)
+        //            throw new Exception("Purchase not found in DB");
+
+        //        // --- Update main Purchase fields
+        //        existing.PurchaseNumber = purchase.PurchaseNumber;
+        //        existing.PurchaseDate = purchase.PurchaseDate;
+        //        existing.SupplierId = purchase.SupplierId;
+        //        existing.Discount = purchase.Discount;
+        //        existing.TaxAmount = purchase.TaxAmount;
+        //        existing.TotalAmount = purchase.TotalAmount;
+        //        existing.NetAmount = purchase.NetAmount;
+        //        existing.PaymentStatus = purchase.PaymentStatus;
+        //        existing.UpdatedAt = DateTime.UtcNow;
+
+        //        // --- Sync PurchaseDetails ---
+
+        //        var detailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
+        //        var toRemove = existing.PurchaseDetails.Where(d => !detailIds.Contains(d.Id)).ToList();
+        //        foreach (var r in toRemove)
+        //        {
+        //            _context.PurchaseDetails.Remove(r);
+        //        }
+
+        //        if (purchase.PurchaseDetails != null)
+        //        {
+        //            foreach (var detail in purchase.PurchaseDetails)
+        //            {
+        //                var existingDetail = existing.PurchaseDetails.FirstOrDefault(d => d.Id == detail.Id);
+
+        //                if (existingDetail != null)
+        //                {
+        //                    // Update existing
+        //                    existingDetail.ProductId = detail.ProductId;
+        //                    existingDetail.Quantity = detail.Quantity;
+        //                    existingDetail.UnitPrice = detail.UnitPrice;
+        //                    existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
+        //                }
+        //                else
+        //                {
+        //                    // New row from frontend (either Guid.Empty OR non-existing Id)
+        //                    if (detail.Id == Guid.Empty || !await _context.PurchaseDetails.AnyAsync(d => d.Id == detail.Id))
+        //                        detail.Id = Guid.NewGuid(); // assign fresh Id
+
+        //                    detail.PurchaseId = existing.Id;
+        //                    detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+
+        //                    existing.PurchaseDetails.Add(detail);
+        //                }
+        //            }
+        //        }
+
+        //        await _context.SaveChangesAsync();
+        //    }
+        //    catch (DbUpdateConcurrencyException ex)
+        //    {
+        //        Console.WriteLine("Concurrency error: " + ex.Message);
+        //        throw;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine("Update error: " + ex.Message);
+        //        throw;
+        //    }
+        //}
+
+
+        //public async Task UpdatePurchaseAsync(Purchase purchase)
+        //{
+        //    try
+        //    {
+        //        var existing = await _context.Purchase
+        // .Include(p => p.PurchaseDetails)
+        // .FirstOrDefaultAsync(p => p.Id == purchase.Id);
+
+        //        if (existing == null) return;
+
+        //        // Update main fields
+        //        _context.Entry(existing).CurrentValues.SetValues(purchase);
+
+        //        // Sync details (add / update / delete)
+        //        // 1. Delete those which are not in updated list
+        //        var detailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
+        //        var toRemove = existing.PurchaseDetails.Where(d => !detailIds.Contains(d.Id)).ToList();
+        //        foreach (var r in toRemove)
+        //        {
+        //            _context.PurchaseDetails.Remove(r);
+        //        }
+
+        //        // 2. Update or Add
+        //        if (purchase.PurchaseDetails != null)
+        //        {
+        //            foreach (var detail in purchase.PurchaseDetails)
+        //            {
+        //                var existingDetail = existing.PurchaseDetails.FirstOrDefault(d => d.Id == detail.Id);
+
+        //                if (existingDetail != null)
+        //                {
+        //                    // update existing
+        //                    _context.Entry(existingDetail).CurrentValues.SetValues(detail);
+        //                    existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
+        //                }
+        //                else
+        //                {
+        //                    // add new
+        //                    if (detail.Id == Guid.Empty)
+        //                        detail.Id = Guid.NewGuid();
+        //                    detail.PurchaseId = purchase.Id;
+        //                    detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+        //                    existing.PurchaseDetails.Add(detail);
+        //                }
+        //            }
+        //        }
+
+        //        existing.UpdatedAt = DateTime.UtcNow;
+        //        await _context.SaveChangesAsync();
+        //    }
+        //    catch (Exception)
+        //    {
+
+        //        throw;
+        //    }
+        //}
 
         public async Task UpdatePurchaseAsync(Purchase purchase)
         {
             try
             {
                 var existing = await _context.Purchase
-         .Include(p => p.PurchaseDetails)
-         .FirstOrDefaultAsync(p => p.Id == purchase.Id);
+                    .Include(p => p.PurchaseDetails)
+                    .FirstOrDefaultAsync(p => p.Id == purchase.Id);
 
-                if (existing == null) return;
+                if (existing == null)
+                    throw new Exception("Purchase not found in DB");
 
-                // Update main fields
-                _context.Entry(existing).CurrentValues.SetValues(purchase);
+                // --- Update only safe fields ---
+                existing.PurchaseNumber = purchase.PurchaseNumber;
+                existing.PurchaseDate = purchase.PurchaseDate;
+                existing.SupplierId = purchase.SupplierId;
+                existing.Discount = purchase.Discount;
+                existing.TaxAmount = purchase.TaxAmount;
+                existing.TotalAmount = purchase.TotalAmount;
+                existing.NetAmount = purchase.NetAmount;
+                existing.PaymentStatus = purchase.PaymentStatus;
+                existing.UpdatedAt = DateTime.UtcNow; // best practice
 
-                // Sync details (add / update / delete)
-                // 1. Delete those which are not in updated list
+                // --- Sync PurchaseDetails ---
                 var detailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
-                var toRemove = existing.PurchaseDetails.Where(d => !detailIds.Contains(d.Id)).ToList();
+
+                // Delete missing
+                var toRemove = existing.PurchaseDetails
+                    .Where(d => !detailIds.Contains(d.Id))
+                    .ToList();
+
                 foreach (var r in toRemove)
                 {
                     _context.PurchaseDetails.Remove(r);
                 }
 
-                // 2. Update or Add
+                // Add or Update
                 if (purchase.PurchaseDetails != null)
                 {
                     foreach (var detail in purchase.PurchaseDetails)
                     {
-                        var existingDetail = existing.PurchaseDetails.FirstOrDefault(d => d.Id == detail.Id);
+                        var existingDetail = existing.PurchaseDetails
+                            .FirstOrDefault(d => d.Id == detail.Id);
 
                         if (existingDetail != null)
                         {
-                            // update existing
-                            _context.Entry(existingDetail).CurrentValues.SetValues(detail);
+                            // Update existing
+                            existingDetail.ProductId = detail.ProductId;
+                            existingDetail.Quantity = detail.Quantity;
+                            existingDetail.UnitPrice = detail.UnitPrice;
                             existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
                         }
                         else
                         {
-                            // add new
-                            detail.Id = Guid.NewGuid();
-                            detail.PurchaseId = purchase.Id;
+                            // Add new
+                            if (detail.Id == Guid.Empty)
+                                detail.Id = Guid.NewGuid();
+
+                            detail.PurchaseId = existing.Id;
                             detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+
                             existing.PurchaseDetails.Add(detail);
                         }
                     }
                 }
 
-                existing.UpdatedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
-            catch (Exception)
+            catch (DbUpdateConcurrencyException ex)
             {
-
+                Console.WriteLine("⚠️ Concurrency error: " + ex.Message);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("❌ Update error: " + ex.Message);
                 throw;
             }
         }
+
 
 
         public async Task DeletePurchaseAsync(Guid id)

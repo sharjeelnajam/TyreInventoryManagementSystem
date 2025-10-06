@@ -23,10 +23,10 @@ namespace Infrastructure.Services
         {
             try
             {
-                var query = _context.Customer.Where(c => c.IsDeleted == false).AsQueryable();
+                var query = _context.Customer.Where(c => !c.IsDeleted).AsQueryable();
 
                 if (!string.IsNullOrWhiteSpace(name))
-                    query = query.Where(c => c.Name.Contains(name));
+                    query = query.Where(s => s.Name.Contains(name));
 
                 if (type.HasValue)
                     query = query.Where(c => c.CustomerType == type);

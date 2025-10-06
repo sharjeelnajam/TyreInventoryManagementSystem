@@ -12,10 +12,10 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="flex-column">
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-             @*    <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home *@
-                <span class="" aria-hidden="true"></span> Home
+              <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
             </NavLink>
         </div>
 
@@ -30,25 +30,41 @@
             </AuthorizeView>
         </div>
 
-        <div class="nav-item px-3">
+      
             <AuthorizeView Roles="Staff">
                 <Authorized>
-                    <NavLink class="nav-link d-flex align-items-center" href="/products">
-                        <span class="bi bi-circle-nav-menu "></span>Products
-                      
+                <div class="nav-item px-3">
+                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/products">
+                        <span class="bi bi-box-fill"></span>Products
                     </NavLink>
+                </div>
 
+                <div class="nav-item px-3">
                     <NavLink class="nav-link d-flex align-items-center" href="/suppliers">
-                        <span class="bi bi-circle-nav-menu "></span>Suppliers
-
+                        <span class="bi bi-person-fill-nav-menu"></span>Suppliers
                     </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
                     <NavLink class="nav-link d-flex align-items-center" href="/customers">
-                        <span class="bi bi-circle-nav-menu "></span>Customers
-
+                        <span class="bi bi-person-fill-nav-menu"></span>Customers
                     </NavLink>
+                </div>
+
+
+                <div class="nav-item px-3">
+                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/purchases">
+                        <span class="bi bi-cart-fill me-2"></span>Purchases
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/sales">
+                        <span class="bi bi-cart-fill me-2"></span>Sales
+                    </NavLink>
+                </div>
                 </Authorized>
             </AuthorizeView>
-        </div>
 
 
         <AuthorizeView>
@@ -69,19 +85,26 @@
      
             <AuthorizeView Roles="Admin">
                  <Authorized>
-                <NavLink class="nav-link d-flex align-items-center" href="/staff">
-                    <span class="bi bi-person-fill-nav-menu"></span>
-                    <span>Staff</span>
-                </NavLink>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center" href="/staff">
+                        <span class="bi bi-person-fill-nav-menu"></span>
+                        <span>Staff</span>
+                    </NavLink>
+                </div>
 
-                <NavLink class="nav-link d-flex align-items-center" href="/suppliers">
-                    <span class="bi bi-circle-nav-menu "></span>Suppliers
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center" href="/suppliers">
+                        <span class="bi bi-person-fill-nav-menu"></span>
+                        <sapn>Suppliers</sapn>
+                    </NavLink>
+                </div>
 
-                </NavLink>
-                <NavLink class="nav-link d-flex align-items-center" href="/customers">
-                    <span class="bi bi-circle-nav-menu "></span>Customers
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center" href="/customers">
+                        <span class="bi bi-person-fill-nav-menu"></span><span>Customers</span>
+                    </NavLink>
+                </div>
 
-                </NavLink>
             </Authorized>
         </AuthorizeView>
     </nav>
@@ -90,6 +113,12 @@
     .tenant-icon {
         position: relative;
         top: -2px; /* adjust until aligned */
+    }
+
+    .bi.nav-menu {
+        font-size: 1.2rem; /* size adjust */
+        margin-right: 8px; /* spacing before text */
+        color: #333; /* default color */
     }
 </style>
 

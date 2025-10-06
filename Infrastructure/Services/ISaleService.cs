@@ -9,13 +9,10 @@ namespace Infrastructure.Services
 {
     public interface ISaleService
     {
-        Task<List<Sale>> GetAllSalesAsync();
-        Task<bool> ExistsAsync(Guid id);
-        Task<Sale?> GetSaleByIdAsync(Guid id);
-        Task AddSaleAsync(Sale sale);
-        Task UpdateSaleAsync(Sale sale);
-        Task<List<Customer>> GetCustomersAsync();
-        Task<List<Product>> GetProductsAsync();
-        Task DeleteSaleAsync(Guid id);
+        Task<List<Sale>> GetAllAsync();
+        Task<Sale?> GetByIdAsync(Guid id);
+        Task<bool> AddAsync(Sale sale);
+        Task UpdateAsync(Sale sale);
+        Task<bool> DeleteAsync(Guid id);
     }
 }

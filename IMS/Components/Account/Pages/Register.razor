@@ -9,7 +9,6 @@
 @using System.Security.Claims
 @using global::Shared.MultiTenancy
 
-
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
 @inject SignInManager<ApplicationUser> SignInManager
@@ -21,39 +20,106 @@
 
 <PageTitle>Register</PageTitle>
 
-<h1>Register</h1>
+<div class="register-bg d-flex justify-content-center align-items-center">
+    <div class="card register-card shadow-lg border-0 rounded-4 p-4" style="max-width: 480px; width: 100%;">
+        <div class="text-center mb-4">
+            <div class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center shadow"
+                 style="width:70px; height:70px;">
+                <i class="bi bi-person-plus-fill fs-1"></i>
+            </div>
+            <h3 class="fw-bold mt-3">Create Account</h3>
+            <p class="text-muted">Join us today and get started</p>
+        </div>
 
-<div class="row">
-    <div class="col-md-4">
         <StatusMessage Message="@Message" />
+
         <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
-            <hr />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                <label for="email">Email</label>
-                <ValidationMessage For="() => Input.Email" class="text-danger" />
+            <ValidationSummary class="text-danger mb-3" role="alert" />
+
+            <!-- Email -->
+            <div class="mb-3">
+                <label for="email" class="form-label fw-semibold">Email</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-envelope"></i></span>
+                    <InputText @bind-Value="Input.Email" class="form-control shadow-sm" id="email" autocomplete="username" placeholder="name@example.com" />
+                </div>
+                <ValidationMessage For="() => Input.Email" class="text-danger small mt-1" />
             </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="password">Password</label>
-                <ValidationMessage For="() => Input.Password" class="text-danger" />
+
+            <!-- Password -->
+            <div class="mb-3">
+                <label for="password" class="form-label fw-semibold">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-lock"></i></span>
+                    <InputText type="password" @bind-Value="Input.Password" class="form-control shadow-sm" id="password" autocomplete="new-password" placeholder="password" />
+                </div>
+                <ValidationMessage For="() => Input.Password" class="text-danger small mt-1" />
             </div>
-            <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="confirm-password">Confirm Password</label>
-                <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
+
+            <!-- Confirm Password -->
+            <div class="mb-3">
+                <label for="confirm-password" class="form-label fw-semibold">Confirm Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-check2-circle"></i></span>
+                    <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control shadow-sm" id="confirm-password" autocomplete="new-password" placeholder="confirm password" />
+                </div>
+                <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger small mt-1" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
+
+            <!-- Submit -->
+            <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm rounded-pill">
+                <i class="bi bi-person-plus me-2"></i> Register
+            </button>
         </EditForm>
-    </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <ExternalLoginPicker />
-        </section>
+
+        <hr />
+
+        <div class="text-center small">
+            <p>Already have an account? <a href="Account/Login">Log in</a></p>
+        </div>
     </div>
 </div>
+
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* scroll remove */
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); /* blue bg */
+    }
+
+    .register-bg {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .register-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 1rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease-in-out;
+        margin: 0 auto;
+        transform: none; /* floating hata diya */
+    }
+
+        .register-card:hover {
+            transform: none; /* hover par bhi floating band */
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); /* sirf shadow effect */
+        }
+
+    .input-group-text {
+        border-radius: 0.5rem 0 0 0.5rem;
+    }
+
+    .form-control {
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+</style>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;
@@ -70,12 +136,11 @@
     {
         var user = CreateUser();
 
-        // Assign TenantId from provider
         user.TenantId = Guid.NewGuid();
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
-        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);  
+        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
         var result = await UserManager.CreateAsync(user, Input.Password);
 
         if (!result.Succeeded)
@@ -134,13 +199,11 @@
     {
         [Required]
         [EmailAddress]
-        [Display(Name = "Email")]
         public string Email { get; set; } = "";
 
         [Required]
         [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
         [DataType(DataType.Password)]
-        [Display(Name = "Password")]
         public string Password { get; set; } = "";
 
         [DataType(DataType.Password)]

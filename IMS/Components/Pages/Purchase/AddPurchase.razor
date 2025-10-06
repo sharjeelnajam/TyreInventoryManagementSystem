@@ -171,26 +171,26 @@
         }
     }
 
-    // helper methods bana diye taki code readable ho
-    private async Task<List<Supplier>> LoadSuppliersAsync()
+    private async Task SavePurchase()
     {
-        var list = await SupplierService.GetAllAsync();
-        return list ?? new List<Supplier>();
-    }
+        foreach (var d in Purchase.PurchaseDetails)
+        {
+            d.PurchaseId = Purchase.Id;
+        }
 
-    private async Task<List<Product>> LoadProductsAsync()
-    {
-        var list = await ProductService.GetAllAsync();
-        return list ?? new List<Product>();
-    }
+        if (Purchase.Id == Guid.Empty)
+            await PurchaseService.AddPurchaseAsync(Purchase);
+        else
+            await PurchaseService.UpdatePurchaseAsync(Purchase);
 
+        await OnClose.InvokeAsync();
+    }
 
     private void AddDetail()
     {
         Purchase.PurchaseDetails.Add(new PurchaseDetail
             {
-                Id = Guid.NewGuid(),
-                PurchaseId = Purchase.Id,
+                Id = Guid.Empty,
                 Quantity = 1,
                 UnitPrice = 0,
                 TotalPrice = 0
@@ -229,6 +229,7 @@
         Purchase.TaxAmount = newValue ?? 0;
         RecalculateTotals();
     }
+
     private void RecalculateTotals()
     {
 
@@ -243,22 +244,21 @@
         Purchase.NetAmount = total > 0 ? total - (Purchase.Discount ?? 0) + (Purchase.TaxAmount ?? 0) : 0;
     }
 
-    private async Task SavePurchase()
-    {
-        // Recalculate totals
-        // Purchase.TotalAmount = Purchase.PurchaseDetails.Sum(d => d.Quantity * d.UnitPrice);
-        // Purchase.NetAmount = Purchase.TotalAmount - (Purchase.Discount ?? 0) + (Purchase.TaxAmount ?? 0);
-
-        if (Purchase.Id == Guid.Empty)
-            await PurchaseService.AddPurchaseAsync(Purchase);
-        else
-            await PurchaseService.UpdatePurchaseAsync(Purchase);
-
-        await OnClose.InvokeAsync();
-    }
-
     private async Task Close()
     {
         await OnClose.InvokeAsync();
+    }
+
+    // helper methods bana diye taki code readable ho
+    private async Task<List<Supplier>> LoadSuppliersAsync()
+    {
+        var list = await SupplierService.GetAllAsync();
+        return list ?? new List<Supplier>();
+    }
+
+    private async Task<List<Product>> LoadProductsAsync()
+    {
+        var list = await ProductService.GetAllAsync();
+        return list ?? new List<Product>();
     }
 }

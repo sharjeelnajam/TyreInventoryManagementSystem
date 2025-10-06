@@ -15,7 +15,7 @@ namespace Domain
         public DateTime SaleDate { get; set; }
 
         public Guid? CustomerId { get; set; }
-        public string CustomerName { get; set; }
+        public string? CustomerName { get; set; }
         public Customer Customer { get; set; }
 
         [Required(ErrorMessage = "Total amount is required.")]

@@ -12,50 +12,96 @@
 
 <PageTitle>Log in</PageTitle>
 
-<div class="d-flex justify-content-center align-items-center vh-100">
-    <div class="card shadow-lg border-0 rounded-4" style="max-width: 420px; width: 100%;">
-        <div class="card-header bg-gradient bg-primary text-white text-center rounded-top-4 py-3">
-            <h3 class="fw-bold mb-0"><i class="bi bi-box-arrow-in-right me-2"></i> Log In</h3>
-        </div>
-        <div class="card-body p-4">
-            <StatusMessage Message="@errorMessage" />
-
-            <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
-                <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger mb-3" role="alert" />
-
-                <div class="form-floating mb-3">
-                    <InputText @bind-Value="Input.Email" class="form-control shadow-sm" id="email" autocomplete="username" placeholder="name@example.com" />
-                    <label for="email">Email</label>
-                    <ValidationMessage For="() => Input.Email" class="text-danger small mt-1" />
-                </div>
-
-                <div class="form-floating mb-3">
-                    <InputText type="password" @bind-Value="Input.Password" class="form-control shadow-sm" id="password" autocomplete="current-password" placeholder="password" />
-                    <label for="password">Password</label>
-                    <ValidationMessage For="() => Input.Password" class="text-danger small mt-1" />
-                </div>
-
-                <div class="form-check mb-3">
-                    <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" id="rememberMe" />
-                    <label class="form-check-label" for="rememberMe">Remember me</label>
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm">
-                    <i class="bi bi-box-arrow-in-right me-2"></i> Log in
-                </button>
-            </EditForm>
-
-            <hr />
-
-            <div class="text-center small">
-                <p><a href="Account/ForgotPassword">Forgot your password?</a></p>
-                <p><a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</a></p>
-                <p><a href="Account/ResendEmailConfirmation">Resend email confirmation</a></p>
+<div class="login-bg d-flex justify-content-center align-items-center vh-100">
+    <div class="card login-card shadow-lg border-0 rounded-4 p-4" style="max-width: 420px; width: 100%;">
+        <div class="text-center mb-4">
+            <div class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center shadow"
+                 style="width:70px; height:70px;">
+                <i class="bi bi-person-fill fs-1"></i>
             </div>
+            <h3 class="fw-bold mt-3">Welcome Back</h3>
+            <p class="text-muted">Sign in to continue</p>
+        </div>
+
+        <StatusMessage Message="@errorMessage" />
+
+        <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger mb-3" role="alert" />
+
+            <!-- Email -->
+            <div class="mb-3">
+                <label for="email" class="form-label fw-semibold">Email</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-envelope"></i></span>
+                    <InputText @bind-Value="Input.Email" class="form-control shadow-sm" id="email" autocomplete="username" placeholder="name@example.com" />
+                </div>
+                <ValidationMessage For="() => Input.Email" class="text-danger small mt-1" />
+            </div>
+
+            <!-- Password -->
+            <div class="mb-3">
+                <label for="password" class="form-label fw-semibold">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-lock"></i></span>
+                    <InputText type="password" @bind-Value="Input.Password" class="form-control shadow-sm" id="password" autocomplete="current-password" placeholder="password" />
+                </div>
+                <ValidationMessage For="() => Input.Password" class="text-danger small mt-1" />
+            </div>
+
+            <!-- Remember me -->
+            <div class="form-check mb-3">
+                <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" id="rememberMe" />
+                <label class="form-check-label" for="rememberMe">Remember me</label>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm rounded-pill">
+                <i class="bi bi-box-arrow-in-right me-2"></i> Log in
+            </button>
+        </EditForm>
+
+        <hr />
+
+        <div class="text-center small">
+            <p><a href="Account/ForgotPassword">Forgot your password?</a></p>
+            <p><a href="@(NavigationManager.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Register as a new user</a></p>
+            <p><a href="Account/ResendEmailConfirmation">Resend email confirmation</a></p>
         </div>
     </div>
 </div>
+
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* scrollbar hata do */
+        background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+    }
+
+    .login-bg {
+        min-height: calc(100vh - 120px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 0; /* pehle hi padding di hui hai */
+    }
+
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        margin: 40px 0;
+    }
+
+    .input-group-text {
+        border-radius: 0.5rem 0 0 0.5rem;
+    }
+
+    .form-control {
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+</style>
 
 @code {
     private string? errorMessage;

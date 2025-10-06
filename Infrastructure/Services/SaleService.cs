@@ -1,8 +1,10 @@
 ﻿using Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,193 +19,193 @@ namespace Infrastructure.Services
             _context = context;
         }
 
-        public async Task<List<Sale>> GetAllSalesAsync()
+        public async Task<List<Sale>> GetAllAsync()
         {
             try
             {
-                return await _context.Sale
-                   .Include(s => s.Customer)
-                   .Include(s => s.SaleDetails)
-                   .Where(s => !s.IsDeleted)
-                   .OrderByDescending(s => s.CreatedAt)
-                   .ToListAsync();
+                var Sales = await _context.Sale.Where(s => s.IsDeleted == false).Include(s => s.Customer)
+                    .Include(s => s.SaleDetails).ThenInclude(s => s.Product) // if relation exists
+                    .ToListAsync();
+
+                return Sales ?? new List<Sale>();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                Console.WriteLine($"❌ Error in GetAllAsync: {ex.Message}");
+                return new List<Sale>();
             }
-
         }
 
-        public async Task<bool> ExistsAsync(Guid id)
+        public async Task<Sale?> GetByIdAsync(Guid id)
         {
+            if (id == Guid.Empty) return null;
+
             try
             {
-                return await _context.Sale.AnyAsync(s => s.Id == id);
+                return await _context.Sale.Include(s => s.SaleDetails).AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                Console.WriteLine($"❌ Error in GetByIdAsync: {ex.Message}");
+                return null;
             }
-
         }
 
-        public async Task<Sale?> GetSaleByIdAsync(Guid id)
+        public async Task<bool> AddAsync(Sale sale)
         {
+          
             try
             {
-                return await _context.Sale
-               .Include(s => s.SaleDetails)
-               .FirstOrDefaultAsync(s => s.Id == id);
-            }
-            catch (Exception)
-            {
+                sale.Id = Guid.NewGuid();
+                sale.CreatedAt = DateTime.Now;
 
-                throw;
-            }
+                List<SaleDetail> saleDetails = new List<SaleDetail>();
 
-        }
-
-        public async Task AddSaleAsync(Sale sale)
-        {
-            try
-            {
-                NormalizeSale(sale);
-
-                sale.Id = sale.Id == Guid.Empty ? Guid.NewGuid() : sale.Id;
-                sale.CreatedAt = DateTime.UtcNow;
-
-                _context.Sale.Add(sale);
+                if (sale.SaleDetails != null)
+                {
+                    foreach (var detail in sale.SaleDetails)
+                    {
+                        detail.SaleId = sale.Id;
+                        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                        saleDetails.Add(detail);
+                    }
+                }
+                if (sale == null) return false;
+                await _context.Sale.AddAsync(sale);
+                if (saleDetails != null)
+                    _context.AddRange(saleDetails);
                 await _context.SaveChangesAsync();
+                return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                Console.WriteLine($"❌ Error in AddAsync: {ex.Message}");
+                return false;
             }
-
         }
 
-        public async Task UpdateSaleAsync(Sale sale)
+        public async Task UpdateAsync(Sale sale)
         {
+
             try
             {
-                var existing = await _context.Sale
-             .Include(s => s.SaleDetails)
-             .FirstOrDefaultAsync(s => s.Id == sale.Id);
+                var existingSale = await _context.Sale.FirstOrDefaultAsync(s => s.Id == sale.Id);
+                if (existingSale == null) throw new Exception("Purchase not found in DB");
 
-                if (existing == null) return;
+                var newSaleDetails = new List<SaleDetail>();
 
-                // Update main fields
-                _context.Entry(existing).CurrentValues.SetValues(sale);
+                // Update fields
+                existingSale.SaleNumber = sale.SaleNumber;
+                existingSale.CustomerId = sale.CustomerId;
+                existingSale.TotalAmount = sale.TotalAmount;
+                existingSale.Discount = sale.Discount;
+                existingSale.TaxAmount = sale.TaxAmount;
+                existingSale.NetAmount = sale.NetAmount;
+                existingSale.PaymentMethod = sale.PaymentMethod;
+                existingSale.PaymentStatus = sale.PaymentStatus;
+                existingSale.DueDate = sale.DueDate;
+                existingSale.VehicleNumber = sale.VehicleNumber;
+                existingSale.IsApproved = sale.IsApproved;
+                existingSale.UpdatedAt = DateTime.Now;
 
-                // Delete removed details
-                var detailIds = sale.SaleDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
-                var toRemove = existing.SaleDetails.Where(d => !detailIds.Contains(d.Id)).ToList();
-                foreach (var r in toRemove)
-                    _context.SaleDetail.Remove(r);
+                _context.SaveChanges();
 
-                // Add or update details
+                var existingSaleDetails = _context.SaleDetail.Where(s => s.SaleId == sale.Id).ToList();
+
                 foreach (var detail in sale.SaleDetails)
                 {
-                    var existingDetail = existing.SaleDetails.FirstOrDefault(d => d.Id == detail.Id);
+                    var existingDetail = existingSaleDetails.FirstOrDefault(d => d.Id == detail.Id);
 
                     if (existingDetail != null)
                     {
-                        _context.Entry(existingDetail).CurrentValues.SetValues(detail);
-                        existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                        detail.CreatedAt = existingDetail.CreatedAt;
+                        detail.UpdatedAt = DateTime.Now;
+                        detail.SaleId = existingSale.Id;
+                        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                        detail.Id = Guid.Empty;
+                        newSaleDetails.Add(detail);
                     }
                     else
                     {
-                        detail.Id = Guid.NewGuid();
-                        detail.SaleId = sale.Id;
-                        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-                        existing.SaleDetails.Add(detail);
+                        detail.CreatedAt = existingDetail.CreatedAt; 
+                        detail.SaleId = existingSale.Id;
+
+
+                        newSaleDetails.Add(detail);
+
                     }
                 }
 
-                existing.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                _context.RemoveRange(existingSaleDetails);
+                _context.SaveChanges();
+                _context.AddRange(newSaleDetails);
+                _context.SaveChanges();
+                //var saleDetailsIds = sale.SaleDetails?.Select(s => s.Id).ToList() ?? new List<Guid>();
+
+                //var toRemove = existingSale.SaleDetails.Where(s => !saleDetailsIds.Contains(s.Id)).ToList();
+
+                //foreach (var s in toRemove)
+                //{
+                //    _context.SaleDetail.Attach(s);
+                //    existingSale.SaleDetails.Remove(s);
+                //}
+                //if (sale.SaleDetails != null)
+                //{
+                //    foreach(var saleDetails in sale.SaleDetails)
+                //    {
+                //        var existingSaleDetails = existingSale.SaleDetails.FirstOrDefault(s => s.Id == saleDetails.Id);
+
+                //        if(existingSaleDetails != null)
+                //        {
+                //            existingSaleDetails.ProductId = saleDetails.ProductId;
+                //            existingSaleDetails.Quantity = saleDetails.Quantity;
+                //            existingSaleDetails.UnitPrice = saleDetails.UnitPrice;
+                //            existingSaleDetails.TotalPrice = saleDetails.TotalPrice;
+                //            existingSaleDetails.UpdatedAt = DateTime.Now;
+                //        }
+                //        else
+                //        {
+                //            if (saleDetails.Id == Guid.Empty)
+                //                saleDetails.Id = Guid.NewGuid();
+
+                //            saleDetails.SaleId = existingSale.Id;
+                //            saleDetails.TotalPrice = saleDetails.Quantity * saleDetails.UnitPrice;
+
+                //            existingSale.SaleDetails.Add(saleDetails);
+                //        }
+                //    }
+                //}
+
+
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                Console.WriteLine("⚠️ Concurrency error: " + ex.Message);
                 throw;
-            }
 
+            }
         }
 
-        private void NormalizeSale(Sale sale)
+
+        public async Task<bool> DeleteAsync(Guid id)
         {
+            if (id == Guid.Empty) return false;
+
             try
             {
-                foreach (var d in sale.SaleDetails)
-                {
-                    if (d.Id == Guid.Empty)
-                        d.Id = Guid.NewGuid();
-
-                    d.SaleId = sale.Id;
-                    d.TotalPrice = d.Quantity * d.UnitPrice;
-                }
-            }
-            catch (Exception)
-            {
-
-                throw;
-            }
-        }
-
-        // Dummy helpers – replace with actual repo/services
-        public async Task<List<Customer>> GetCustomersAsync()
-        {
-            try
-            {
-                return await _context.Customer.ToListAsync();
-            }
-            catch (Exception)
-            {
-
-                throw;
-            }
-        }
-
-        public async Task<List<Product>> GetProductsAsync()
-        {
-            try
-            {
-                return await _context.Products.ToListAsync();
-            }
-            catch (Exception)
-            {
-
-                throw;
-            }
-
-        }
-
-        public async Task DeleteSaleAsync(Guid id)
-        {
-            try
-            {
-                var sale = await _context.Sale
-               .Include(s => s.SaleDetails)
-               .FirstOrDefaultAsync(s => s.Id == id);
-
-                if (sale == null) return;
+                var sale = await _context.Sale.FindAsync(id);
+                if (sale == null) return false;
 
                 sale.IsDeleted = true;
-                sale.DeletedAt = DateTime.UtcNow;
-
+                _context.Update(sale);
                 await _context.SaveChangesAsync();
+                return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
-                throw;
+                Console.WriteLine($"❌ Error in DeleteAsync: {ex.Message}");
+                return false;
             }
-
         }
     }
 }
