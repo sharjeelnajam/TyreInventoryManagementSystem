@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -40,9 +41,12 @@ namespace Domain
 
         // ✅ Salary Information
         [Required(ErrorMessage = "Salary is required")]
+        [Precision(18, 2)]
         public decimal Salary { get; set; }
 
+        [Precision(18, 2)]
         public decimal? Allowances { get; set; }
+        [Precision(18, 2)]
         public decimal? Deductions { get; set; }
     }
 }

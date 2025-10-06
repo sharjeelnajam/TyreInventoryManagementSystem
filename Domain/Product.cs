@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -23,12 +24,15 @@ namespace Domain
         [Required(ErrorMessage = "Tyre size is required")]
         public string TyreSize { get; set; } = default!;
 
+        [Precision(18, 2)]
         public decimal? TreadDepth { get; set; }  // mm
 
         [Required(ErrorMessage = "Purchase price is required")]
+        [Precision(18, 2)]
         public decimal PurchasePrice { get; set; }
 
         [Required(ErrorMessage = "Selling price is required")]
+        [Precision(18, 2)]
         public decimal SellingPrice { get; set; }
 
         [Required(ErrorMessage = "Quantity is required")]

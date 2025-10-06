@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -21,9 +22,11 @@ namespace Domain
         public Supplier Supplier { get; set; }
 
         [Required(ErrorMessage = "Total amount is required.")]
+        [Precision(18, 2)]
         public decimal TotalAmount { get; set; }
 
         [Required(ErrorMessage = "Net amount is required.")]
+        [Precision(18, 2)]
         public decimal NetAmount { get; set; }
 
         [Required(ErrorMessage = "Payment status is required.")]
@@ -33,7 +36,9 @@ namespace Domain
         public bool IsApproved { get; set; }
 
         // Optional Fields – no validation required
+        [Precision(18, 2)]
         public decimal? Discount { get; set; }
+        [Precision(18, 2)]
         public decimal? TaxAmount { get; set; }
         public string? PaymentMethod { get; set; }
         public DateTime? DueDate { get; set; }

@@ -1,4 +1,5 @@
 ﻿using Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -25,6 +26,7 @@ namespace Domain
 
         public string? VehicleNumber { get; set; }
 
+        [Precision(18, 2)]
         public decimal? CreditLimit { get; set; }
 
         public bool IsActive { get; set; } = true;

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -25,10 +26,12 @@ namespace Domain
 
         [Required(ErrorMessage = "Unit price is required.")]
         [Range(0.01, double.MaxValue, ErrorMessage = "Unit price must be greater than 0.")]
+        [Precision(18, 2)]
         public decimal UnitPrice { get; set; }
 
         [Required(ErrorMessage = "Total price is required.")]
         [Range(0.01, double.MaxValue, ErrorMessage = "Total price must be greater than 0.")]
+        [Precision(18, 2)]
         public decimal TotalPrice { get; set; }
 
         // Optional / Useful Fields

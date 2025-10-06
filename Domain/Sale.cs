@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -19,12 +20,16 @@ namespace Domain
         public Customer Customer { get; set; }
 
         [Required(ErrorMessage = "Total amount is required.")]
+        [Precision(18, 2)]
         public decimal TotalAmount { get; set; }
 
+        [Precision(18, 2)]
         public decimal? Discount { get; set; }
+        [Precision(18, 2)]
         public decimal? TaxAmount { get; set; }
 
         [Required(ErrorMessage = "Net amount is required.")]
+        [Precision(18, 2)]
         public decimal NetAmount { get; set; }
 
         [Required(ErrorMessage = "Payment status is required.")]

@@ -80,6 +80,8 @@ namespace Infrastructure.Services
 
         public async Task<Tenant> AddTenantAsync(Tenant ten, Guid ownerUserId)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 if (string.IsNullOrWhiteSpace(ten.Name))
@@ -121,34 +123,26 @@ namespace Infrastructure.Services
                 if (!result.Succeeded)
                     throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
 
-                // 4. Role ensure karo (agar Admin role exist nahi karta to create karo)
-                if (_roleManager.Roles.FirstOrDefault(r => r.Name == "Admin" && r.TenantId == tenant.Id) == null)
+                var adminRole = await _roleManager.Roles
+              .FirstOrDefaultAsync(r => r.Name == "Admin" && r.TenantId == tenant.Id);
+
+                if (adminRole == null)
                 {
-                    _context.Roles.Add(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
-                    await _context.SaveChangesAsync();
-                    //await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
+                    await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
                 }
 
-                // 5. User ko Admin role do
-                var adminRole = await _roleManager.Roles.FirstOrDefaultAsync(r => r.Name == "Admin" && r.TenantId == tenant.Id);
+                await _userManager.AddToRoleAsync(adminUser, "Admin");
 
-                if (adminRole != null)
-                {
-                    await _userManager.AddToRoleAsync(adminUser, "Admin");
-                }
-                else
-                {
-                    throw new Exception("Admin role not found for tenant!");
-                }
-
+                await transaction.CommitAsync();
                 return tenant;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
 
-                throw;
+                await transaction.RollbackAsync();
+                throw new Exception("Error while creating tenant", ex);
             }
-           
+
         }
 
         public async Task<Tenant?> UpdateTenantAsync(Tenant ten, Guid? ownerUserId)
