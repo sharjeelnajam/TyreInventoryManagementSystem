@@ -5,9 +5,9 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<PageTitle>@(IsEditMode ? "Edit Tenant" : "Add Tenant")</PageTitle>
+<PageTitle>@(IsEditMode ? "Edit" : "Add")</PageTitle>
 
-<h3 class="mb-3">@(IsEditMode ? "Edit Tenant" : "Add Tenant")</h3>
+<h3 class="mb-3">@(IsEditMode ? "Edit" : "Add")</h3>
 
 <EditForm Model="@tenant" OnValidSubmit="@HandleValidSubmit">
     <DataAnnotationsValidator />

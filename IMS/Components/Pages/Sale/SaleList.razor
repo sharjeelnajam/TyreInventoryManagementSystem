@@ -19,7 +19,8 @@
     <table class="table table-striped">
         <thead>
             <tr>
-                <th>Customer</th>
+                <th>Sale #</th>
+                <th>Customer Name</th>
                 <th>Total</th>
                 <th>Net</th>
                 <th>Payment Method</th>
@@ -31,6 +32,7 @@
             @foreach (var sale in sales)
             {
                 <tr>
+                    <td>@sale.SaleNumber</td>
                     <td>@sale.Customer?.Name</td>
                     <td>@sale.TotalAmount</td>
                     <td>@sale.NetAmount</td>
