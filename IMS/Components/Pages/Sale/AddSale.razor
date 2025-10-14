@@ -3,6 +3,7 @@
 @inject ISaleService SaleService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
+@inject ApplicationDbContext _context
 @rendermode InteractiveServer
 
 @if (IsVisible)
@@ -94,6 +95,14 @@
                                                 ValueChanged="@(v => OnQuantityChanged(detail, v))"
                                                 ValueExpression="@(() => detail.Quantity)"
                                                 class="form-control" />
+
+                                                @if (showError)
+                                                {
+                                                    <div class="text-danger small mt-1">
+                                                        Your entered quantity exceeds available stock.
+                                                        Available: @availableStock
+                                                    </div>
+                                                }
                                             </td>
                                             <td>
                                                 <InputNumber TValue="decimal"
@@ -194,9 +203,13 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
 
+    int availableStock;
+    bool showError;
     protected Sale Sale { get; set; } = new();
     protected List<Customer> Customers { get; set; } = new();
+    protected List<StockHistory> Stocks = new();
     private List<Product> products = new();
+    int productListQuantity;
 
     protected bool showCustomerModal = false;
     protected Customer NewCustomer { get; set; } = new();
@@ -208,6 +221,7 @@
 
             Customers = await CustomerService.GetCustomersAsync();
             products = await ProductService.GetAllAsync();
+            Stocks = _context.StockHistories.ToList();
 
 
             if (Id != Guid.Empty)
@@ -234,9 +248,9 @@
         if (Id == Guid.Empty)
             await SaleService.AddAsync(Sale);
         else
-             await SaleService.UpdateAsync(Sale);
+            await SaleService.UpdateAsync(Sale);
 
-            IsVisible = false;
+        IsVisible = false;
         await OnClose.InvokeAsync();
     }
 
@@ -274,9 +288,40 @@
 
     private void OnQuantityChanged(SaleDetail detail, int newValue)
     {
-        detail.Quantity = newValue;
-        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-        RecalculateTotals();
+        var productsInList = Sale.SaleDetails.Where(p => p.ProductId == detail.ProductId);
+        var stockProduct = Stocks.FirstOrDefault(p => p.ProductId == detail.ProductId);
+
+        if (productsInList.Any())
+        {
+            foreach(var product in productsInList)
+            {
+                productListQuantity = productListQuantity + newValue;
+            }
+
+            if (stockProduct.NewStockLevel >= productListQuantity)
+            {
+                detail.Quantity = newValue;
+                detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                showError = false;
+                RecalculateTotals();
+               
+            }
+            else
+            {
+                showError = true;
+                availableStock = stockProduct.NewStockLevel;
+                productListQuantity = 0;
+            }
+        }
+        // if(stockProduct.NewStockLevel >= newValue)
+        // {
+        //     detail.Quantity = newValue;
+        //     detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+        //     showError = false;
+        //     RecalculateTotals();
+        // }
+       
+
     }
 
     private void OnUnitPriceChanged(SaleDetail detail, decimal newValue)

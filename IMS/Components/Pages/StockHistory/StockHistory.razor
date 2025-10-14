@@ -1,0 +1,58 @@
+﻿@page "/stock-history"
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext _context
+@rendermode InteractiveServer
+
+<PageTitle>Stock History</PageTitle>
+
+<h3 class="mb-3">📜 Stock Movement History</h3>
+
+@if (stockList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!stockList.Any())
+{
+    <p>No stock movement records found.</p>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Product</th>
+                <th>Action</th>
+                <th>Quantity Changed</th>
+                <th>New Stock Level</th>
+                <th>Reference No.</th>
+                <th>Date</th>
+                <th>Performed By</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in stockList)
+            {
+                <tr>
+                    <td>@item.Product?.ProductName</td>
+                    <td>@item.ActionType</td>
+                    <td>@item.QuantityChanged</td>
+                    <td>@item.NewStockLevel</td>
+                    <td>@item.ReferenceNumber</td>
+                    <td>@item.ActionDate.ToString("dd-MMM-yyyy hh:mm tt")</td>
+                    <td>@item.PerformedBy</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Domain.StockHistory> stockList;
+
+    protected override async Task OnInitializedAsync()
+    {
+        stockList = await _context.StockHistories.Include(s => s.Product)
+            .OrderByDescending(s => s.ActionDate)
+            .ToListAsync();
+    }
+}

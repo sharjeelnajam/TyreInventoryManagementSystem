@@ -90,5 +90,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Sale> Sale { get; set; }
     public DbSet<SaleDetail> SaleDetail { get; set; }
     public DbSet<PurchaseDetail> PurchaseDetails { get; set; }
+    public DbSet<StockHistory> StockHistories { get; set; }
 }
 

@@ -1,8 +1,10 @@
 ﻿using Domain;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,10 +13,12 @@ namespace Infrastructure.Services
     public class PurchaseService : IPurchaseService
     {
         private readonly ApplicationDbContext _context;
+        private readonly AuthenticationStateProvider _authStateProvider;
 
-        public PurchaseService(ApplicationDbContext context)
+        public PurchaseService(ApplicationDbContext context, AuthenticationStateProvider authenticationStateProvider)
         {
             _context = context;
+            _authStateProvider = authenticationStateProvider;
         }
 
         public async Task<List<Purchase>> GetAllPurchasesAsync()
@@ -42,11 +46,15 @@ namespace Infrastructure.Services
 
         public async Task AddPurchaseAsync(Purchase purchase)
         {
+            // Create a transaction to ensure all operations succeed or fail together
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
                 purchase.Id = Guid.NewGuid();
                 purchase.CreatedAt = DateTime.UtcNow;
                 var purchaseDetails = new List<PurchaseDetail>();
+
                 if (purchase.PurchaseDetails != null)
                 {
                     foreach (var detail in purchase.PurchaseDetails)
@@ -58,17 +66,59 @@ namespace Infrastructure.Services
                 }
 
                 _context.Purchase.Add(purchase);
-                if (purchaseDetails != null)
+                if (purchaseDetails.Any())
                     await _context.PurchaseDetails.AddRangeAsync(purchaseDetails);
+
                 await _context.SaveChangesAsync();
+
+                // Update stock and history
+                if (purchase.PurchaseDetails != null && purchase.PurchaseDetails.Any())
+                {
+
+                    foreach (var detail in purchase.PurchaseDetails)
+                    {
+                        var authState = await _authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+                        var currentUser = authState.User;
+                        var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value ?? currentUser.FindFirst("name")?.Value ?? currentUser.Identity?.Name;
+
+                        var stockProduct = _context.StockHistories.FirstOrDefault(p => p.ProductId == detail.ProductId);
+                        var product = await _context.Products.FindAsync(detail.ProductId);
+                        if (stockProduct != null)
+                        {
+                            stockProduct.NewStockLevel = stockProduct.NewStockLevel + detail.Quantity;
+                            stockProduct.QuantityChanged = detail.Quantity;
+                            stockProduct.ActionDate = DateTime.UtcNow;
+                            _context.Update(stockProduct);
+
+                        }
+                        else
+                        {
+                            var history = new StockHistory
+                            {
+                                ProductId = product.Id,
+                                ActionType = "Purchase",
+                                QuantityChanged = detail.Quantity,
+                                NewStockLevel = detail.Quantity,
+                                ReferenceNumber = purchase.PurchaseNumber,
+                                ReferenceId = purchase.Id,
+                                PerformedBy = performedBy, // TODO: Replace with actual user
+                                ActionDate = DateTime.UtcNow
+                            };
+                            _context.Add(history);
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync(); // Commit only if everything succeeds
             }
             catch (Exception)
             {
-
+                await transaction.RollbackAsync(); // Rollback if any operation fails
                 throw;
             }
-           
         }
+
         //public async Task UpdatePurchaseAsync(Purchase purchase)
         //{
         //    try

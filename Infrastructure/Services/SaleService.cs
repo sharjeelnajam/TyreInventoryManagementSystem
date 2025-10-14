@@ -1,10 +1,12 @@
 ﻿using Domain;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -13,10 +15,12 @@ namespace Infrastructure.Services
     public class SaleService : ISaleService
     {
         private readonly ApplicationDbContext _context;
+        private readonly AuthenticationStateProvider _authStateProvider;
 
-        public SaleService(ApplicationDbContext context)
+        public SaleService(ApplicationDbContext context, AuthenticationStateProvider authenticationStateProvider)
         {
             _context = context;
+            _authStateProvider = authenticationStateProvider;
         }
 
         public async Task<List<Sale>> GetAllAsync()
@@ -53,9 +57,13 @@ namespace Infrastructure.Services
 
         public async Task<bool> AddAsync(Sale sale)
         {
-          
+            // Create transaction to ensure all operations succeed or fail together
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             try
             {
+                if (sale == null) return false;
+
                 sale.Id = Guid.NewGuid();
                 sale.CreatedAt = DateTime.Now;
 
@@ -70,15 +78,60 @@ namespace Infrastructure.Services
                         saleDetails.Add(detail);
                     }
                 }
-                if (sale == null) return false;
+
                 await _context.Sale.AddAsync(sale);
-                if (saleDetails != null)
+                if (saleDetails.Any())
                     _context.AddRange(saleDetails);
+
                 await _context.SaveChangesAsync();
+
+                // Update stock and history
+                if (sale.SaleDetails != null && sale.SaleDetails.Any())
+                {
+                    var authState = await _authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+                    var currentUser = authState.User;
+                    var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value ?? currentUser.FindFirst("name")?.Value ?? currentUser.Identity?.Name;
+
+                    foreach (var detail in sale.SaleDetails)
+                    {
+                        var product = await _context.Products.FindAsync(detail.ProductId);
+                        if (product != null)
+                        {
+                            // Stock validation
+                            if (product.Quantity < detail.Quantity)
+                            {
+                                throw new InvalidOperationException($"Insufficient stock for product {product.ProductName}");
+                            }
+
+                            var previousStock = product.Quantity;
+                            product.Quantity -= detail.Quantity;
+
+                            var history = new StockHistory
+                            {
+                                ProductId = product.Id,
+                                ActionType = "Sale",
+                                PreviousStockLevel = previousStock,
+                                QuantityChanged = -detail.Quantity,
+                                NewStockLevel = product.Quantity,
+                                ReferenceNumber = sale.SaleNumber,
+                                ReferenceId = sale.Id,
+                                PerformedBy = performedBy,
+                                ActionDate = DateTime.UtcNow
+                            };
+
+                            _context.StockHistories.Add(history);
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync(); // Commit only if everything succeeds
                 return true;
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync(); // Rollback if any operation fails
                 Console.WriteLine($"❌ Error in AddAsync: {ex.Message}");
                 return false;
             }
@@ -185,7 +238,6 @@ namespace Infrastructure.Services
 
             }
         }
-
 
         public async Task<bool> DeleteAsync(Guid id)
         {
