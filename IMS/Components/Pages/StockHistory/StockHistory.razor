@@ -22,9 +22,7 @@ else
             <tr>
                 <th>Product</th>
                 <th>Action</th>
-                <th>Quantity Changed</th>
                 <th>New Stock Level</th>
-                <th>Reference No.</th>
                 <th>Date</th>
                 <th>Performed By</th>
             </tr>
@@ -35,9 +33,7 @@ else
                 <tr>
                     <td>@item.Product?.ProductName</td>
                     <td>@item.ActionType</td>
-                    <td>@item.QuantityChanged</td>
                     <td>@item.NewStockLevel</td>
-                    <td>@item.ReferenceNumber</td>
                     <td>@item.ActionDate.ToString("dd-MMM-yyyy hh:mm tt")</td>
                     <td>@item.PerformedBy</td>
                 </tr>

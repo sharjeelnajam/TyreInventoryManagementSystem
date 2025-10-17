@@ -1,6 +1,7 @@
 ﻿using Domain;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +28,6 @@ namespace Infrastructure.Services
                 .Include(p => p.Supplier)
                 .Include(p => p.PurchaseDetails)
                 .ThenInclude(d => d.Product)
-                .Where(p => !p.IsDeleted)
                 .ToListAsync();
         }
 
@@ -37,7 +37,7 @@ namespace Infrastructure.Services
                 .Include(p => p.Supplier)
                 .Include(p => p.PurchaseDetails)
                 .ThenInclude(d => d.Product)
-                .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
+                .FirstOrDefaultAsync(p => p.Id == id);
 
             if (purchase != null)
                 return purchase;
@@ -55,15 +55,15 @@ namespace Infrastructure.Services
                 purchase.CreatedAt = DateTime.UtcNow;
                 var purchaseDetails = new List<PurchaseDetail>();
 
-                if (purchase.PurchaseDetails != null)
-                {
-                    foreach (var detail in purchase.PurchaseDetails)
-                    {
-                        detail.PurchaseId = purchase.Id;
-                        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-                        purchaseDetails.Add(detail);
-                    }
-                }
+                //if (purchase.PurchaseDetails != null)
+                //{
+                //    foreach (var detail in purchase.PurchaseDetails)
+                //    {
+                //        detail.PurchaseId = purchase.Id;
+                //        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                //        purchaseDetails.Add(detail);
+                //    }
+                //}
 
                 _context.Purchase.Add(purchase);
                 if (purchaseDetails.Any())
@@ -83,11 +83,13 @@ namespace Infrastructure.Services
 
                         var stockProduct = _context.StockHistories.FirstOrDefault(p => p.ProductId == detail.ProductId);
                         var product = await _context.Products.FindAsync(detail.ProductId);
+
                         if (stockProduct != null)
                         {
                             stockProduct.NewStockLevel = stockProduct.NewStockLevel + detail.Quantity;
                             stockProduct.QuantityChanged = detail.Quantity;
                             stockProduct.ActionDate = DateTime.UtcNow;
+                            stockProduct.PerformedBy = performedBy;
                             _context.Update(stockProduct);
 
                         }
@@ -119,147 +121,26 @@ namespace Infrastructure.Services
             }
         }
 
-        //public async Task UpdatePurchaseAsync(Purchase purchase)
-        //{
-        //    try
-        //    {
-        //        var existing = await _context.Purchase
-        //            .Include(p => p.PurchaseDetails)
-        //            .FirstOrDefaultAsync(p => p.Id == purchase.Id);
-
-        //        if (existing == null)
-        //            throw new Exception("Purchase not found in DB");
-
-        //        // --- Update main Purchase fields
-        //        existing.PurchaseNumber = purchase.PurchaseNumber;
-        //        existing.PurchaseDate = purchase.PurchaseDate;
-        //        existing.SupplierId = purchase.SupplierId;
-        //        existing.Discount = purchase.Discount;
-        //        existing.TaxAmount = purchase.TaxAmount;
-        //        existing.TotalAmount = purchase.TotalAmount;
-        //        existing.NetAmount = purchase.NetAmount;
-        //        existing.PaymentStatus = purchase.PaymentStatus;
-        //        existing.UpdatedAt = DateTime.UtcNow;
-
-        //        // --- Sync PurchaseDetails ---
-
-        //        var detailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
-        //        var toRemove = existing.PurchaseDetails.Where(d => !detailIds.Contains(d.Id)).ToList();
-        //        foreach (var r in toRemove)
-        //        {
-        //            _context.PurchaseDetails.Remove(r);
-        //        }
-
-        //        if (purchase.PurchaseDetails != null)
-        //        {
-        //            foreach (var detail in purchase.PurchaseDetails)
-        //            {
-        //                var existingDetail = existing.PurchaseDetails.FirstOrDefault(d => d.Id == detail.Id);
-
-        //                if (existingDetail != null)
-        //                {
-        //                    // Update existing
-        //                    existingDetail.ProductId = detail.ProductId;
-        //                    existingDetail.Quantity = detail.Quantity;
-        //                    existingDetail.UnitPrice = detail.UnitPrice;
-        //                    existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
-        //                }
-        //                else
-        //                {
-        //                    // New row from frontend (either Guid.Empty OR non-existing Id)
-        //                    if (detail.Id == Guid.Empty || !await _context.PurchaseDetails.AnyAsync(d => d.Id == detail.Id))
-        //                        detail.Id = Guid.NewGuid(); // assign fresh Id
-
-        //                    detail.PurchaseId = existing.Id;
-        //                    detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-
-        //                    existing.PurchaseDetails.Add(detail);
-        //                }
-        //            }
-        //        }
-
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (DbUpdateConcurrencyException ex)
-        //    {
-        //        Console.WriteLine("Concurrency error: " + ex.Message);
-        //        throw;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine("Update error: " + ex.Message);
-        //        throw;
-        //    }
-        //}
-
-
-        //public async Task UpdatePurchaseAsync(Purchase purchase)
-        //{
-        //    try
-        //    {
-        //        var existing = await _context.Purchase
-        // .Include(p => p.PurchaseDetails)
-        // .FirstOrDefaultAsync(p => p.Id == purchase.Id);
-
-        //        if (existing == null) return;
-
-        //        // Update main fields
-        //        _context.Entry(existing).CurrentValues.SetValues(purchase);
-
-        //        // Sync details (add / update / delete)
-        //        // 1. Delete those which are not in updated list
-        //        var detailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
-        //        var toRemove = existing.PurchaseDetails.Where(d => !detailIds.Contains(d.Id)).ToList();
-        //        foreach (var r in toRemove)
-        //        {
-        //            _context.PurchaseDetails.Remove(r);
-        //        }
-
-        //        // 2. Update or Add
-        //        if (purchase.PurchaseDetails != null)
-        //        {
-        //            foreach (var detail in purchase.PurchaseDetails)
-        //            {
-        //                var existingDetail = existing.PurchaseDetails.FirstOrDefault(d => d.Id == detail.Id);
-
-        //                if (existingDetail != null)
-        //                {
-        //                    // update existing
-        //                    _context.Entry(existingDetail).CurrentValues.SetValues(detail);
-        //                    existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
-        //                }
-        //                else
-        //                {
-        //                    // add new
-        //                    if (detail.Id == Guid.Empty)
-        //                        detail.Id = Guid.NewGuid();
-        //                    detail.PurchaseId = purchase.Id;
-        //                    detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-        //                    existing.PurchaseDetails.Add(detail);
-        //                }
-        //            }
-        //        }
-
-        //        existing.UpdatedAt = DateTime.UtcNow;
-        //        await _context.SaveChangesAsync();
-        //    }
-        //    catch (Exception)
-        //    {
-
-        //        throw;
-        //    }
-        //}
-
         public async Task UpdatePurchaseAsync(Purchase purchase)
         {
             try
             {
-                var existing = await _context.Purchase
-                    .Include(p => p.PurchaseDetails)
-                    .FirstOrDefaultAsync(p => p.Id == purchase.Id);
+                var existing = await _context.Purchase.Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == purchase.Id);
 
+              
                 if (existing == null)
                     throw new Exception("Purchase not found in DB");
+
+                //foreach (var ex in existing.PurchaseDetails)
+                //{
+                //    var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == ex.ProductId);
+                //    if(stock != null)
+                //    {
+                //        stock.NewStockLevel = stock.NewStockLevel - ex.Quantity;
+                //        _context.StockHistories.Update(stock);
+                //        _context.SaveChanges();
+                //    } 
+                //}
 
                 // --- Update only safe fields ---
                 existing.PurchaseNumber = purchase.PurchaseNumber;
@@ -273,16 +154,23 @@ namespace Infrastructure.Services
                 existing.UpdatedAt = DateTime.UtcNow; // best practice
 
                 // --- Sync PurchaseDetails ---
-                var detailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
+                var updatedDetailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
 
                 // Delete missing
-                var toRemove = existing.PurchaseDetails
-                    .Where(d => !detailIds.Contains(d.Id))
-                    .ToList();
+
+                var toRemove = _context.PurchaseDetails.Where(d => !updatedDetailIds.Contains(d.Id) && d.PurchaseId == purchase.Id).ToList();
 
                 foreach (var r in toRemove)
                 {
+                    //var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == r.ProductId);
+                    //if (stock != null)
+                    //{
+                    //    stock.NewStockLevel = stock.NewStockLevel - r.Quantity;
+                    //    _context.StockHistories.Update(stock);
+                    //}
                     _context.PurchaseDetails.Remove(r);
+                    await _context.SaveChangesAsync();
+
                 }
 
                 // Add or Update
@@ -300,6 +188,7 @@ namespace Infrastructure.Services
                             existingDetail.Quantity = detail.Quantity;
                             existingDetail.UnitPrice = detail.UnitPrice;
                             existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
+
                         }
                         else
                         {
@@ -316,6 +205,17 @@ namespace Infrastructure.Services
                 }
 
                 await _context.SaveChangesAsync();
+
+                //foreach (var ex in existing.PurchaseDetails)
+                //{
+                //    var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == ex.ProductId);
+                //    if (stock != null)
+                //    {
+                //        stock.NewStockLevel = stock.NewStockLevel + ex.Quantity;
+                //        _context.StockHistories.Update(stock);
+                //        _context.SaveChanges();
+                //    }
+                //}
             }
             catch (DbUpdateConcurrencyException ex)
             {
@@ -329,16 +229,13 @@ namespace Infrastructure.Services
             }
         }
 
-
-
         public async Task DeletePurchaseAsync(Guid id)
         {
             var purchase = await _context.Purchase.FirstOrDefaultAsync(p => p.Id == id);
             if (purchase != null)
             {
-                purchase.IsDeleted = true;
-                purchase.DeletedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                _context.Purchase.Remove(purchase);  // triggers soft delete logic
+                await _context.SaveChangesAsync();   // ChangeTracker handles IsDeleted/DeletedAt
             }
         }
     }

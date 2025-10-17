@@ -5,13 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Shared.MultiTenancy;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
@@ -30,54 +24,70 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         base.OnModelCreating(modelBuilder);
 
 
-         // Apply Tenant Query Filters for all entities inheriting MultiTenantEntity
-        foreach (var et in modelBuilder.Model.GetEntityTypes()
-            .Where(t => typeof(MultiTenantEntity).IsAssignableFrom(t.ClrType)))
+        // Apply IsDeleted == false filter to all entities inheriting BaseEntity
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
             {
-                var param = Expression.Parameter(et.ClrType, "e");
-                var prop = Expression.Property(param, nameof(MultiTenantEntity.TenantId));
-                var tenantConstant = Expression.Constant(_tenantProvider.TenantId);
-                var eq = Expression.Equal(prop, tenantConstant);
-                var lambda = Expression.Lambda(eq, param);
+                var parameter = Expression.Parameter(entityType.ClrType, "e");
 
-                modelBuilder.Entity(et.ClrType).HasQueryFilter(lambda);
+                // e => !e.IsDeleted
+                var isDeletedFilter = Expression.Equal(
+                    Expression.Property(parameter, nameof(BaseEntity.IsDeleted)),
+                    Expression.Constant(false)
+                );
+
+                // e => e.TenantId == _tenantId
+                //var tenantFilter = Expression.Equal(
+                //    Expression.Property(parameter, nameof(BaseEntity.TenantId)),
+                //    Expression.Constant(_tenantProvider.TenantId)
+                //);
+
+                // combine both: e => !e.IsDeleted && e.TenantId == _tenantId
+                //var combined = Expression.AndAlso(isDeletedFilter, tenantFilter);
+
+                var lambda = Expression.Lambda(isDeletedFilter, parameter);
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
             }
 
-        // ✅ SUPER ADMIN Seeding (sirf ek martaba, loop ke baahar)
-        var superAdminRoleId = Guid.NewGuid();
-        var superAdminUserId = Guid.NewGuid();
 
-        // Role
-        modelBuilder.Entity<ApplicationRole>().HasData(new ApplicationRole
-        {
-            Id = superAdminRoleId,
-            Name = "SuperAdmin",
-            NormalizedName = "SUPERADMIN"
-        });
+            // ✅ SUPER ADMIN Seeding (sirf ek martaba, loop ke baahar)
+            var superAdminRoleId = Guid.NewGuid();
+            var superAdminUserId = Guid.NewGuid();
 
-        // User
-        var hasher = new PasswordHasher<ApplicationUser>();
-        var superAdmin = new ApplicationUser
-        {
-            Id = superAdminUserId,
-            UserName = "superadmin@system.com",
-            NormalizedUserName = "SUPERADMIN@SYSTEM.COM",
-            Email = "superadmin@system.com",
-            NormalizedEmail = "SUPERADMIN@SYSTEM.COM",
-            EmailConfirmed = true,
-            TenantId = null, // ✅ SuperAdmin ke liye null
-            SecurityStamp = Guid.NewGuid().ToString("D"),
-            PasswordHash = hasher.HashPassword(null, "Admin@123")
-        };
+            // Role
+            modelBuilder.Entity<ApplicationRole>().HasData(new ApplicationRole
+            {
+                Id = superAdminRoleId,
+                Name = "SuperAdmin",
+                NormalizedName = "SUPERADMIN"
+            });
 
-        modelBuilder.Entity<ApplicationUser>().HasData(superAdmin);
+            // User
+            var hasher = new PasswordHasher<ApplicationUser>();
+            var superAdmin = new ApplicationUser
+            {
+                Id = superAdminUserId,
+                UserName = "superadmin@system.com",
+                NormalizedUserName = "SUPERADMIN@SYSTEM.COM",
+                Email = "superadmin@system.com",
+                NormalizedEmail = "SUPERADMIN@SYSTEM.COM",
+                EmailConfirmed = true,
+                TenantId = null, // ✅ SuperAdmin ke liye null
+                SecurityStamp = Guid.NewGuid().ToString("D"),
+                PasswordHash = hasher.HashPassword(null, "Admin@123")
+            };
 
-        // User-Role Mapping
-        modelBuilder.Entity<IdentityUserRole<Guid>>().HasData(new IdentityUserRole<Guid>
-        {
-            RoleId = superAdminRoleId,
-            UserId = superAdminUserId
-        });
+            modelBuilder.Entity<ApplicationUser>().HasData(superAdmin);
+
+            // User-Role Mapping
+            modelBuilder.Entity<IdentityUserRole<Guid>>().HasData(new IdentityUserRole<Guid>
+            {
+                RoleId = superAdminRoleId,
+                UserId = superAdminUserId
+            });
+        }
     }
     // Example: Add your DbSets here
 

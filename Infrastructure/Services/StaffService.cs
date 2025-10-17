@@ -79,7 +79,6 @@ namespace Infrastructure.Services
             try
             {
                 return await _context.Staff
-                    .Where(s => s.IsDeleted == false)
                     .ToListAsync();
             }
             catch (Exception)
@@ -94,7 +93,7 @@ namespace Infrastructure.Services
             try
             {
                 return await _context.Staff
-                    .Where(s => s.Id == staffId && s.IsDeleted == false)
+                    .Where(s => s.Id == staffId)
                     .FirstOrDefaultAsync();
             }
             catch (Exception)
@@ -152,8 +151,7 @@ namespace Infrastructure.Services
                     return false; // Staff not found or already deleted
                 }
 
-                staff.IsDeleted = true;  // Mark the staff as deleted
-                _context.Staff.Update(staff);
+               _context.Staff.Remove(staff);
                 await _context.SaveChangesAsync();
                 return true; // Successfully deleted (soft delete)
             }

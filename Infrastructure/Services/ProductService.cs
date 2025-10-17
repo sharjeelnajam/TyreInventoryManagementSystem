@@ -21,10 +21,7 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Products
-                    .AsNoTracking()
-                    .Where(p => !p.IsDeleted)
-                    .ToListAsync();
+                return await _context.Products.AsNoTracking().ToListAsync();
             }
             catch (Exception ex)
             {
@@ -40,9 +37,7 @@ namespace Infrastructure.Services
                 if (id == Guid.Empty)
                     throw new ArgumentException("Invalid product id.");
 
-                return await _context.Products
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
+                return await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
             }
             catch (Exception ex)
             {
@@ -125,10 +120,7 @@ namespace Infrastructure.Services
                     return false;
 
                 // ✅ Soft delete
-                existing.IsDeleted = true;
-                existing.DeletedAt = DateTime.UtcNow;
-
-                _context.Products.Update(existing);
+              _context.Products.Remove(existing); // triggers soft delete logic
                 await _context.SaveChangesAsync();
 
                 return true;

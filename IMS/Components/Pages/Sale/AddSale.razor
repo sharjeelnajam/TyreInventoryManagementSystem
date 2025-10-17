@@ -79,37 +79,38 @@
                                     @foreach (var detail in Sale.SaleDetails)
                                     {
                                         <tr>
-                                            <td>
-                                                <InputSelect @bind-Value="detail.ProductId" class="form-control">
+                                          <td>
+                                                <select class="form-control" @onchange="(e) => OnProductChanged(detail, e)">
                                                     <option value="">-- Select Product --</option>
                                                     @foreach (var p in products)
                                                     {
-                                                        <option value="@p.Id">@p.ProductName</option>
+                                                        <option value="@p.Id" selected="@(p.Id == detail.ProductId)">
+                                                            @p.ProductName
+                                                        </option>
                                                     }
-                                                </InputSelect>
+                                                </select>
                                                 <ValidationMessage For="@(() => detail.ProductId)" />
                                             </td>
                                             <td>
                                                 <InputNumber TValue="int"
-                                                Value="detail.Quantity"
-                                                ValueChanged="@(v => OnQuantityChanged(detail, v))"
-                                                ValueExpression="@(() => detail.Quantity)"
-                                                class="form-control" />
+                                                             Value="detail.Quantity"
+                                                             ValueChanged="@(v => OnQuantityChanged(detail, v))"
+                                                             ValueExpression="@(() => detail.Quantity)"
+                                                             class="form-control" />
 
-                                                @if (showError)
+                                                @if (quantityErrors.ContainsKey(detail.ProductId))
                                                 {
                                                     <div class="text-danger small mt-1">
-                                                        Your entered quantity exceeds available stock.
-                                                        Available: @availableStock
+                                                        @quantityErrors[detail.ProductId]
                                                     </div>
                                                 }
                                             </td>
                                             <td>
                                                 <InputNumber TValue="decimal"
-                                                Value="detail.UnitPrice"
-                                                ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
-                                                ValueExpression="@(() => detail.UnitPrice)"
-                                                class="form-control" />
+                                                             Value="detail.UnitPrice"
+                                                             ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
+                                                             ValueExpression="@(() => detail.UnitPrice)"
+                                                             class="form-control" />
                                             </td>
                                             <td>@(detail.Quantity * detail.UnitPrice)</td>
                                             <td>
@@ -121,26 +122,29 @@
                             </tbody>
                         </table>
 
-                        <button type="button" class="btn btn-secondary" @onclick="AddItem">+ Add Item</button>
+                        <button type="button" class="btn btn-secondary" @onclick="AddItem" disabled="@(!isFormValid)"
+                                style="opacity:@(isFormValid ? "1" : "0.6")">
+                            + Add Item
+                        </button>
 
                         <div class="mt-3 row">
                             <div class="col-md-4">
                                 <label>Discount</label>
 
                                 <InputNumber TValue="decimal?"
-                                Value="Sale.Discount"
-                                ValueChanged="OnDiscountChanged"
-                                ValueExpression="@(() => Sale.Discount)"
-                                class="form-control" />
+                                             Value="Sale.Discount"
+                                             ValueChanged="OnDiscountChanged"
+                                             ValueExpression="@(() => Sale.Discount)"
+                                             class="form-control" />
                             </div>
                             <div class="col-md-4">
                                 <label>Tax (%)</label>
 
                                 <InputNumber TValue="decimal?"
-                                Value="Sale.TaxAmount"
-                                ValueChanged="OnTaxChanged"
-                                ValueExpression="@(() => Sale.TaxAmount)"
-                                class="form-control" />
+                                             Value="Sale.TaxAmount"
+                                             ValueChanged="OnTaxChanged"
+                                             ValueExpression="@(() => Sale.TaxAmount)"
+                                             class="form-control" />
                             </div>
                             <div class="col-md-4 text-end">
                                 <label><b>Total:</b> @Sale.TotalAmount</label><br />
@@ -149,7 +153,9 @@
                         </div>
 
                         <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Save</button>
+                            <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
+                                Save
+                            </button>
                             <button type="button" class="btn btn-secondary" @onclick="Close">Cancel</button>
                         </div>
                     </EditForm>
@@ -205,11 +211,13 @@
 
     int availableStock;
     bool showError;
+    bool isFormValid = true;
+    private Dictionary<Guid, string> quantityErrors = new();
     protected Sale Sale { get; set; } = new();
     protected List<Customer> Customers { get; set; } = new();
     protected List<StockHistory> Stocks = new();
     private List<Product> products = new();
-    int productListQuantity;
+
 
     protected bool showCustomerModal = false;
     protected Customer NewCustomer { get; set; } = new();
@@ -230,10 +238,12 @@
             }
             else
             {
-                Sale = new Sale {
-                    SaleDate = DateTime.Now,
-                    SaleNumber = $"SO-{DateTime.Now:yyyyMMddHHmmss}",
-                    SaleDetails = new List<SaleDetail>() };
+                Sale = new Sale
+                    {
+                        SaleDate = DateTime.Now,
+                        SaleNumber = $"SO-{DateTime.Now:yyyyMMddHHmmss}",
+                        SaleDetails = new List<SaleDetail>()
+                    };
             }
         }
     }
@@ -256,13 +266,12 @@
 
     protected void Close() => OnClose.InvokeAsync();
 
-    // Items
     protected void AddItem()
     {
         Sale.SaleDetails.Add(new SaleDetail
             {
                 Id = Guid.Empty,
-                Quantity = 1,
+                Quantity = 0,
                 UnitPrice = 0,
                 TotalPrice = 0
             });
@@ -271,6 +280,10 @@
     protected void RemoveItem(SaleDetail item)
     {
         Sale.SaleDetails.Remove(item);
+        if (quantityErrors.ContainsKey(item.ProductId))
+            quantityErrors.Remove(item.ProductId);
+
+        isFormValid = !quantityErrors.Any();
         RecalculateTotals();
     }
 
@@ -286,42 +299,72 @@
         RecalculateTotals();
     }
 
+    // NEW METHOD: Handle product selection change
+    private void OnProductChanged(SaleDetail detail, ChangeEventArgs e)
+    {
+        // Parse the new product ID from dropdown value
+        if (!Guid.TryParse(e.Value?.ToString(), out var newProductId))
+            return;
+
+        // Store the previous product ID
+        var previousProductId = detail.ProductId;
+
+        // Update the product ID
+        detail.ProductId = newProductId;
+
+        // If product actually changed, reset related fields
+        if (previousProductId != Guid.Empty && previousProductId != newProductId)
+        {
+            detail.Quantity = 0;
+            detail.UnitPrice = 0;
+            detail.TotalPrice = 0;
+            isFormValid = true;
+
+            // Remove any quantity error from previous product
+            if (quantityErrors.ContainsKey(previousProductId))
+                quantityErrors.Remove(previousProductId);
+        }
+
+        // Recalculate overall totals (if you have multiple rows)
+        RecalculateTotals();
+    }
+
+
+
     private void OnQuantityChanged(SaleDetail detail, int newValue)
     {
-        var productsInList = Sale.SaleDetails.Where(p => p.ProductId == detail.ProductId);
+        detail.Quantity = newValue;
+
         var stockProduct = Stocks.FirstOrDefault(p => p.ProductId == detail.ProductId);
-
-        if (productsInList.Any())
+        if (stockProduct == null)
         {
-            foreach(var product in productsInList)
-            {
-                productListQuantity = productListQuantity + newValue;
-            }
-
-            if (stockProduct.NewStockLevel >= productListQuantity)
-            {
-                detail.Quantity = newValue;
-                detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-                showError = false;
-                RecalculateTotals();
-               
-            }
-            else
-            {
-                showError = true;
-                availableStock = stockProduct.NewStockLevel;
-                productListQuantity = 0;
-            }
+            quantityErrors[detail.ProductId] = $"No Available Stock againset this product pleae purchase first";
+            isFormValid = false;
+            return;
         }
-        // if(stockProduct.NewStockLevel >= newValue)
-        // {
-        //     detail.Quantity = newValue;
-        //     detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-        //     showError = false;
-        //     RecalculateTotals();
-        // }
-       
 
+        // Calculate total quantity of same product in all rows
+        var totalQtyForThisProduct = Sale.SaleDetails
+            .Where(x => x.ProductId == detail.ProductId)
+            .Sum(x => x.Quantity);
+
+        // Check if exceeds available stock
+        if (totalQtyForThisProduct > stockProduct.NewStockLevel)
+        {
+            quantityErrors[detail.ProductId] = $"Your entered quantity exceeds available stock: {stockProduct.NewStockLevel}";
+            isFormValid = false;
+        }
+        else
+        {
+            // remove error for this product if valid now
+            if (quantityErrors.ContainsKey(detail.ProductId))
+                quantityErrors.Remove(detail.ProductId);
+
+            detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+            isFormValid = !quantityErrors.Any();
+        }
+
+        RecalculateTotals();
     }
 
     private void OnUnitPriceChanged(SaleDetail detail, decimal newValue)

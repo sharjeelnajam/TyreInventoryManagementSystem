@@ -51,7 +51,6 @@ namespace Infrastructure.Services
             try
             {
                 return await _context.Tenants
-                    .Where(t => !t.IsDeleted)
                     .AsNoTracking()
                     .ToListAsync();
             }
@@ -194,8 +193,7 @@ namespace Infrastructure.Services
                 if (tenant == null)
                     return false;
 
-                tenant.IsDeleted = true;
-                _context.Tenants.Update(tenant);
+                _context.Tenants.Remove(tenant);
                 await _context.SaveChangesAsync();
 
                 return true;

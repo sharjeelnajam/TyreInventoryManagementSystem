@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
+﻿using Microsoft.AspNetCore.Http;
 using Shared.MultiTenancy;
 using System.Security.Claims;
 
@@ -6,32 +6,23 @@ namespace Infrastructure.Identity
 {
     public class BlazorTenantProvider : ITenantProvider
     {
-        private readonly AuthenticationStateProvider _authStateProvider;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public BlazorTenantProvider(AuthenticationStateProvider authStateProvider)
+        public BlazorTenantProvider(IHttpContextAccessor httpContextAccessor)
         {
-            _authStateProvider = authStateProvider;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public Guid TenantId
         {
             get
             {
-                var authState = _authStateProvider.GetAuthenticationStateAsync()
-                                                  .ConfigureAwait(false)
-                                                  .GetAwaiter()
-                                                  .GetResult();
-
-                ClaimsPrincipal user = authState.User;
+                var user = _httpContextAccessor.HttpContext?.User;
 
                 if (user?.Identity?.IsAuthenticated == true)
                 {
-                    // Check SuperAdmin Role
                     if (user.IsInRole("SuperAdmin"))
-                    {
-                        // SuperAdmin ka TenantId fix ya Guid.Empty
-                        return Guid.Empty;
-                    }
+                        return Guid.Empty; // SuperAdmin can see all tenants
 
                     var claimValue = user.FindFirst("TenantId")?.Value;
 
@@ -39,7 +30,7 @@ namespace Infrastructure.Identity
                         return tid;
                 }
 
-                throw new UnauthorizedAccessException("Tenant could not be resolved from the current user.");
+                throw new UnauthorizedAccessException("Tenant could not be resolved from current user.");
             }
         }
     }

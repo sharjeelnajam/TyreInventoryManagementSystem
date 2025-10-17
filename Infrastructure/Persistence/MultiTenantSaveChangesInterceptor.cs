@@ -57,6 +57,7 @@ namespace Infrastructure.Persistence
                     case EntityState.Deleted:
                         entry.State = EntityState.Modified; // soft delete
                         entry.Entity.DeletedAt = now;
+                        entry.Entity.IsDeleted = true;
                         break;
                 }
             }

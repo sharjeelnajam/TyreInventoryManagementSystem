@@ -23,7 +23,7 @@ namespace Infrastructure.Services
         {
             try
             {
-                var query = _context.Customer.Where(c => !c.IsDeleted).AsQueryable();
+                var query = _context.Customer.AsQueryable();
 
                 if (!string.IsNullOrWhiteSpace(name))
                     query = query.Where(s => s.Name.Contains(name));
@@ -91,7 +91,7 @@ namespace Infrastructure.Services
                 var customer = await _context.Customer.FindAsync(id);
                 if (customer != null)
                 {
-                    customer.IsDeleted = true;
+                    _context.Customer.Remove(customer); // triggers soft delete logic
                     await _context.SaveChangesAsync();
                 }
             }

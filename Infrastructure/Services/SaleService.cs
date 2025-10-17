@@ -27,7 +27,7 @@ namespace Infrastructure.Services
         {
             try
             {
-                var Sales = await _context.Sale.Where(s => s.IsDeleted == false).Include(s => s.Customer)
+                var Sales = await _context.Sale.Include(s => s.Customer)
                     .Include(s => s.SaleDetails).ThenInclude(s => s.Product) // if relation exists
                     .ToListAsync();
 
@@ -94,38 +94,42 @@ namespace Infrastructure.Services
 
                     foreach (var detail in sale.SaleDetails)
                     {
+                        var stockProduct = _context.StockHistories.FirstOrDefault(p => p.ProductId == detail.ProductId);
                         var product = await _context.Products.FindAsync(detail.ProductId);
-                        if (product != null)
+                        if (stockProduct != null)
                         {
+                            stockProduct.NewStockLevel = stockProduct.NewStockLevel - detail.Quantity;
+                            stockProduct.QuantityChanged = detail.Quantity;
+                            stockProduct.ActionDate = DateTime.UtcNow;
+                            _context.Update(stockProduct);
                             // Stock validation
-                            if (product.Quantity < detail.Quantity)
-                            {
-                                throw new InvalidOperationException($"Insufficient stock for product {product.ProductName}");
-                            }
+                            //if (product.Quantity < detail.Quantity)
+                            //{
+                            //    throw new InvalidOperationException($"Insufficient stock for product {product.ProductName}");
+                            //}
 
-                            var previousStock = product.Quantity;
-                            product.Quantity -= detail.Quantity;
+                            //var previousStock = product.Quantity;
+                            //product.Quantity -= detail.Quantity;
 
-                            var history = new StockHistory
-                            {
-                                ProductId = product.Id,
-                                ActionType = "Sale",
-                                PreviousStockLevel = previousStock,
-                                QuantityChanged = -detail.Quantity,
-                                NewStockLevel = product.Quantity,
-                                ReferenceNumber = sale.SaleNumber,
-                                ReferenceId = sale.Id,
-                                PerformedBy = performedBy,
-                                ActionDate = DateTime.UtcNow
-                            };
+                            //var history = new StockHistory
+                            //{
+                            //    ProductId = product.Id,
+                            //    ActionType = "Sale",
+                            //    PreviousStockLevel = previousStock,
+                            //    QuantityChanged = -detail.Quantity,
+                            //    NewStockLevel = product.Quantity,
+                            //    ReferenceNumber = sale.SaleNumber,
+                            //    ReferenceId = sale.Id,
+                            //    PerformedBy = performedBy,
+                            //    ActionDate = DateTime.UtcNow
+                            //};
 
-                            _context.StockHistories.Add(history);
+                            //_context.StockHistories.Add(history);
                         }
                     }
-
-                    await _context.SaveChangesAsync();
                 }
 
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync(); // Commit only if everything succeeds
                 return true;
             }
@@ -180,18 +184,35 @@ namespace Infrastructure.Services
                     }
                     else
                     {
-                        detail.CreatedAt = existingDetail.CreatedAt; 
+                        detail.CreatedAt = DateTime.Now; 
                         detail.SaleId = existingSale.Id;
-
+                        detail.TotalPrice = detail.UnitPrice * detail.Quantity;
 
                         newSaleDetails.Add(detail);
-
                     }
                 }
+
+                //foreach(var ex in existingSaleDetails)
+                //{
+                //    var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == ex.ProductId);
+                //    if(stock != null)
+                //    {
+                //        stock.NewStockLevel = stock.NewStockLevel + ex.Quantity;
+                //    }
+                //}
 
                 _context.RemoveRange(existingSaleDetails);
                 _context.SaveChanges();
                 _context.AddRange(newSaleDetails);
+
+                //foreach (var nw in newSaleDetails)
+                //{
+                //    var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == nw.ProductId);
+                //    if (stock != null)
+                //    {
+                //        stock.NewStockLevel = stock.NewStockLevel - nw.Quantity;
+                //    }
+                //}
                 _context.SaveChanges();
                 //var saleDetailsIds = sale.SaleDetails?.Select(s => s.Id).ToList() ?? new List<Guid>();
 
@@ -248,8 +269,7 @@ namespace Infrastructure.Services
                 var sale = await _context.Sale.FindAsync(id);
                 if (sale == null) return false;
 
-                sale.IsDeleted = true;
-                _context.Update(sale);
+                _context.Sale.Remove(sale);
                 await _context.SaveChangesAsync();
                 return true;
             }

@@ -17,14 +17,11 @@ namespace Infrastructure.Services
             _context = context;
         }
 
-
         public async Task<List<Supplier>> GetAllAsync()
         {
             try
             {
-                return await _context.Supplier
-             .Where(x => !x.IsDeleted)
-             .OrderBy(x => x.Name).ToListAsync();
+                return await _context.Supplier.OrderBy(x => x.Name).ToListAsync();
             }
             catch (Exception)
             {
@@ -37,7 +34,7 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Supplier.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
+                return await _context.Supplier.FirstOrDefaultAsync(x => x.Id == id);
             }
             catch (Exception)
             {
@@ -89,9 +86,7 @@ namespace Infrastructure.Services
                 var supplier = await _context.Supplier.FindAsync(id);
                 if (supplier == null || supplier.IsDeleted) return false;
 
-                supplier.IsDeleted = true;
-                supplier.DeletedAt = DateTime.UtcNow;
-
+               _context.Supplier.Remove(supplier);  
                 await _context.SaveChangesAsync();
                 return true;
             }
