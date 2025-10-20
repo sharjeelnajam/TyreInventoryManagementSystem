@@ -143,122 +143,226 @@ namespace Infrastructure.Services
 
         public async Task UpdateAsync(Sale sale)
         {
-
             try
             {
-                var existingSale = await _context.Sale.FirstOrDefaultAsync(s => s.Id == sale.Id);
-                if (existingSale == null) throw new Exception("Purchase not found in DB");
+                // Load existing Sale and related details without tracking
+                var existing = await _context.Sale
+                    .AsNoTracking()
+                    .Include(s => s.SaleDetails)
+                    .FirstOrDefaultAsync(s => s.Id == sale.Id);
 
-                var newSaleDetails = new List<SaleDetail>();
+                if (existing == null)
+                    throw new Exception("Sale not found in DB");
 
-                // Update fields
-                existingSale.SaleNumber = sale.SaleNumber;
-                existingSale.CustomerId = sale.CustomerId;
-                existingSale.TotalAmount = sale.TotalAmount;
-                existingSale.Discount = sale.Discount;
-                existingSale.TaxAmount = sale.TaxAmount;
-                existingSale.NetAmount = sale.NetAmount;
-                existingSale.PaymentMethod = sale.PaymentMethod;
-                existingSale.PaymentStatus = sale.PaymentStatus;
-                existingSale.DueDate = sale.DueDate;
-                existingSale.VehicleNumber = sale.VehicleNumber;
-                existingSale.IsApproved = sale.IsApproved;
-                existingSale.UpdatedAt = DateTime.Now;
+                // --- Update safe fields ---
+                existing.SaleNumber = sale.SaleNumber;
+                existing.CustomerId = sale.CustomerId;
+                existing.TotalAmount = sale.TotalAmount;
+                existing.Discount = sale.Discount;
+                existing.TaxAmount = sale.TaxAmount;
+                existing.NetAmount = sale.NetAmount;
+                existing.PaymentMethod = sale.PaymentMethod;
+                existing.PaymentStatus = sale.PaymentStatus;
+                existing.DueDate = sale.DueDate;
+                existing.VehicleNumber = sale.VehicleNumber;
+                existing.IsApproved = sale.IsApproved;
+                existing.UpdatedAt = DateTime.UtcNow;
 
-                _context.SaveChanges();
+                // --- Sync SaleDetails ---
+                var updatedDetailIds = sale.SaleDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
 
-                var existingSaleDetails = _context.SaleDetail.Where(s => s.SaleId == sale.Id).ToList();
+                // Find SaleDetails to remove (not present in updated list)
+                var toRemove = _context.SaleDetail
+                    .Where(d => !updatedDetailIds.Contains(d.Id) && d.SaleId == sale.Id)
+                    .ToList();
 
-                foreach (var detail in sale.SaleDetails)
+                var availableStocks = _context.StockHistories.ToList();
+
+                // --- Delete missing SaleDetails safely ---
+                foreach (var r in toRemove)
                 {
-                    var existingDetail = existingSaleDetails.FirstOrDefault(d => d.Id == detail.Id);
-
-                    if (existingDetail != null)
+                    var stockProduct = availableStocks.FirstOrDefault(p => p.ProductId == r.ProductId);
+                    if (stockProduct != null)
                     {
-                        detail.CreatedAt = existingDetail.CreatedAt;
-                        detail.UpdatedAt = DateTime.Now;
-                        detail.SaleId = existingSale.Id;
-                        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-                        detail.Id = Guid.Empty;
-                        newSaleDetails.Add(detail);
+                        // Return stock back when deleting sale detail
+                        stockProduct.NewStockLevel += r.Quantity;
+                        stockProduct.UpdatedAt = DateTime.Now;
+                        _context.StockHistories.Update(stockProduct);
+
+                        _context.SaleDetail.Remove(r);
+                        await _context.SaveChangesAsync();
                     }
                     else
                     {
-                        detail.CreatedAt = DateTime.Now; 
-                        detail.SaleId = existingSale.Id;
-                        detail.TotalPrice = detail.UnitPrice * detail.Quantity;
-
-                        newSaleDetails.Add(detail);
+                        string error = $"⚠️ Cannot remove {r.Product.ProductName} — product stock not found.";
+                        Console.WriteLine(error);
                     }
                 }
 
-                //foreach(var ex in existingSaleDetails)
-                //{
-                //    var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == ex.ProductId);
-                //    if(stock != null)
-                //    {
-                //        stock.NewStockLevel = stock.NewStockLevel + ex.Quantity;
-                //    }
-                //}
+                // --- Add or Update SaleDetails ---
+                if (sale.SaleDetails != null && sale.SaleDetails.Any())
+                {
+                    foreach (var detail in sale.SaleDetails)
+                    {
+                        var stockProduct = availableStocks.FirstOrDefault(p => p.ProductId == detail.ProductId);
+                        var existingDetail = existing.SaleDetails.FirstOrDefault(d => d.Id == detail.Id);
 
-                _context.RemoveRange(existingSaleDetails);
-                _context.SaveChanges();
-                _context.AddRange(newSaleDetails);
+                        if (stockProduct == null)
+                        {
+                            Console.WriteLine($"⚠️ Stock record not found for product ID {detail.ProductId}");
+                            continue;
+                        }
 
-                //foreach (var nw in newSaleDetails)
-                //{
-                //    var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == nw.ProductId);
-                //    if (stock != null)
-                //    {
-                //        stock.NewStockLevel = stock.NewStockLevel - nw.Quantity;
-                //    }
-                //}
-                _context.SaveChanges();
-                //var saleDetailsIds = sale.SaleDetails?.Select(s => s.Id).ToList() ?? new List<Guid>();
+                        if (existingDetail != null)
+                        {
+                            // When updating quantity
+                            if (detail.Quantity != existingDetail.Quantity)
+                            {
+                                int quantityDifference = detail.Quantity - existingDetail.Quantity;
 
-                //var toRemove = existingSale.SaleDetails.Where(s => !saleDetailsIds.Contains(s.Id)).ToList();
+                                if (quantityDifference > 0)
+                                {
+                                    // Selling more items → reduce stock
+                                    if (quantityDifference <= stockProduct.NewStockLevel)
+                                    {
+                                        stockProduct.NewStockLevel -= quantityDifference;
+                                        stockProduct.UpdatedAt = DateTime.Now;
+                                        _context.StockHistories.Update(stockProduct);
+                                    }
+                                    else
+                                    {
+                                        string error = $"❌ Not enough stock to sell {detail.Product.ProductName}.";
+                                        Console.WriteLine(error);
+                                        continue;
+                                    }
+                                }
+                                else
+                                {
+                                    // Selling less items → add back stock
+                                    stockProduct.NewStockLevel += Math.Abs(quantityDifference);
+                                    stockProduct.UpdatedAt = DateTime.Now;
+                                    _context.StockHistories.Update(stockProduct);
+                                }
+                            }
 
-                //foreach (var s in toRemove)
-                //{
-                //    _context.SaleDetail.Attach(s);
-                //    existingSale.SaleDetails.Remove(s);
-                //}
-                //if (sale.SaleDetails != null)
-                //{
-                //    foreach(var saleDetails in sale.SaleDetails)
-                //    {
-                //        var existingSaleDetails = existingSale.SaleDetails.FirstOrDefault(s => s.Id == saleDetails.Id);
+                            // Update detail record
+                            existingDetail.ProductId = detail.ProductId;
+                            existingDetail.Quantity = detail.Quantity;
+                            existingDetail.UnitPrice = detail.UnitPrice;
+                            existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                            existingDetail.UpdatedAt = DateTime.Now;
 
-                //        if(existingSaleDetails != null)
-                //        {
-                //            existingSaleDetails.ProductId = saleDetails.ProductId;
-                //            existingSaleDetails.Quantity = saleDetails.Quantity;
-                //            existingSaleDetails.UnitPrice = saleDetails.UnitPrice;
-                //            existingSaleDetails.TotalPrice = saleDetails.TotalPrice;
-                //            existingSaleDetails.UpdatedAt = DateTime.Now;
-                //        }
-                //        else
-                //        {
-                //            if (saleDetails.Id == Guid.Empty)
-                //                saleDetails.Id = Guid.NewGuid();
+                            _context.SaleDetail.Update(existingDetail);
+                        }
+                        else
+                        {
+                            // --- Add new SaleDetail ---
+                            if (detail.Id == Guid.Empty)
+                                detail.Id = Guid.NewGuid();
 
-                //            saleDetails.SaleId = existingSale.Id;
-                //            saleDetails.TotalPrice = saleDetails.Quantity * saleDetails.UnitPrice;
+                            detail.SaleId = existing.Id;
+                            detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                            detail.CreatedAt = DateTime.UtcNow;
 
-                //            existingSale.SaleDetails.Add(saleDetails);
-                //        }
-                //    }
-                //}
+                            // Reduce stock for new sale
+                            if (detail.Quantity <= stockProduct.NewStockLevel)
+                            {
+                                stockProduct.NewStockLevel -= detail.Quantity;
+                                stockProduct.UpdatedAt = DateTime.Now;
+                                _context.StockHistories.Update(stockProduct);
+                                _context.SaleDetail.Add(detail);
+                            }
+                            else
+                            {
+                                string error = $"❌ Not enough stock available for {detail.Product.ProductName}.";
+                                Console.WriteLine(error);
+                            }
+                        }
+                    }
+                }
 
-
+                _context.Sale.Update(existing);
+                await _context.SaveChangesAsync();
             }
-            catch (Exception ex)
+            catch (DbUpdateConcurrencyException ex)
             {
                 Console.WriteLine("⚠️ Concurrency error: " + ex.Message);
                 throw;
-
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("❌ Update error: " + ex.Message);
+                throw;
             }
         }
+
+
+        //public async Task UpdateAsync(Sale sale)
+        //{
+
+        //    try
+        //    {
+        //        var existingSale = await _context.Sale.FirstOrDefaultAsync(s => s.Id == sale.Id);
+        //        if (existingSale == null) throw new Exception("Purchase not found in DB");
+
+        //        var newSaleDetails = new List<SaleDetail>();
+
+        //        // Update fields
+        //        existingSale.SaleNumber = sale.SaleNumber;
+        //        existingSale.CustomerId = sale.CustomerId;
+        //        existingSale.TotalAmount = sale.TotalAmount;
+        //        existingSale.Discount = sale.Discount;
+        //        existingSale.TaxAmount = sale.TaxAmount;
+        //        existingSale.NetAmount = sale.NetAmount;
+        //        existingSale.PaymentMethod = sale.PaymentMethod;
+        //        existingSale.PaymentStatus = sale.PaymentStatus;
+        //        existingSale.DueDate = sale.DueDate;
+        //        existingSale.VehicleNumber = sale.VehicleNumber;
+        //        existingSale.IsApproved = sale.IsApproved;
+        //        existingSale.UpdatedAt = DateTime.Now;
+
+        //        _context.SaveChanges();
+
+        //        var existingSaleDetails = _context.SaleDetail.Where(s => s.SaleId == sale.Id).ToList();
+
+        //        foreach (var detail in sale.SaleDetails)
+        //        {
+        //            var existingDetail = existingSaleDetails.FirstOrDefault(d => d.Id == detail.Id);
+
+        //            if (existingDetail != null)
+        //            {
+        //                detail.CreatedAt = existingDetail.CreatedAt;
+        //                detail.UpdatedAt = DateTime.Now;
+        //                detail.SaleId = existingSale.Id;
+        //                detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+        //                detail.Id = Guid.Empty;
+        //                newSaleDetails.Add(detail);
+        //            }
+        //            else
+        //            {
+        //                detail.CreatedAt = DateTime.Now;
+        //                detail.SaleId = existingSale.Id;
+        //                detail.TotalPrice = detail.UnitPrice * detail.Quantity;
+
+        //                newSaleDetails.Add(detail);
+        //            }
+        //        }
+
+        //        _context.RemoveRange(existingSaleDetails);
+        //        _context.SaveChanges();
+        //        _context.AddRange(newSaleDetails);
+
+        //        _context.SaveChanges();
+
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine("⚠️ Concurrency error: " + ex.Message);
+        //        throw;
+
+        //    }
+        //}
 
         public async Task<bool> DeleteAsync(Guid id)
         {

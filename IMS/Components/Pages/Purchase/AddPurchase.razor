@@ -96,7 +96,13 @@
                                 <option value="">-- Select Product --</option>
                                 @foreach (var p in products)
                                 {
-                                    <option value="@p.Id">@p.ProductName</option>
+                                    bool isSelected = p.Id == detail.ProductId;
+                                    bool isAlreadyUsed = Purchase.PurchaseDetails
+                                    .Any(d => d.ProductId == p.Id && d != detail);
+
+                                    <option value="@p.Id" disabled="@(!isSelected && isAlreadyUsed)">
+                                        @p.ProductName
+                                    </option>
                                 }
                             </InputSelect>
                             <ValidationMessage For="@(() => detail.ProductId)" />

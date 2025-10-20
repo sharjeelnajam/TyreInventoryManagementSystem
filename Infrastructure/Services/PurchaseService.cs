@@ -125,22 +125,11 @@ namespace Infrastructure.Services
         {
             try
             {
-                var existing = await _context.Purchase.Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == purchase.Id);
+                var existing = await _context.Purchase.AsNoTracking().Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == purchase.Id);
 
               
                 if (existing == null)
                     throw new Exception("Purchase not found in DB");
-
-                //foreach (var ex in existing.PurchaseDetails)
-                //{
-                //    var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == ex.ProductId);
-                //    if(stock != null)
-                //    {
-                //        stock.NewStockLevel = stock.NewStockLevel - ex.Quantity;
-                //        _context.StockHistories.Update(stock);
-                //        _context.SaveChanges();
-                //    } 
-                //}
 
                 // --- Update only safe fields ---
                 existing.PurchaseNumber = purchase.PurchaseNumber;
@@ -159,35 +148,71 @@ namespace Infrastructure.Services
                 // Delete missing
 
                 var toRemove = _context.PurchaseDetails.Where(d => !updatedDetailIds.Contains(d.Id) && d.PurchaseId == purchase.Id).ToList();
-
+                var availAbleStocks = _context.StockHistories.ToList();
                 foreach (var r in toRemove)
                 {
-                    //var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == r.ProductId);
-                    //if (stock != null)
-                    //{
-                    //    stock.NewStockLevel = stock.NewStockLevel - r.Quantity;
-                    //    _context.StockHistories.Update(stock);
-                    //}
-                    _context.PurchaseDetails.Remove(r);
-                    await _context.SaveChangesAsync();
-
+                    var stockProduct = availAbleStocks.FirstOrDefault(p => p.ProductId == r.ProductId);
+                    if(stockProduct != null && r.Quantity < stockProduct.NewStockLevel)
+                    {
+                        _context.PurchaseDetails.Remove(r);
+                        await _context.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        string error = $"you can not remove this {r.Product.ProductName} product ";
+                    }
                 }
 
                 // Add or Update
-                if (purchase.PurchaseDetails != null)
+                if (purchase.PurchaseDetails != null && purchase.PurchaseDetails.Any())
                 {
                     foreach (var detail in purchase.PurchaseDetails)
                     {
-                        var existingDetail = existing.PurchaseDetails
-                            .FirstOrDefault(d => d.Id == detail.Id);
+                        //stock product state 5
+                        var stockProduct = availAbleStocks.FirstOrDefault(p => p.ProductId == detail.ProductId);
+                        var existingDetail = existing.PurchaseDetails.FirstOrDefault(d => d.Id == detail.Id);
 
-                        if (existingDetail != null)
+                        
+                        if (existingDetail != null && stockProduct != null)
                         {
-                            // Update existing
-                            existingDetail.ProductId = detail.ProductId;
-                            existingDetail.Quantity = detail.Quantity;
-                            existingDetail.UnitPrice = detail.UnitPrice;
-                            existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                            if(detail.Quantity < existingDetail.Quantity)
+                            {
+
+                                //int availAbleStockQuantity = existingDetail.Quantity - stockProduct.NewStockLevel;
+                                //new value previous - existing  = 8
+                                int newValue = existingDetail.Quantity - detail.Quantity;
+
+                                if (newValue <= stockProduct.NewStockLevel)
+                                {
+                                    // Update existing
+                                    existingDetail.ProductId = detail.ProductId;
+                                    existingDetail.Quantity = detail.Quantity;
+                                    existingDetail.UnitPrice = detail.UnitPrice;
+                                    existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
+
+                                    stockProduct.NewStockLevel = stockProduct.NewStockLevel - newValue;
+                                    stockProduct.UpdatedAt = DateTime.Now;
+                                    _context.StockHistories.Update(stockProduct);
+                                }
+                                else
+                                {
+                                    string error = $"you can not decrease the quantity becasue available stock is";
+                                }
+                            }
+                            else if(detail.Quantity > existingDetail.Quantity)
+                            {
+                                var newValue = detail.Quantity - existingDetail.Quantity;
+
+                                // Update existing
+                                existingDetail.ProductId = detail.ProductId;
+                                existingDetail.Quantity = detail.Quantity;
+                                existingDetail.UnitPrice = detail.UnitPrice;
+                                existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
+
+                                stockProduct.NewStockLevel = stockProduct.NewStockLevel + newValue;
+                                stockProduct.UpdatedAt = DateTime.Now;
+                                _context.StockHistories.Update(stockProduct);
+                            }
 
                         }
                         else
@@ -199,23 +224,16 @@ namespace Infrastructure.Services
                             detail.PurchaseId = existing.Id;
                             detail.TotalPrice = detail.Quantity * detail.UnitPrice;
 
+                            stockProduct.NewStockLevel = stockProduct.NewStockLevel + detail.Quantity;
+                            _context.StockHistories.Update(stockProduct);
+                            stockProduct.UpdatedAt = DateTime.Now;
+
                             existing.PurchaseDetails.Add(detail);
                         }
                     }
                 }
 
                 await _context.SaveChangesAsync();
-
-                //foreach (var ex in existing.PurchaseDetails)
-                //{
-                //    var stock = _context.StockHistories.FirstOrDefault(s => s.ProductId == ex.ProductId);
-                //    if (stock != null)
-                //    {
-                //        stock.NewStockLevel = stock.NewStockLevel + ex.Quantity;
-                //        _context.StockHistories.Update(stock);
-                //        _context.SaveChanges();
-                //    }
-                //}
             }
             catch (DbUpdateConcurrencyException ex)
             {
