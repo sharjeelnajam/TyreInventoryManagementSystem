@@ -26,17 +26,22 @@ namespace Domain
         public int Quantity { get; set; }
 
         [Required(ErrorMessage = "Unit price is required.")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Unit price must be greater than 0.")]
+        [Range(0.01, 999999999.99, ErrorMessage = "Unit price must be greater than 0.")]
         [Precision(18, 2)]
         public decimal UnitPrice { get; set; }
 
         [Required(ErrorMessage = "Total price is required.")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Total price must be greater than 0.")]
+        [Range(0.01, 999999999.99, ErrorMessage = "Total price must be greater than 0.")]
         [Precision(18, 2)]
         public decimal TotalPrice { get; set; }
 
+        [Required(ErrorMessage = "Selling price is required.")]
+        [Range(0.01, 999999999.99, ErrorMessage = "Selling price must be greater than 0.")]
+        [Precision(18, 2)]
+        public decimal SellingPrice { get; set; }
+
         // Optional Fields
-        public string? ProductSize { get; set; } 
+        public string? ProductSize { get; set; }        
         public string? Brand { get; set; }
         public string? Remarks { get; set; }
     }

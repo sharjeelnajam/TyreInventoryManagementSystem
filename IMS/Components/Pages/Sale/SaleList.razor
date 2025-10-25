@@ -11,7 +11,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="fw-bold">Sales</h3>
         <button class="btn btn-primary" @onclick="OpenAddSale">
-            <i class="bi bi-plus-circle"></i> Add Sale
+            <i class="bi bi-plus-circle"></i>  Sale
         </button>
     </div>
 
@@ -44,10 +44,10 @@
                               @onclick="() => EditSale(sale.Id)">
                             <i class="bi bi-pencil-square fs-5"></i>
                         </span>
-                        <span role="button" title="Delete" class="text-danger"
+                    @*     <span role="button" title="Delete" class="text-danger"
                               @onclick="() => DeleteSale(sale.Id)">
                             <i class="bi bi-trash fs-5"></i>
-                        </span>
+                        </span> *@
                     </td>
                 </tr>
             }

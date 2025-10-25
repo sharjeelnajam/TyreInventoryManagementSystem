@@ -3,6 +3,7 @@
 @inject ISupplierService SupplierService
 @inject IProductService ProductService
 @inject IPurchaseService PurchaseService
+@inject ApplicationDbContext _context
 @rendermode InteractiveServer
 
 <h4>@(Purchase.Id == Guid.Empty ? "Add" : "Edit")</h4>
@@ -37,18 +38,18 @@
         <div class="col-md-3">
             <label>Discount</label>
             <InputNumber TValue="decimal?"
-                         Value="Purchase.Discount"
-                         ValueChanged="OnDiscountChanged"
-                         ValueExpression="@(() => Purchase.Discount)"
-                         class="form-control" />
+            Value="Purchase.Discount"
+            ValueChanged="OnDiscountChanged"
+            ValueExpression="@(() => Purchase.Discount)"
+            class="form-control" />
         </div>
         <div class="col-md-3">
             <label>Tax</label>
             <InputNumber TValue="decimal?"
-                         Value="Purchase.TaxAmount"
-                         ValueChanged="OnTaxChanged"
-                         ValueExpression="@(() => Purchase.TaxAmount)"
-                         class="form-control" />
+            Value="Purchase.TaxAmount"
+            ValueChanged="OnTaxChanged"
+            ValueExpression="@(() => Purchase.TaxAmount)"
+            class="form-control" />
         </div>
         <div class="col-md-3">
             <label>Total</label>
@@ -81,8 +82,9 @@
                 <th>Product</th>
                 <th>Qty</th>
                 <th>Unit Price</th>
+                <th>Selling Price</th>
                 <th>Total</th>
-                <th></th>
+                
             </tr>
         </thead>
         <tbody>
@@ -98,7 +100,7 @@
                                 {
                                     bool isSelected = p.Id == detail.ProductId;
                                     bool isAlreadyUsed = Purchase.PurchaseDetails
-                                    .Any(d => d.ProductId == p.Id && d != detail);
+                            .Any(d => d.ProductId == p.Id && d != detail);
 
                                     <option value="@p.Id" disabled="@(!isSelected && isAlreadyUsed)">
                                         @p.ProductName
@@ -109,17 +111,27 @@
                         </td>
                         <td>
                             <InputNumber TValue="int"
-                                         Value="detail.Quantity"
-                                         ValueChanged="@(v => OnQuantityChanged(detail, v))"
-                                         ValueExpression="@(() => detail.Quantity)"
-                                         class="form-control" />
+                            Value="detail.Quantity"
+                            ValueChanged="@(v => OnQuantityChanged(detail, v))"
+                            ValueExpression="@(() => detail.Quantity)"
+                            class="form-control" />
+                            <ValidationMessage For="@(() => detail.Quantity)" />
                         </td>
                         <td>
                             <InputNumber TValue="decimal"
-                                         Value="detail.UnitPrice"
-                                         ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
-                                         ValueExpression="@(() => detail.UnitPrice)"
+                            Value="detail.UnitPrice"
+                            ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
+                            ValueExpression="@(() => detail.UnitPrice)"
+                            class="form-control" />
+                            <ValidationMessage For="@(() => detail.UnitPrice)" />
+                        </td>
+                        <td>
+                            <InputNumber TValue="decimal"
+                                         Value="detail.SellingPrice"
+                                         ValueChanged="@(v => OnSellingPriceChanged(detail, v))"
+                                         ValueExpression="@(() => detail.SellingPrice)"
                                          class="form-control" />
+                            <ValidationMessage For="@(() => detail.SellingPrice)" />
                         </td>
                         <td>@(detail.Quantity * detail.UnitPrice)</td>
                         <td>
@@ -141,12 +153,34 @@
     </div>
 </EditForm>
 
+@if (ShowErrorPopup)
+{
+    <div class="modal show" style="display:block; background-color:rgba(0,0,0,0.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Error</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowErrorPopup = false"></button>
+                </div>
+                <div class="modal-body">
+                    <p>@ErrorMessage</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => ShowErrorPopup = false">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public Guid? PurchaseId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
     private List<Supplier> suppliers = new();
     private List<Product> products = new();
+    private string? ErrorMessage { get; set; }
+    private bool ShowErrorPopup { get; set; }
 
     private Purchase Purchase = new Purchase
         {
@@ -165,6 +199,7 @@
         if (PurchaseId.HasValue)
         {
             Purchase = await PurchaseService.GetPurchaseByIdAsync(PurchaseId.Value);
+
         }
         else
         {
@@ -179,17 +214,28 @@
 
     private async Task SavePurchase()
     {
-        foreach (var d in Purchase.PurchaseDetails)
+        try
         {
-            d.PurchaseId = Purchase.Id;
+            foreach (var d in Purchase.PurchaseDetails)
+            {
+                d.PurchaseId = Purchase.Id;
+            }
+
+            if (Purchase.Id == Guid.Empty)
+                await PurchaseService.AddPurchaseAsync(Purchase);
+            else
+                await PurchaseService.UpdatePurchaseAsync(Purchase);
+
+            await OnClose.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+
+            // Show friendly message to user
+            ErrorMessage = ex.Message;
+            ShowErrorPopup = true;
         }
 
-        if (Purchase.Id == Guid.Empty)
-            await PurchaseService.AddPurchaseAsync(Purchase);
-        else
-            await PurchaseService.UpdatePurchaseAsync(Purchase);
-
-        await OnClose.InvokeAsync();
     }
 
     private void AddDetail()
@@ -199,6 +245,7 @@
                 Id = Guid.Empty,
                 Quantity = 1,
                 UnitPrice = 0,
+                SellingPrice = 0,
                 TotalPrice = 0
             });
         RecalculateTotals();
@@ -206,8 +253,20 @@
 
     private void RemoveDetail(PurchaseDetail detail)
     {
+        var availableStock = _context.StockHistories.FirstOrDefault(s => s.ProductId == detail.ProductId);
+
+        if (availableStock != null && detail.Quantity > availableStock.NewStockLevel)
+        {
+            ErrorMessage = $"{detail.Product.ProductName} removal failed due to insufficient stock. Current stock: {availableStock.NewStockLevel} units";
+            ShowErrorPopup = true;
+            StateHasChanged();
+            return;
+        }
+
         Purchase.PurchaseDetails.Remove(detail);
         RecalculateTotals();
+        StateHasChanged();
+        return;
     }
 
     private void OnQuantityChanged(PurchaseDetail detail, int newValue)
@@ -234,6 +293,12 @@
     {
         Purchase.TaxAmount = newValue ?? 0;
         RecalculateTotals();
+    }
+
+    private void OnSellingPriceChanged(PurchaseDetail detail, decimal value)
+    {
+        detail.SellingPrice = value;
+        StateHasChanged(); // Refresh the UI to update validation
     }
 
     private void RecalculateTotals()

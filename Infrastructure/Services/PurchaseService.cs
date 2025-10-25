@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
+using Microsoft.Identity.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,24 +25,42 @@ namespace Infrastructure.Services
 
         public async Task<List<Purchase>> GetAllPurchasesAsync()
         {
-            return await _context.Purchase
-                .Include(p => p.Supplier)
-                .Include(p => p.PurchaseDetails)
-                .ThenInclude(d => d.Product)
-                .ToListAsync();
+            try
+            {
+                return await _context.Purchase
+                       .Include(p => p.Supplier)
+                       .Include(p => p.PurchaseDetails)
+                       .ThenInclude(d => d.Product)
+                       .ToListAsync();
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+         
         }
 
         public async Task<Purchase> GetPurchaseByIdAsync(Guid id)
         {
-            var purchase = await _context.Purchase
-                .Include(p => p.Supplier)
-                .Include(p => p.PurchaseDetails)
-                .ThenInclude(d => d.Product)
-                .FirstOrDefaultAsync(p => p.Id == id);
+            try
+            {
+                var purchase = await _context.Purchase
+                           .Include(p => p.Supplier)
+                           .Include(p => p.PurchaseDetails)
+                           .ThenInclude(d => d.Product)
+                           .FirstOrDefaultAsync(p => p.Id == id);
 
-            if (purchase != null)
-                return purchase;
-            return new Purchase();
+                if (purchase != null)
+                    return purchase;
+                return new Purchase();
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
         }
 
         public async Task AddPurchaseAsync(Purchase purchase)
@@ -54,16 +73,6 @@ namespace Infrastructure.Services
                 purchase.Id = Guid.NewGuid();
                 purchase.CreatedAt = DateTime.UtcNow;
                 var purchaseDetails = new List<PurchaseDetail>();
-
-                //if (purchase.PurchaseDetails != null)
-                //{
-                //    foreach (var detail in purchase.PurchaseDetails)
-                //    {
-                //        detail.PurchaseId = purchase.Id;
-                //        detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-                //        purchaseDetails.Add(detail);
-                //    }
-                //}
 
                 _context.Purchase.Add(purchase);
                 if (purchaseDetails.Any())
@@ -127,7 +136,7 @@ namespace Infrastructure.Services
             {
                 var existing = await _context.Purchase.AsNoTracking().Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == purchase.Id);
 
-              
+
                 if (existing == null)
                     throw new Exception("Purchase not found in DB");
 
@@ -146,21 +155,20 @@ namespace Infrastructure.Services
                 var updatedDetailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
 
                 // Delete missing
-
                 var toRemove = _context.PurchaseDetails.Where(d => !updatedDetailIds.Contains(d.Id) && d.PurchaseId == purchase.Id).ToList();
                 var availAbleStocks = _context.StockHistories.ToList();
+
                 foreach (var r in toRemove)
                 {
                     var stockProduct = availAbleStocks.FirstOrDefault(p => p.ProductId == r.ProductId);
-                    if(stockProduct != null && r.Quantity < stockProduct.NewStockLevel)
+                    if(stockProduct != null)
                     {
-                        _context.PurchaseDetails.Remove(r);
-                        await _context.SaveChangesAsync();
+                        stockProduct.NewStockLevel = stockProduct.NewStockLevel - r.Quantity;
+                        _context.StockHistories.Update(stockProduct);
                     }
-                    else
-                    {
-                        string error = $"you can not remove this {r.Product.ProductName} product ";
-                    }
+                    _context.PurchaseDetails.Remove(r);
+                    await _context.SaveChangesAsync();
+
                 }
 
                 // Add or Update
@@ -172,14 +180,12 @@ namespace Infrastructure.Services
                         var stockProduct = availAbleStocks.FirstOrDefault(p => p.ProductId == detail.ProductId);
                         var existingDetail = existing.PurchaseDetails.FirstOrDefault(d => d.Id == detail.Id);
 
-                        
                         if (existingDetail != null && stockProduct != null)
                         {
-                            if(detail.Quantity < existingDetail.Quantity)
+
+                            if (detail.Quantity < existingDetail.Quantity)
                             {
 
-                                //int availAbleStockQuantity = existingDetail.Quantity - stockProduct.NewStockLevel;
-                                //new value previous - existing  = 8
                                 int newValue = existingDetail.Quantity - detail.Quantity;
 
                                 if (newValue <= stockProduct.NewStockLevel)
@@ -188,6 +194,7 @@ namespace Infrastructure.Services
                                     existingDetail.ProductId = detail.ProductId;
                                     existingDetail.Quantity = detail.Quantity;
                                     existingDetail.UnitPrice = detail.UnitPrice;
+                                    existingDetail.SellingPrice = detail.SellingPrice;
                                     existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
 
                                     stockProduct.NewStockLevel = stockProduct.NewStockLevel - newValue;
@@ -196,10 +203,11 @@ namespace Infrastructure.Services
                                 }
                                 else
                                 {
-                                    string error = $"you can not decrease the quantity becasue available stock is";
+
+                                    throw new Exception($"you can not decrease the quantity becasue available stock is {stockProduct.NewStockLevel}");
                                 }
                             }
-                            else if(detail.Quantity > existingDetail.Quantity)
+                            else if (detail.Quantity > existingDetail.Quantity)
                             {
                                 var newValue = detail.Quantity - existingDetail.Quantity;
 
@@ -207,6 +215,7 @@ namespace Infrastructure.Services
                                 existingDetail.ProductId = detail.ProductId;
                                 existingDetail.Quantity = detail.Quantity;
                                 existingDetail.UnitPrice = detail.UnitPrice;
+                                existingDetail.SellingPrice = detail.SellingPrice;
                                 existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
 
                                 stockProduct.NewStockLevel = stockProduct.NewStockLevel + newValue;
@@ -224,11 +233,34 @@ namespace Infrastructure.Services
                             detail.PurchaseId = existing.Id;
                             detail.TotalPrice = detail.Quantity * detail.UnitPrice;
 
-                            stockProduct.NewStockLevel = stockProduct.NewStockLevel + detail.Quantity;
-                            _context.StockHistories.Update(stockProduct);
-                            stockProduct.UpdatedAt = DateTime.Now;
+                            _context.PurchaseDetails.Add(detail);
 
-                            existing.PurchaseDetails.Add(detail);
+                            if (stockProduct == null)
+                            {
+                                var authState = await _authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+                                var currentUser = authState.User;
+                                var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value ?? currentUser.FindFirst("name")?.Value ?? currentUser.Identity?.Name;
+                                
+                                var newStock = new StockHistory
+                                {
+                                    NewStockLevel = detail.Quantity,
+                                    CreatedAt = DateTime.Now,
+                                    ActionDate = DateTime.Now,
+                                    ActionType = "Purchase",
+                                    QuantityChanged = detail.Quantity,
+                                    ProductId = detail.ProductId,
+                                    ReferenceId = purchase.Id,
+                                    ReferenceNumber = purchase.PurchaseNumber,
+                                    PerformedBy = performedBy,
+                                };
+                                _context.StockHistories.Add(newStock);
+                            }
+                            else
+                            {
+                                stockProduct.NewStockLevel = stockProduct.NewStockLevel + detail.Quantity;
+                                _context.StockHistories.Update(stockProduct);
+                                stockProduct.UpdatedAt = DateTime.Now;
+                            }
                         }
                     }
                 }
