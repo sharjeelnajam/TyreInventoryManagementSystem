@@ -288,5 +288,23 @@ namespace Infrastructure.Services
                 await _context.SaveChangesAsync();   // ChangeTracker handles IsDeleted/DeletedAt
             }
         }
+
+        public async Task<List<PurchaseDetail>> GetPurchaseDetailsByProductIdAsync(Guid productId)
+        {
+            try
+            {
+                return await _context.PurchaseDetails
+                           .Include(pd => pd.Purchase)
+                           .Where(pd => pd.ProductId == productId)
+                           .OrderByDescending(pd => pd.Purchase.PurchaseDate)
+                           .ToListAsync();
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
+        }
     }
 }

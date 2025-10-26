@@ -14,5 +14,6 @@ namespace Infrastructure.Services
         Task AddPurchaseAsync(Purchase purchase);
         Task UpdatePurchaseAsync(Purchase purchase);
         Task DeletePurchaseAsync(Guid id);
+        Task<List<PurchaseDetail>> GetPurchaseDetailsByProductIdAsync(Guid productId);
     }
 }

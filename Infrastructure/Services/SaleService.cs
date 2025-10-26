@@ -266,5 +266,25 @@ namespace Infrastructure.Services
                 return false;
             }
         }
+
+        public async Task<List<SaleDetail>> GetSaleDetailsByProductIdAsync(Guid productId)
+        {
+            try
+            {
+                return await _context.SaleDetail
+                        .Include(sd => sd.Sale)
+                            .ThenInclude(s => s.Customer)
+                        .Where(sd => sd.ProductId == productId)
+                        .OrderByDescending(sd => sd.Sale.SaleDate)
+                        .ToListAsync();
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+           
+        }
+
     }
 }

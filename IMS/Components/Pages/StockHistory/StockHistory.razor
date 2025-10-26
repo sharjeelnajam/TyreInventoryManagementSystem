@@ -5,49 +5,79 @@
 
 <PageTitle>Stock History</PageTitle>
 
-<h3 class="mb-3">📜 Stock Movement History</h3>
+<div class="container mt-4">
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-light border-0 py-3 d-flex justify-content-between align-items-center">
+            <h3 class="fw-bold mb-0 text-secondary">
+                📦 Stock Movement History
+            </h3>
+        </div>
 
-@if (stockList == null)
-{
-    <p><em>Loading...</em></p>
-}
-else if (!stockList.Any())
-{
-    <p>No stock movement records found.</p>
-}
-else
-{
-    <table class="table table-bordered table-striped">
-        <thead class="table-dark">
-            <tr>
-                <th>Product</th>
-                <th>Action</th>
-                <th>New Stock Level</th>
-                <th>Date</th>
-                <th>Performed By</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in stockList)
+        <div class="card-body">
+            @if (stockList == null)
             {
-                <tr>
-                    <td>@item.Product?.ProductName</td>
-                    <td>@item.ActionType</td>
-                    <td>@item.NewStockLevel</td>
-                    <td>@item.ActionDate.ToString("dd-MMM-yyyy hh:mm tt")</td>
-                    <td>@item.PerformedBy</td>
-                </tr>
+                <div class="text-center text-muted py-4">
+                    <div class="spinner-border text-secondary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading data...</p>
+                </div>
             }
-        </tbody>
-    </table>
-}
+            else if (!stockList.Any())
+            {
+                <div class="alert alert-info text-center rounded-3">
+                    No stock movement records found.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr class="text-secondary">
+                                <th>Product</th>
+                                <th>Action</th>
+                                <th>New Stock Level</th>
+                                <th>Date</th>
+                                <th>Performed By</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in stockList)
+                            {
+                                <tr>
+                                    <td>@item.Product?.ProductName</td>
+                                    <td>@item.ActionType</td>
+                                    <td>@item.NewStockLevel</td>
+                                    <td>@item.ActionDate.ToString("dd-MMM-yyyy hh:mm tt")</td>
+                                    <td>@item.PerformedBy</td>
+                                    <td class="text-center">
+                                        <a href="@($"/salehistory/{item.ProductId}")" class="text-primary text-decoration-none me-3">
+                                            <i class="bi bi-cart-check"></i>Sale History
+                                        </a>
+
+                                        <a href="@($"/purchasehistory/{item.ProductId}")" class="text-success text-decoration-none">
+                                            <i class="bi bi-bag-check"></i>Purchase History
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
 
 @code {
-    private List<Domain.StockHistory> stockList;
+    private List<Domain.StockHistory>? stockList;
 
     protected override async Task OnInitializedAsync()
     {
-        stockList = await _context.StockHistories.Include(s => s.Product)
+        stockList = await _context.StockHistories
+            .Include(s => s.Product)
             .OrderByDescending(s => s.ActionDate)
             .ToListAsync();
     }

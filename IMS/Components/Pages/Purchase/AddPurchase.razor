@@ -15,11 +15,11 @@
     <div class="row">
         <div class="col-md-4">
             <label>Purchase #</label>
-            <InputText @bind-Value="Purchase.PurchaseNumber" class="form-control" />
+            <InputText @bind-Value="Purchase.PurchaseNumber" class="form-control" readonly/>
         </div>
         <div class="col-md-4">
             <label>Date</label>
-            <InputDate @bind-Value="Purchase.PurchaseDate" class="form-control" />
+            <InputDate @bind-Value="Purchase.PurchaseDate" class="form-control" readonly/>
         </div>
         <div class="col-md-4">
             <label>Supplier</label>
@@ -76,15 +76,16 @@
     <hr />
     <h5>Purchase Items</h5>
 
-    <table class="table table-sm table-bordered">
-        <thead>
+    <table class="table table-sm table-bordered align-middle">
+        <thead class="table-light">
             <tr>
                 <th>Product</th>
+                <th>Brand</th>
                 <th>Qty</th>
                 <th>Unit Price</th>
                 <th>Selling Price</th>
                 <th>Total</th>
-                
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -93,14 +94,18 @@
                 @foreach (var detail in Purchase.PurchaseDetails)
                 {
                     <tr>
-                        <td>
-                            <InputSelect @bind-Value="detail.ProductId" class="form-control">
+                        <td style="width: 220px;">
+                            <InputSelect TValue="Guid"
+                                         Value="detail.ProductId"
+                                         ValueChanged="@(v => OnProductChange(detail, v))"
+                                         ValueExpression="@(() => detail.ProductId)"
+                                         class="form-select form-select-sm">
                                 <option value="">-- Select Product --</option>
                                 @foreach (var p in products)
                                 {
                                     bool isSelected = p.Id == detail.ProductId;
                                     bool isAlreadyUsed = Purchase.PurchaseDetails
-                            .Any(d => d.ProductId == p.Id && d != detail);
+                                    .Any(d => d.ProductId == p.Id && d != detail);
 
                                     <option value="@p.Id" disabled="@(!isSelected && isAlreadyUsed)">
                                         @p.ProductName
@@ -109,32 +114,41 @@
                             </InputSelect>
                             <ValidationMessage For="@(() => detail.ProductId)" />
                         </td>
-                        <td>
+
+                        <td style="width: 180px;">
+                            <input type="text" class="form-control form-control-sm" @bind="detail.Brand" readonly />
+                        </td>
+
+                        <td style="width: 90px;">
                             <InputNumber TValue="int"
-                            Value="detail.Quantity"
-                            ValueChanged="@(v => OnQuantityChanged(detail, v))"
-                            ValueExpression="@(() => detail.Quantity)"
-                            class="form-control" />
+                                         Value="detail.Quantity"
+                                         ValueChanged="@(v => OnQuantityChanged(detail, v))"
+                                         ValueExpression="@(() => detail.Quantity)"
+                                         class="form-control form-control-sm" />
                             <ValidationMessage For="@(() => detail.Quantity)" />
                         </td>
-                        <td>
+
+                        <td style="width: 120px;">
                             <InputNumber TValue="decimal"
-                            Value="detail.UnitPrice"
-                            ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
-                            ValueExpression="@(() => detail.UnitPrice)"
-                            class="form-control" />
-                            <ValidationMessage For="@(() => detail.UnitPrice)" />
+                                         Value="detail.UnitPrice"
+                                         ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
+                                         ValueExpression="@(() => detail.UnitPrice)"
+                                         class="form-control form-control-sm" />
                         </td>
-                        <td>
+
+                        <td style="width: 120px;">
                             <InputNumber TValue="decimal"
                                          Value="detail.SellingPrice"
                                          ValueChanged="@(v => OnSellingPriceChanged(detail, v))"
                                          ValueExpression="@(() => detail.SellingPrice)"
-                                         class="form-control" />
-                            <ValidationMessage For="@(() => detail.SellingPrice)" />
+                                         class="form-control form-control-sm" />
                         </td>
-                        <td>@(detail.Quantity * detail.UnitPrice)</td>
-                        <td>
+
+                        <td style="width: 100px; text-align:center;">
+                            @(detail.Quantity * detail.UnitPrice)
+                        </td>
+
+                        <td style="width: 50px; text-align:center;">
                             <button class="btn btn-sm btn-danger" type="button" @onclick="() => RemoveDetail(detail)">X</button>
                         </td>
                     </tr>
@@ -142,6 +156,7 @@
             }
         </tbody>
     </table>
+
 
     <button class="btn btn-sm btn-primary mt-2" type="button" @onclick="AddDetail">
         + Add Item
@@ -281,6 +296,16 @@
         detail.UnitPrice = newValue;
         detail.TotalPrice = detail.Quantity * detail.UnitPrice;
         RecalculateTotals();
+    }
+
+    private void OnProductChange(PurchaseDetail detail, Guid selectedProductId)
+    {
+        var selectedProduct = products.FirstOrDefault(p => p.Id == selectedProductId);
+        if (selectedProduct != null)
+        {
+            detail.ProductId = selectedProduct.Id;
+            detail.Brand = selectedProduct.Brand;
+        }
     }
 
     private void OnDiscountChanged(decimal? newValue)

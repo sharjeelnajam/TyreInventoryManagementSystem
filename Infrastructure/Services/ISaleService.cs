@@ -14,5 +14,6 @@ namespace Infrastructure.Services
         Task<bool> AddAsync(Sale sale);
         Task UpdateAsync(Sale sale);
         Task<bool> DeleteAsync(Guid id);
+        Task<List<SaleDetail>> GetSaleDetailsByProductIdAsync(Guid productId);
     }
 }
