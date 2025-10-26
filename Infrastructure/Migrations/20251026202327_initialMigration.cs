@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class initial : Migration
+    public partial class initialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -378,6 +378,45 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "StockHistories",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ProductId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ActionType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    QuantityChanged = table.Column<int>(type: "int", nullable: false),
+                    NewStockLevel = table.Column<int>(type: "int", nullable: false),
+                    ActionDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PreviousStockLevel = table.Column<int>(type: "int", nullable: false),
+                    ReferenceId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ReferenceNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PerformedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    UpdatedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeletedBy = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StockHistories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_StockHistories_Products_ProductId",
+                        column: x => x.ProductId,
+                        principalTable: "Products",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_StockHistories_Tenants_TenantId",
+                        column: x => x.TenantId,
+                        principalTable: "Tenants",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Purchase",
                 columns: table => new
                 {
@@ -472,6 +511,7 @@ namespace Infrastructure.Migrations
                     Quantity = table.Column<int>(type: "int", nullable: false),
                     UnitPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     TotalPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    SellingPrice = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     ProductSize = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Brand = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Remarks = table.Column<string>(type: "nvarchar(max)", nullable: true),
@@ -509,17 +549,17 @@ namespace Infrastructure.Migrations
             migrationBuilder.InsertData(
                 table: "AspNetRoles",
                 columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName", "TenantId" },
-                values: new object[] { new Guid("34d60f5b-3827-4157-87a1-470625c8a2e3"), null, "SuperAdmin", "SUPERADMIN", null });
+                values: new object[] { new Guid("3ff3d74c-f1d2-458b-af01-be52a0db013d"), null, "SuperAdmin", "SUPERADMIN", null });
 
             migrationBuilder.InsertData(
                 table: "AspNetUsers",
                 columns: new[] { "Id", "AccessFailedCount", "ConcurrencyStamp", "Email", "EmailConfirmed", "LockoutEnabled", "LockoutEnd", "NormalizedEmail", "NormalizedUserName", "PasswordHash", "PhoneNumber", "PhoneNumberConfirmed", "SecurityStamp", "TenantId", "TwoFactorEnabled", "UserName" },
-                values: new object[] { new Guid("3c39beb2-72de-4580-8f1c-44240f09e04a"), 0, "4e212deb-4fec-47fb-98dc-fec7d16367a5", "superadmin@system.com", true, false, null, "SUPERADMIN@SYSTEM.COM", "SUPERADMIN@SYSTEM.COM", "AQAAAAIAAYagAAAAEPcnzRwFxC25PEtGn9Enb4MgDBUTVKZniiCK8QfqUPzhSvWr9+w9AKqdHD0mIDGYEw==", null, false, "5090cc1a-9905-473f-b516-d1348469a09d", null, false, "superadmin@system.com" });
+                values: new object[] { new Guid("ded468fd-0c00-4c71-9861-242eb1a312ba"), 0, "403d19a4-3941-4e62-8d7e-48032e697fb7", "superadmin@system.com", true, false, null, "SUPERADMIN@SYSTEM.COM", "SUPERADMIN@SYSTEM.COM", "AQAAAAIAAYagAAAAEOD4e00uf64iNaq0SGksxC/3JiE2VSyH4bGK+IUCXWMMhkAfvLZwpGY7Gm1Jn0XapQ==", null, false, "3b1f2e33-66ba-464d-ab72-26ac0a1c8b73", null, false, "superadmin@system.com" });
 
             migrationBuilder.InsertData(
                 table: "AspNetUserRoles",
                 columns: new[] { "RoleId", "UserId" },
-                values: new object[] { new Guid("34d60f5b-3827-4157-87a1-470625c8a2e3"), new Guid("3c39beb2-72de-4580-8f1c-44240f09e04a") });
+                values: new object[] { new Guid("3ff3d74c-f1d2-458b-af01-be52a0db013d"), new Guid("ded468fd-0c00-4c71-9861-242eb1a312ba") });
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -631,6 +671,16 @@ namespace Infrastructure.Migrations
                 column: "TenantId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_StockHistories_ProductId",
+                table: "StockHistories",
+                column: "ProductId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StockHistories_TenantId",
+                table: "StockHistories",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Supplier_TenantId",
                 table: "Supplier",
                 column: "TenantId");
@@ -664,6 +714,9 @@ namespace Infrastructure.Migrations
                 name: "Staff");
 
             migrationBuilder.DropTable(
+                name: "StockHistories");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
@@ -673,10 +726,10 @@ namespace Infrastructure.Migrations
                 name: "Purchase");
 
             migrationBuilder.DropTable(
-                name: "Products");
+                name: "Sale");
 
             migrationBuilder.DropTable(
-                name: "Sale");
+                name: "Products");
 
             migrationBuilder.DropTable(
                 name: "Supplier");

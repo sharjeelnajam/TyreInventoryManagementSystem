@@ -122,7 +122,7 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("ab9a0a03-f919-4682-a842-de7ee6817c80"),
+                            Id = new Guid("3ff3d74c-f1d2-458b-af01-be52a0db013d"),
                             Name = "SuperAdmin",
                             NormalizedName = "SUPERADMIN"
                         });
@@ -201,17 +201,17 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("a7739ea7-1276-488a-bac4-0d4e188a3825"),
+                            Id = new Guid("ded468fd-0c00-4c71-9861-242eb1a312ba"),
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "66f6b878-4f51-47e0-a22e-bd34b57ac7d7",
+                            ConcurrencyStamp = "403d19a4-3941-4e62-8d7e-48032e697fb7",
                             Email = "superadmin@system.com",
                             EmailConfirmed = true,
                             LockoutEnabled = false,
                             NormalizedEmail = "SUPERADMIN@SYSTEM.COM",
                             NormalizedUserName = "SUPERADMIN@SYSTEM.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAEP69PQx2NJlFjjFmvgKFm+rhGpyOFSnFGLcW/IR8dW2eCJ0+1MgefE3naDuo5QHWaQ==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEOD4e00uf64iNaq0SGksxC/3JiE2VSyH4bGK+IUCXWMMhkAfvLZwpGY7Gm1Jn0XapQ==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "922ba4d5-9dd8-4114-92a5-3e5bc7b5eb12",
+                            SecurityStamp = "3b1f2e33-66ba-464d-ab72-26ac0a1c8b73",
                             TwoFactorEnabled = false,
                             UserName = "superadmin@system.com"
                         });
@@ -407,6 +407,10 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Remarks")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("SellingPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uniqueidentifier");
@@ -976,8 +980,8 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            UserId = new Guid("a7739ea7-1276-488a-bac4-0d4e188a3825"),
-                            RoleId = new Guid("ab9a0a03-f919-4682-a842-de7ee6817c80")
+                            UserId = new Guid("ded468fd-0c00-4c71-9861-242eb1a312ba"),
+                            RoleId = new Guid("3ff3d74c-f1d2-458b-af01-be52a0db013d")
                         });
                 });
 

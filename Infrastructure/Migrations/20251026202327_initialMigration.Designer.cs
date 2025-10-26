@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251006055505_initial")]
-    partial class initial
+    [Migration("20251026202327_initialMigration")]
+    partial class initialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -125,7 +125,7 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("34d60f5b-3827-4157-87a1-470625c8a2e3"),
+                            Id = new Guid("3ff3d74c-f1d2-458b-af01-be52a0db013d"),
                             Name = "SuperAdmin",
                             NormalizedName = "SUPERADMIN"
                         });
@@ -204,17 +204,17 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("3c39beb2-72de-4580-8f1c-44240f09e04a"),
+                            Id = new Guid("ded468fd-0c00-4c71-9861-242eb1a312ba"),
                             AccessFailedCount = 0,
-                            ConcurrencyStamp = "4e212deb-4fec-47fb-98dc-fec7d16367a5",
+                            ConcurrencyStamp = "403d19a4-3941-4e62-8d7e-48032e697fb7",
                             Email = "superadmin@system.com",
                             EmailConfirmed = true,
                             LockoutEnabled = false,
                             NormalizedEmail = "SUPERADMIN@SYSTEM.COM",
                             NormalizedUserName = "SUPERADMIN@SYSTEM.COM",
-                            PasswordHash = "AQAAAAIAAYagAAAAEPcnzRwFxC25PEtGn9Enb4MgDBUTVKZniiCK8QfqUPzhSvWr9+w9AKqdHD0mIDGYEw==",
+                            PasswordHash = "AQAAAAIAAYagAAAAEOD4e00uf64iNaq0SGksxC/3JiE2VSyH4bGK+IUCXWMMhkAfvLZwpGY7Gm1Jn0XapQ==",
                             PhoneNumberConfirmed = false,
-                            SecurityStamp = "5090cc1a-9905-473f-b516-d1348469a09d",
+                            SecurityStamp = "3b1f2e33-66ba-464d-ab72-26ac0a1c8b73",
                             TwoFactorEnabled = false,
                             UserName = "superadmin@system.com"
                         });
@@ -410,6 +410,10 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Remarks")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("SellingPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uniqueidentifier");
@@ -700,6 +704,73 @@ namespace Infrastructure.Migrations
                     b.ToTable("Staff");
                 });
 
+            modelBuilder.Entity("Domain.StockHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ActionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("NewStockLevel")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PerformedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PreviousStockLevel")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("QuantityChanged")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("StockHistories");
+                });
+
             modelBuilder.Entity("Domain.Supplier", b =>
                 {
                     b.Property<Guid>("Id")
@@ -912,8 +983,8 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            UserId = new Guid("3c39beb2-72de-4580-8f1c-44240f09e04a"),
-                            RoleId = new Guid("34d60f5b-3827-4157-87a1-470625c8a2e3")
+                            UserId = new Guid("ded468fd-0c00-4c71-9861-242eb1a312ba"),
+                            RoleId = new Guid("3ff3d74c-f1d2-458b-af01-be52a0db013d")
                         });
                 });
 
@@ -1050,6 +1121,23 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Domain.StockHistory", b =>
+                {
+                    b.HasOne("Domain.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId");
+
+                    b.Navigation("Product");
 
                     b.Navigation("Tenant");
                 });

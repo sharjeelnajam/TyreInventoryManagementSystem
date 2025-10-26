@@ -44,7 +44,7 @@
                         <th>Unit Price</th>
                         <th>Total Price</th>
                         <th>Payment Method</th>
-                        <th>Remarks</th>
+                       @*  <th>Remarks</th> *@
                     </tr>
                 </thead>
                 <tbody>
@@ -58,7 +58,7 @@
                             <td>@detail.UnitPrice.ToString("N2")</td>
                             <td>@detail.TotalPrice.ToString("N2")</td>
                             <td>@detail.Sale?.PaymentMethod</td>
-                            <td>@detail.Remarks</td>
+                           @*  <td>@detail.Remarks</td> *@
                         </tr>
                     }
                 </tbody>

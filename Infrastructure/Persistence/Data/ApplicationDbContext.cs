@@ -50,44 +50,43 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
                 modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
             }
-
-
-            // ✅ SUPER ADMIN Seeding (sirf ek martaba, loop ke baahar)
-            var superAdminRoleId = Guid.NewGuid();
-            var superAdminUserId = Guid.NewGuid();
-
-            // Role
-            modelBuilder.Entity<ApplicationRole>().HasData(new ApplicationRole
-            {
-                Id = superAdminRoleId,
-                Name = "SuperAdmin",
-                NormalizedName = "SUPERADMIN"
-            });
-
-            // User
-            var hasher = new PasswordHasher<ApplicationUser>();
-            var superAdmin = new ApplicationUser
-            {
-                Id = superAdminUserId,
-                UserName = "superadmin@system.com",
-                NormalizedUserName = "SUPERADMIN@SYSTEM.COM",
-                Email = "superadmin@system.com",
-                NormalizedEmail = "SUPERADMIN@SYSTEM.COM",
-                EmailConfirmed = true,
-                TenantId = null, // ✅ SuperAdmin ke liye null
-                SecurityStamp = Guid.NewGuid().ToString("D"),
-                PasswordHash = hasher.HashPassword(null, "Admin@123")
-            };
-
-            modelBuilder.Entity<ApplicationUser>().HasData(superAdmin);
-
-            // User-Role Mapping
-            modelBuilder.Entity<IdentityUserRole<Guid>>().HasData(new IdentityUserRole<Guid>
-            {
-                RoleId = superAdminRoleId,
-                UserId = superAdminUserId
-            });
         }
+
+        // ✅ SUPER ADMIN Seeding (sirf ek martaba, loop ke baahar)
+        var superAdminRoleId = Guid.NewGuid();
+        var superAdminUserId = Guid.NewGuid();
+
+        // Role
+        modelBuilder.Entity<ApplicationRole>().HasData(new ApplicationRole
+        {
+            Id = superAdminRoleId,
+            Name = "SuperAdmin",
+            NormalizedName = "SUPERADMIN"
+        });
+
+        // User
+        var hasher = new PasswordHasher<ApplicationUser>();
+        var superAdmin = new ApplicationUser
+        {
+            Id = superAdminUserId,
+            UserName = "superadmin@system.com",
+            NormalizedUserName = "SUPERADMIN@SYSTEM.COM",
+            Email = "superadmin@system.com",
+            NormalizedEmail = "SUPERADMIN@SYSTEM.COM",
+            EmailConfirmed = true,
+            TenantId = null, // ✅ SuperAdmin ke liye null
+            SecurityStamp = Guid.NewGuid().ToString("D"),
+            PasswordHash = hasher.HashPassword(null, "Admin@123")
+        };
+
+        modelBuilder.Entity<ApplicationUser>().HasData(superAdmin);
+
+        // User-Role Mapping
+        modelBuilder.Entity<IdentityUserRole<Guid>>().HasData(new IdentityUserRole<Guid>
+        {
+            RoleId = superAdminRoleId,
+            UserId = superAdminUserId
+        });
     }
     // Example: Add your DbSets here
 
