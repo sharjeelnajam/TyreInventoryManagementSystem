@@ -9,6 +9,7 @@ using Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Domain.Identity;
 using Infrastructure.Services;
+using Infrastructure.Persistence.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,7 @@ builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
+builder.Services.AddScoped<IProfitReportService, ProfitReportService>();
 
 builder.Services.AddServerSideBlazor()
     .AddCircuitOptions(options => { options.DetailedErrors = true; });
@@ -79,8 +81,16 @@ else
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var services = scope.ServiceProvider;
+
+    var db = services.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
+
+    // ✅ Call DbSeeder here
+    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+    var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+
+    await DbSeeder.SeedAsync(userManager, roleManager, db);
 }
 
 app.UseHttpsRedirection();

@@ -1,4 +1,5 @@
-﻿@page "/purchasehistory/{productId:guid}"
+﻿@page "/purchasehistory"
+@page "/purchasehistory/{productId:guid}"
 @using Domain
 @using Infrastructure.Services
 @inject IPurchaseService PurchaseService
@@ -51,7 +52,11 @@
                     @foreach (var detail in purchaseDetails)
                     {
                         <tr>
-                            <td>@detail.Purchase?.PurchaseNumber</td>
+                            <td>
+                                <a href="@($"/purchase-view/{detail.PurchaseId}/{productId}")" class="text-primary" style="text-decoration:underline; cursor:pointer;">
+                                    @detail.Purchase?.PurchaseNumber
+                                </a>
+                            </td>
                             <td>@detail.Purchase?.PurchaseDate.ToString("dd-MMM-yyyy")</td>
                             <td>@detail.Quantity</td>
                             <td>@detail.UnitPrice.ToString("N2")</td>

@@ -2,6 +2,7 @@
 @using Domain
 @using Infrastructure.Services
 @inject IProductService ProductService
+@inject IWebHostEnvironment Env
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -32,14 +33,7 @@
             <label class="form-label">Tread Depth (mm)</label>
             <InputNumber class="form-control" @bind-Value="product.TreadDepth" />
         </div>
-        @* <div class="col-md-6 mb-3">
-            <label class="form-label">Purchase Price</label>
-            <InputNumber class="form-control" @bind-Value="product.PurchasePrice" />
-        </div>
-        <div class="col-md-6 mb-3">
-            <label class="form-label">Selling Price</label>
-            <InputNumber class="form-control" @bind-Value="product.SellingPrice" />
-        </div> *@
+
         <div class="col-md-6 mb-3">
             <label class="form-label">Quantity</label>
             <InputNumber class="form-control" @bind-Value="product.Quantity" />
@@ -56,6 +50,19 @@
             <label class="form-label">Barcode</label>
             <InputText class="form-control" @bind-Value="product.Barcode" />
         </div>
+
+        <!-- ✅ NEW: Product Image Upload -->
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Product Image</label>
+            <InputFile OnChange="OnFileChange" />
+            @if (!string.IsNullOrEmpty(product.ImagePath))
+            {
+                <div class="mt-2">
+                    <img src="@product.ImagePath" alt="Product Image" class="img-thumbnail" style="max-height: 150px;" />
+                </div>
+            }
+        </div>
+        <!-- ✅ NEW CODE END -->
     </div>
 
     <div class="d-flex justify-content-end mt-0">
@@ -71,45 +78,73 @@
 @code {
     [Parameter] public Guid? Id { get; set; }
     private Product product = new();
+    private IBrowserFile uploadedFile;
+    private string oldImagePath; // ✅ NEW: to remember previous image
 
     protected override async Task OnInitializedAsync()
     {
-        if (Id.HasValue) // route me Id aya to load karo
+        if (Id.HasValue)
         {
             var existing = await ProductService.GetByIdAsync(Id.Value);
             if (existing != null)
+            {
                 product = existing;
+                oldImagePath = existing.ImagePath; // ✅ NEW
+            }
+        }
+    }
+
+    private async Task OnFileChange(InputFileChangeEventArgs e)
+    {
+        uploadedFile = e.File;
+
+        if (uploadedFile != null)
+        {
+            var uploadsFolder = Path.Combine(Env.WebRootPath, "uploads", "products");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            // ✅ NEW: Delete old image if it exists
+            if (!string.IsNullOrEmpty(oldImagePath))
+            {
+                var oldFilePath = Path.Combine(Env.WebRootPath, oldImagePath.TrimStart('/'));
+                if (System.IO.File.Exists(oldFilePath))
+                    System.IO.File.Delete(oldFilePath);
+            }
+
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(uploadedFile.Name)}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var stream = uploadedFile.OpenReadStream(maxAllowedSize: 10_000_000))
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await stream.CopyToAsync(fileStream);
+            }
+
+            // ✅ NEW: Save relative path for database
+            product.ImagePath = $"/uploads/products/{fileName}";
         }
     }
 
     private async Task HandleValidSubmit()
     {
-        if (Id.HasValue) // agar Id aya hai to update hoga
+        if (Id.HasValue)
         {
             var updated = await ProductService.UpdateAsync(product);
             if (updated != null)
-            {
                 Navigation.NavigateTo("/products");
-            }
             else
-            {
                 Console.WriteLine("Failed to update product.");
-            }
         }
-        else // Id nahi aya to naya product add hoga
+        else
         {
             var added = await ProductService.AddAsync(product);
             if (added != null)
-            {
                 Navigation.NavigateTo("/products");
-            }
             else
-            {
                 Console.WriteLine("Failed to add product.");
-            }
         }
     }
 
     private void GoBack() => Navigation.NavigateTo("/products");
 }
-

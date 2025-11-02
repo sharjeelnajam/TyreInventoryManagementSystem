@@ -1,0 +1,117 @@
+﻿@page "/sale-view/{SaleId:guid}/{ProductId:guid}"
+@using Domain
+@using Infrastructure.Services
+@inject ISaleService SaleService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h4 class="mb-3">🧾 View Sale Details</h4>
+
+@if (sale == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card p-3">
+        <!-- Header Info -->
+        <div class="row">
+            <div class="col-md-4">
+                <label>Sale #</label>
+                <input class="form-control" value="@sale.SaleNumber" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Date</label>
+                <input class="form-control" value="@sale.SaleDate.ToString("dd-MMM-yyyy")" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Customer</label>
+                <input class="form-control" value="@sale.Customer?.Name" readonly />
+            </div>
+        </div>
+
+        <!-- Totals -->
+        <div class="row mt-2">
+            <div class="col-md-3">
+                <label>Discount</label>
+                <input class="form-control" value="@sale.Discount?.ToString("N2")" readonly />
+            </div>
+            <div class="col-md-3">
+                <label>Tax</label>
+                <input class="form-control" value="@sale.TaxAmount?.ToString("N2")" readonly />
+            </div>
+            <div class="col-md-3">
+                <label>Total</label>
+                <input class="form-control" value="@sale.TotalAmount.ToString("N2")" readonly />
+            </div>
+            <div class="col-md-3">
+                <label>Net</label>
+                <input class="form-control" value="@sale.NetAmount.ToString("N2")" readonly />
+            </div>
+        </div>
+
+        <hr />
+        <h5>Sale Items</h5>
+
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Product</th>
+                    <th>Brand</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Selling Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (sale.SaleDetails != null && sale.SaleDetails.Any())
+                {
+                    @foreach (var detail in sale.SaleDetails)
+                    {
+                        <tr>
+                            <td>@detail.Product?.ProductName</td>
+                            <td>@detail.Product?.Brand</td>
+                            <td>@detail.Quantity</td>
+                            <td>@detail.UnitPrice.ToString("N2")</td>
+                            <td>@detail.TotalPrice.ToString("N2")</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No sale details found.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="mt-3 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">Back</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid SaleId { get; set; }
+    [Parameter] public Guid ProductId { get; set; }
+
+    private Sale? sale;
+    private List<SaleDetail>? saleDetails;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sale = await SaleService.GetByIdAsync(SaleId);
+
+        // if (sale != null)
+        // {
+        //     saleDetails = await SaleService.GetSaleDetailsBySaleAndProductAsync(sale.Id, ProductId);
+        // }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo($"/salehistory/{ProductId}");
+    }
+}

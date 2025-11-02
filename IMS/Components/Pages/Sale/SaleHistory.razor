@@ -51,7 +51,13 @@
                     @foreach (var detail in saleDetails)
                     {
                         <tr>
-                            <td>@detail.Sale?.SaleNumber</td>
+                            <td>
+                                <a href="@($"/sale-view/{detail.SaleId}/{productId}")"
+                                   class="text-decoration-none text-primary"
+                                   style="cursor:pointer;">
+                                    @detail.Sale?.SaleNumber
+                                </a>
+                            </td>
                             <td>@detail.Sale?.SaleDate.ToString("dd-MMM-yyyy")</td>
                             <td>@detail.Sale?.Customer?.Name</td>
                             <td>@detail.Quantity</td>

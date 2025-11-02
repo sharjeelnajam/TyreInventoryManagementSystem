@@ -71,7 +71,7 @@ namespace Infrastructure.Services
             try
             {
                 purchase.Id = Guid.NewGuid();
-                purchase.CreatedAt = DateTime.UtcNow;
+                purchase.CreatedAt = DateTime.Now;
                 var purchaseDetails = new List<PurchaseDetail>();
 
                 _context.Purchase.Add(purchase);
@@ -80,40 +80,67 @@ namespace Infrastructure.Services
 
                 await _context.SaveChangesAsync();
 
-                // Update stock and history
+                // Update stock, cost price, and history
                 if (purchase.PurchaseDetails != null && purchase.PurchaseDetails.Any())
                 {
-
                     foreach (var detail in purchase.PurchaseDetails)
                     {
+                        // Get current logged-in user
                         var authState = await _authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
                         var currentUser = authState.User;
-                        var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value ?? currentUser.FindFirst("name")?.Value ?? currentUser.Identity?.Name;
+                        var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value
+                            ?? currentUser.FindFirst("name")?.Value
+                            ?? currentUser.Identity?.Name;
 
-                        var stockProduct = _context.StockHistories.FirstOrDefault(p => p.ProductId == detail.ProductId);
+                        // Fetch product
                         var product = await _context.Products.FindAsync(detail.ProductId);
+                        if (product == null)
+                            throw new Exception($"Product with ID {detail.ProductId} not found.");
+
+                        // Capture old stock (before update)
+                        var oldStock = product.Quantity;
+
+                        // Update stock quantity
+                        product.Quantity += detail.Quantity;
+
+                        // Recalculate average cost price using weighted average formula
+                        var oldCost = product.AverageCostPrice;
+                        var newQty = detail.Quantity;
+                        var newCost = detail.UnitPrice;
+
+                        var totalCost = (oldCost * oldStock) + (newCost * newQty);
+                        var totalQty = oldStock + newQty;
+                        product.AverageCostPrice = totalQty == 0 ? 0 : Math.Round(totalCost / totalQty, 2);
+
+                        _context.Update(product);
+
+                        // Check for existing stock history entry for product
+                        var stockProduct = await _context.StockHistories
+                            .FirstOrDefaultAsync(p => p.ProductId == detail.ProductId && p.ReferenceId == purchase.Id);
 
                         if (stockProduct != null)
                         {
-                            stockProduct.NewStockLevel = stockProduct.NewStockLevel + detail.Quantity;
+                            // Update existing record if found
+                            stockProduct.NewStockLevel = product.Quantity;
                             stockProduct.QuantityChanged = detail.Quantity;
                             stockProduct.ActionDate = DateTime.UtcNow;
                             stockProduct.PerformedBy = performedBy;
                             _context.Update(stockProduct);
-
                         }
                         else
                         {
+                            // Add new stock history entry
                             var history = new StockHistory
                             {
                                 ProductId = product.Id,
                                 ActionType = "Purchase",
                                 QuantityChanged = detail.Quantity,
-                                NewStockLevel = detail.Quantity,
+                                PreviousStockLevel = oldStock,
+                                NewStockLevel = product.Quantity,
                                 ReferenceNumber = purchase.PurchaseNumber,
                                 ReferenceId = purchase.Id,
-                                PerformedBy = performedBy, // TODO: Replace with actual user
-                                ActionDate = DateTime.UtcNow
+                                PerformedBy = performedBy,
+                                ActionDate = purchase.PurchaseDate
                             };
                             _context.Add(history);
                         }
@@ -132,10 +159,16 @@ namespace Infrastructure.Services
 
         public async Task UpdatePurchaseAsync(Purchase purchase)
         {
+            // 🔹 NEW CODE START: added transaction handling
+            using var tx = await _context.Database.BeginTransactionAsync();
+            // 🔹 NEW CODE END
+
             try
             {
-                var existing = await _context.Purchase.AsNoTracking().Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == purchase.Id);
-
+                var existing = await _context.Purchase
+                    .AsNoTracking()
+                    .Include(p => p.PurchaseDetails)
+                    .FirstOrDefaultAsync(p => p.Id == purchase.Id);
 
                 if (existing == null)
                     throw new Exception("Purchase not found in DB");
@@ -149,26 +182,27 @@ namespace Infrastructure.Services
                 existing.TotalAmount = purchase.TotalAmount;
                 existing.NetAmount = purchase.NetAmount;
                 existing.PaymentStatus = purchase.PaymentStatus;
-                existing.UpdatedAt = DateTime.UtcNow; // best practice
+                existing.UpdatedAt = DateTime.Now;
 
                 // --- Sync PurchaseDetails ---
                 var updatedDetailIds = purchase.PurchaseDetails?.Select(d => d.Id).ToList() ?? new List<Guid>();
 
                 // Delete missing
-                var toRemove = _context.PurchaseDetails.Where(d => !updatedDetailIds.Contains(d.Id) && d.PurchaseId == purchase.Id).ToList();
+                var toRemove = _context.PurchaseDetails
+                    .Where(d => !updatedDetailIds.Contains(d.Id) && d.PurchaseId == purchase.Id)
+                    .ToList();
                 var availAbleStocks = _context.StockHistories.ToList();
 
                 foreach (var r in toRemove)
                 {
                     var stockProduct = availAbleStocks.FirstOrDefault(p => p.ProductId == r.ProductId);
-                    if(stockProduct != null)
+                    if (stockProduct != null)
                     {
                         stockProduct.NewStockLevel = stockProduct.NewStockLevel - r.Quantity;
                         _context.StockHistories.Update(stockProduct);
                     }
                     _context.PurchaseDetails.Remove(r);
                     await _context.SaveChangesAsync();
-
                 }
 
                 // Add or Update
@@ -176,21 +210,17 @@ namespace Infrastructure.Services
                 {
                     foreach (var detail in purchase.PurchaseDetails)
                     {
-                        //stock product state 5
                         var stockProduct = availAbleStocks.FirstOrDefault(p => p.ProductId == detail.ProductId);
                         var existingDetail = existing.PurchaseDetails.FirstOrDefault(d => d.Id == detail.Id);
 
                         if (existingDetail != null && stockProduct != null)
                         {
-
                             if (detail.Quantity < existingDetail.Quantity)
                             {
-
                                 int newValue = existingDetail.Quantity - detail.Quantity;
 
                                 if (newValue <= stockProduct.NewStockLevel)
                                 {
-                                    // Update existing
                                     existingDetail.ProductId = detail.ProductId;
                                     existingDetail.Quantity = detail.Quantity;
                                     existingDetail.UnitPrice = detail.UnitPrice;
@@ -203,15 +233,13 @@ namespace Infrastructure.Services
                                 }
                                 else
                                 {
-
-                                    throw new Exception($"you can not decrease the quantity becasue available stock is {stockProduct.NewStockLevel}");
+                                    throw new Exception($"you can not decrease the quantity because available stock is {stockProduct.NewStockLevel}");
                                 }
                             }
                             else if (detail.Quantity > existingDetail.Quantity)
                             {
                                 var newValue = detail.Quantity - existingDetail.Quantity;
 
-                                // Update existing
                                 existingDetail.ProductId = detail.ProductId;
                                 existingDetail.Quantity = detail.Quantity;
                                 existingDetail.UnitPrice = detail.UnitPrice;
@@ -222,11 +250,9 @@ namespace Infrastructure.Services
                                 stockProduct.UpdatedAt = DateTime.Now;
                                 _context.StockHistories.Update(stockProduct);
                             }
-
                         }
                         else
                         {
-                            // Add new
                             if (detail.Id == Guid.Empty)
                                 detail.Id = Guid.NewGuid();
 
@@ -240,7 +266,7 @@ namespace Infrastructure.Services
                                 var authState = await _authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
                                 var currentUser = authState.User;
                                 var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value ?? currentUser.FindFirst("name")?.Value ?? currentUser.Identity?.Name;
-                                
+
                                 var newStock = new StockHistory
                                 {
                                     NewStockLevel = detail.Quantity,
@@ -266,18 +292,49 @@ namespace Infrastructure.Services
                 }
 
                 await _context.SaveChangesAsync();
+
+                // 🔹 NEW CODE START: Recalculate product AverageCostPrice and Quantity
+                var productIds = purchase.PurchaseDetails.Select(d => d.ProductId).Distinct().ToList();
+
+                foreach (var pid in productIds)
+                {
+                    var product = await _context.Products.Include(p => p.PurchaseDetails)
+                        .FirstOrDefaultAsync(p => p.Id == pid);
+
+                    if (product != null)
+                    {
+                        var allDetails = await _context.PurchaseDetails
+                            .Where(pd => pd.ProductId == pid)
+                            .ToListAsync();
+
+                        var totalQty = allDetails.Sum(x => x.Quantity);
+                        var totalCost = allDetails.Sum(x => x.UnitPrice * x.Quantity);
+                        product.AverageCostPrice = totalQty == 0 ? 0 : Math.Round(totalCost / totalQty, 2);
+
+                        var purchaseQty = await _context.PurchaseDetails.Where(pd => pd.ProductId == pid).SumAsync(pd => pd.Quantity);
+                        var saleQty = await _context.SaleDetail.Where(sd => sd.ProductId == pid).SumAsync(sd => sd.Quantity);
+                        product.Quantity = purchaseQty - saleQty;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+                // 🔹 NEW CODE END
             }
             catch (DbUpdateConcurrencyException ex)
             {
                 Console.WriteLine("⚠️ Concurrency error: " + ex.Message);
+                await tx.RollbackAsync(); // 🔹 NEW LINE
                 throw;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("❌ Update error: " + ex.Message);
+                await tx.RollbackAsync(); // 🔹 NEW LINE
                 throw;
             }
         }
+
 
         public async Task DeletePurchaseAsync(Guid id)
         {

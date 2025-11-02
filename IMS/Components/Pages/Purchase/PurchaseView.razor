@@ -1,0 +1,108 @@
+﻿@page "/purchase-view/{PurchaseId:guid}/{ProductId:guid}"
+@using Domain
+@using Infrastructure.Services
+@inject IPurchaseService PurchaseService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h4 class="mb-3">🧾 View Purchase Details</h4>
+
+@if (purchase == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card p-3">  
+        <!-- header -->
+        <div class="row">
+            <div class="col-md-4">
+                <label>Purchase #</label>
+                <input class="form-control" value="@purchase.PurchaseNumber" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Date</label>
+                <input class="form-control" value="@purchase.PurchaseDate.ToString("dd-MMM-yyyy")" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Supplier</label>
+                <input class="form-control" value="@purchase.Supplier?.Name" readonly />
+            </div>
+        </div>
+
+        <!-- totals -->
+        <div class="row mt-2">
+            <div class="col-md-3">
+                <label>Discount</label>
+                <input class="form-control" value="@purchase.Discount?.ToString("N2")" readonly />
+            </div>
+            <div class="col-md-3">
+                <label>Tax</label>
+                <input class="form-control" value="@purchase.TaxAmount?.ToString("N2")" readonly />
+            </div>
+            <div class="col-md-3">
+                <label>Total</label>
+                <input class="form-control" value="@purchase.TotalAmount.ToString("N2")" readonly />
+            </div>
+            <div class="col-md-3">
+                <label>Net</label>
+                <input class="form-control" value="@purchase.NetAmount.ToString("N2")" readonly />
+            </div>
+        </div>
+
+        <hr />
+        <h5>Purchase Items</h5>
+
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Product</th>
+                    <th>Brand</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Selling Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (purchase.PurchaseDetails != null && purchase.PurchaseDetails.Any())
+                {
+                    @foreach (var detail in purchase.PurchaseDetails)
+                    {
+                        <tr>
+                            <td>@detail.Product?.ProductName</td>
+                            <td>@detail.Brand</td>
+                            <td>@detail.Quantity</td>
+                            <td>@detail.UnitPrice.ToString("N2")</td>
+                            <td>@detail.SellingPrice.ToString("N2")</td>
+                            <td>@detail.TotalPrice.ToString("N2")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+
+        <div class="mt-3 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">Back</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid PurchaseId { get; set; }
+    [Parameter] public Guid ProductId { get; set; }
+
+    private Purchase? purchase;
+
+    protected override async Task OnInitializedAsync()
+    {
+        purchase = await PurchaseService.GetPurchaseByIdAsync(PurchaseId);
+
+
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo($"/purchasehistory/{ProductId}");
+    }
+}

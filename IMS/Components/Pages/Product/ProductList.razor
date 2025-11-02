@@ -3,6 +3,7 @@
 @using Infrastructure.Services
 @inject IProductService ProductService
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
 <PageTitle>Products</PageTitle>
@@ -34,6 +35,7 @@
             <table class="table table-striped table-hover align-middle">
                 <thead class="table-primary">
                     <tr>
+                        <th>Image</th>
                         <th>Name</th>
                         <th>Brand</th>
                         <th>Tyre Size</th>
@@ -48,18 +50,59 @@
                     @foreach (var item in products)
                     {
                         <tr>
+                            <td class="text-center">
+                                @if (HasValidImage(item.ImagePath))
+                                {
+                                    <div class="d-flex justify-content-center align-items-center position-relative">
+                                        <img src="@GetImageUrl(item.ImagePath)"
+                                             alt="@item.ProductName"
+                                             class="border rounded shadow-sm"
+                                             style="width:60px; height:60px; object-fit:cover;"
+                                             loading="lazy"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                                        <div class="image-fallback d-flex justify-content-center align-items-center text-muted small fst-italic"
+                                             style="width:60px; height:60px; border:1px dashed #ccc; border-radius:8px; display:none;">
+                                            No Image
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="d-flex justify-content-center align-items-center text-muted small fst-italic"
+                                         style="width:60px; height:60px; border:1px dashed #ccc; border-radius:8px;">
+                                        No Image
+                                    </div>
+                                }
+                            </td>
                             <td>@item.ProductName</td>
                             <td>@item.Brand</td>
                             <td>@item.TyreSize</td>
-                            <td>@item.PurchasePrice</td>
-                            <td>@item.SellingPrice</td>
-                            <td>@item.Quantity</td>
-                            <td>@item.Barcode</td>
+                            <td>@FormatPrice(item.PurchasePrice)</td>
+                            <td>@FormatPrice(item.SellingPrice)</td>
                             <td>
-                                <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
-                                   title="Edit" @onclick="() => EditProduct(item.Id)"></i>
-                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
-                                   title="Delete" @onclick="() => DeleteProduct(item.Id)"></i>
+                                <span class="@GetQuantityClass(item.Quantity)">@item.Quantity</span>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.Barcode))
+                                {
+                                    <span class="badge bg-secondary">@item.Barcode</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-2"
+                                        title="Edit"
+                                        @onclick="() => EditProduct(item.Id)">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        title="Delete"
+                                        @onclick="() => DeleteProduct(item.Id)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     }
@@ -69,12 +112,103 @@
     }
 </div>
 
+<style>
+    table.table th, table.table td {
+        vertical-align: middle;
+        text-align: center;
+    }
+
+    .table thead th {
+        white-space: nowrap;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .quantity-low {
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    .quantity-medium {
+        color: #ffc107;
+        font-weight: bold;
+    }
+
+    .quantity-good {
+        color: #198754;
+    }
+
+    .image-fallback {
+        background-color: #f8f9fa;
+    }
+</style>
+
 @code {
     private List<Product>? products;
 
     protected override async Task OnInitializedAsync()
     {
         products = await ProductService.GetAllAsync();
+    }
+
+    // Check if the image path is valid
+    private bool HasValidImage(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath))
+            return false;
+
+        if (imagePath.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Check for common invalid patterns
+        var invalidPatterns = new[] { "no image", "null", "undefined", "none" };
+        if (invalidPatterns.Any(pattern =>
+            imagePath.Contains(pattern, StringComparison.OrdinalIgnoreCase)))
+            return false;
+
+        // Check if it looks like a file path
+        var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
+        return validExtensions.Any(ext =>
+            imagePath.ToLower().Contains(ext));
+    }
+
+    // Helper method to get validated image URL
+    private string GetImageUrl(string? imagePath)
+    {
+        if (!HasValidImage(imagePath))
+            return string.Empty;
+
+        // Clean the path
+        var cleanPath = imagePath!.Trim().Replace("\\", "/");
+
+        // Remove leading slashes if multiple exist
+        while (cleanPath.StartsWith("//"))
+            cleanPath = cleanPath.Substring(1);
+
+        // Ensure it starts with a single slash
+        if (!cleanPath.StartsWith("/"))
+            cleanPath = "/" + cleanPath;
+
+        return cleanPath;
+    }
+
+    // Format price display
+    private string FormatPrice(decimal price)
+    {
+        return price == 0 ? "0.00" : price.ToString("F2");
+    }
+
+    // Get CSS class for quantity based on value
+    private string GetQuantityClass(int quantity)
+    {
+        return quantity switch
+        {
+            0 => "quantity-low",
+            < 10 => "quantity-medium",
+            _ => "quantity-good"
+        };
     }
 
     private void AddProduct() => Navigation.NavigateTo("/products/addedit");
@@ -86,12 +220,8 @@
         if (!confirmed)
             return;
 
-            await ProductService.DeleteAsync(id);
-            products = await ProductService.GetAllAsync();
-            StateHasChanged();
-        
+        await ProductService.DeleteAsync(id);
+        products = await ProductService.GetAllAsync();
+        StateHasChanged();
     }
-
-    [Inject]
-    private IJSRuntime JSRuntime { get; set; } = default!;
 }

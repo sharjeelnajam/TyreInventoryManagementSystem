@@ -34,6 +34,14 @@ namespace Domain
         [Precision(18, 2)]
         public decimal TotalPrice { get; set; }
 
+        // store cost at time of sale (so historical profits are stable)
+        [Precision(18, 2)]
+        public decimal CostPrice { get; set; }
+
+        // profit for this sale detail: (UnitPrice - CostPrice) * Quantity
+        [Precision(18, 2)]
+        public decimal ProfitAmount { get; set; }
+
         // Optional / Useful Fields
         public string? ProductSize { get; set; }   // e.g., "195/65 R15"
         public string? Brand { get; set; }         // e.g., "Michelin"

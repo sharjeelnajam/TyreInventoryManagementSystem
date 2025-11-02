@@ -21,17 +21,6 @@
             <label>Date</label>
             <InputDate @bind-Value="Purchase.PurchaseDate" class="form-control" readonly/>
         </div>
-        <div class="col-md-4">
-            <label>Supplier</label>
-            <InputSelect @bind-Value="Purchase.SupplierId" class="form-control">
-                <option value="">-- Select Supplier --</option>
-                @foreach (var s in suppliers)
-                {
-                    <option value="@s.Id">@s.Name</option>
-                }
-            </InputSelect>
-            <ValidationMessage For="@(() => Purchase.SupplierId)" />
-        </div>
     </div>
 
     <div class="row mt-2">
@@ -43,6 +32,7 @@
             ValueExpression="@(() => Purchase.Discount)"
             class="form-control" />
         </div>
+
         <div class="col-md-3">
             <label>Tax</label>
             <InputNumber TValue="decimal?"
@@ -51,10 +41,12 @@
             ValueExpression="@(() => Purchase.TaxAmount)"
             class="form-control" />
         </div>
+
         <div class="col-md-3">
             <label>Total</label>
             <InputNumber @bind-Value="Purchase.TotalAmount" class="form-control" readonly />
         </div>
+
         <div class="col-md-3">
             <label>Net</label>
             <InputNumber @bind-Value="Purchase.NetAmount" class="form-control" readonly />
@@ -69,6 +61,18 @@
                     <option value="Unpaid">Unpaid</option>
                     <option value="Partial">Partial</option>
                 </InputSelect>
+            </div>
+
+            <div class="col-md-4">
+                <label>Supplier</label>
+                <InputSelect @bind-Value="Purchase.SupplierId" class="form-control">
+                    <option value="">-- Select Supplier --</option>
+                    @foreach (var s in suppliers)
+                    {
+                        <option value="@s.Id">@s.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => Purchase.SupplierId)" />
             </div>
         </div>
     </div>

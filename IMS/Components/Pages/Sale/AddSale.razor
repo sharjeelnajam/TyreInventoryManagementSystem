@@ -23,18 +23,18 @@
 
                         <div class="row">
                             <div class="col-md-4">
-                                <label>Customer</label>
-                                <InputSelect class="form-control" @bind-Value="Sale.CustomerId">
-                                    <option value="">-- Select Customer --</option>
-                                    @foreach (var customer in Customers)
-                                    {
-                                        <option value="@customer.Id">@customer.Name</option>
-                                    }
-                                </InputSelect>
-                                <button type="button" class="btn btn-link p-0 mt-1" @onclick="OpenAddCustomer">
-                                    + Add New Customer
-                                </button>
+                                <label>Sale #</label>
+                                <InputText @bind-Value="Sale.SaleNumber" class="form-control" readonly />
                             </div>
+
+                            <div class="col-md-4">
+                                <label>Date</label>
+                                <InputDate @bind-Value="Sale.SaleDate" class="form-control" readonly />
+                            </div>
+
+                        </div>
+
+                        <div class="row mt-3">
 
                             <div class="col-md-4">
                                 <label>Payment Method</label>
@@ -55,11 +55,25 @@
                                     <option value="Partial">Partial</option>
                                 </InputSelect>
                             </div>
+
+                            <div class="col-md-4">
+                                <label>Customer</label>
+                                <InputSelect class="form-control" @bind-Value="Sale.CustomerId">
+                                    <option value="">-- Select Customer --</option>
+                                    @foreach (var customer in Customers)
+                                    {
+                                        <option value="@customer.Id">@customer.Name</option>
+                                    }
+                                </InputSelect>
+                                <button type="button" class="btn btn-link p-0 mt-1" @onclick="OpenAddCustomer">
+                                    + Add New Customer
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Discount & Tax Section -->
                         <div class="row mt-3">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label>Discount</label>
                                 <InputNumber TValue="decimal?"
                                              Value="Sale.Discount"
@@ -67,7 +81,8 @@
                                              ValueExpression="@(() => Sale.Discount)"
                                              class="form-control" />
                             </div>
-                            <div class="col-md-4">
+
+                            <div class="col-md-6">
                                 <label>Tax (%)</label>
                                 <InputNumber TValue="decimal?"
                                              Value="Sale.TaxAmount"

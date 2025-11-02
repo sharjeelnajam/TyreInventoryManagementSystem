@@ -38,7 +38,12 @@ namespace Domain
         [Required(ErrorMessage = "Quantity is required")]
         public int Quantity { get; set; }
 
+        [Precision(18, 2)]
+        public decimal AverageCostPrice { get; set; }
+
         public string? Barcode { get; set; }
+
+        public string? ImagePath { get; set; }
 
         public ICollection<PurchaseDetail> PurchaseDetails { get; set; }
     }

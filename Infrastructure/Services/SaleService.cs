@@ -46,7 +46,7 @@ namespace Infrastructure.Services
 
             try
             {
-                return await _context.Sale.Include(s => s.SaleDetails).AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+                return await _context.Sale.Include(s => s.SaleDetails).ThenInclude(s => s.Product).Include(s => s.Customer).AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
             }
             catch (Exception ex)
             {
@@ -57,7 +57,6 @@ namespace Infrastructure.Services
 
         public async Task<bool> AddAsync(Sale sale)
         {
-            // Create transaction to ensure all operations succeed or fail together
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
@@ -75,6 +74,15 @@ namespace Infrastructure.Services
                     {
                         detail.SaleId = sale.Id;
                         detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+
+                        // NEW: Fetch cost price & calculate profit
+                        var product = await _context.Products.FindAsync(detail.ProductId);
+                        if (product != null)
+                        {
+                            detail.CostPrice = product.AverageCostPrice;
+                            detail.ProfitAmount = Math.Round((detail.UnitPrice - detail.CostPrice) * detail.Quantity, 2);
+                        }
+
                         saleDetails.Add(detail);
                     }
                 }
@@ -90,12 +98,15 @@ namespace Infrastructure.Services
                 {
                     var authState = await _authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
                     var currentUser = authState.User;
-                    var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value ?? currentUser.FindFirst("name")?.Value ?? currentUser.Identity?.Name;
+                    var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value ??
+                                      currentUser.FindFirst("name")?.Value ??
+                                      currentUser.Identity?.Name;
 
                     foreach (var detail in sale.SaleDetails)
                     {
                         var stockProduct = _context.StockHistories.FirstOrDefault(p => p.ProductId == detail.ProductId);
                         var product = await _context.Products.FindAsync(detail.ProductId);
+
                         if (stockProduct != null)
                         {
                             stockProduct.NewStockLevel = stockProduct.NewStockLevel - detail.Quantity;
@@ -103,27 +114,47 @@ namespace Infrastructure.Services
                             stockProduct.ActionDate = DateTime.UtcNow;
                             _context.Update(stockProduct);
                         }
+
+                        // NEW: Add ProfitHistory record
+                        if (product != null)
+                        {
+                            var profitHistory = new ProfitHistory
+                            {
+                                SaleId = sale.Id,
+                                SaleDetailId = detail.Id,
+                                ProductId = detail.ProductId,
+                                CostPrice = detail.CostPrice,
+                                SellingPrice = detail.UnitPrice,
+                                Quantity = detail.Quantity,
+                                ProfitAmount = detail.ProfitAmount,
+                                RecordedAt = sale.CreatedAt,
+                                PerformedBy = performedBy,
+                                ReferenceNumber = sale.SaleNumber
+                            };
+                            _context.ProfitHistories.Add(profitHistory);
+                        }
                     }
                 }
 
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync(); // Commit only if everything succeeds
+                await transaction.CommitAsync();
                 return true;
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync(); // Rollback if any operation fails
+                await transaction.RollbackAsync();
                 Console.WriteLine($"❌ Error in AddAsync: {ex.Message}");
                 return false;
             }
         }
+
+
 
         public async Task UpdateAsync(Sale sale)
         {
             try
             {
                 var existingSales = await _context.Sale.Include(p => p.SaleDetails).FirstOrDefaultAsync(p => p.Id == sale.Id);
-
 
                 if (existingSales == null)
                     throw new Exception("Purchase not found in DB");
@@ -142,7 +173,7 @@ namespace Infrastructure.Services
                 existingSales.IsApproved = sale.IsApproved;
                 existingSales.UpdatedAt = DateTime.Now; // best practice
 
-                // --- Sync PurchaseDetails ---
+                // --- Sync SaleDetails ---
                 var updatedDetailIds = sale.SaleDetails?.Select(s => s.Id).ToList() ?? new List<Guid>();
 
                 var toRemove = _context.SaleDetail.Where(s => !updatedDetailIds.Contains(s.Id) && s.SaleId == sale.Id).ToList();
@@ -167,21 +198,15 @@ namespace Infrastructure.Services
                 {
                     foreach (var detail in sale.SaleDetails)
                     {
-                        //stock product state 5
                         var stockProduct = availAbleStocks.FirstOrDefault(p => p.ProductId == detail.ProductId);
                         var existingDetail = existingSales.SaleDetails.FirstOrDefault(s => s.Id == detail.Id);
 
-
                         if (existingDetail != null && stockProduct != null)
                         {
-                            //previous value was 5
-                            //3<5
                             if (detail.Quantity < existingDetail.Quantity)
                             {
                                 int newValue = existingDetail.Quantity - detail.Quantity;
 
-
-                                // Update existing
                                 existingDetail.ProductId = detail.ProductId;
                                 existingDetail.Quantity = detail.Quantity;
                                 existingDetail.UnitPrice = detail.UnitPrice;
@@ -190,13 +215,11 @@ namespace Infrastructure.Services
                                 stockProduct.NewStockLevel = stockProduct.NewStockLevel + newValue;
                                 stockProduct.UpdatedAt = DateTime.Now;
                                 _context.StockHistories.Update(stockProduct);
-
                             }
                             else if (detail.Quantity > existingDetail.Quantity)
                             {
                                 var newValue = detail.Quantity - existingDetail.Quantity;
 
-                                // Update existing
                                 existingDetail.ProductId = detail.ProductId;
                                 existingDetail.Quantity = detail.Quantity;
                                 existingDetail.UnitPrice = detail.UnitPrice;
@@ -212,8 +235,43 @@ namespace Infrastructure.Services
                                 existingDetail.UnitPrice = detail.UnitPrice;
                                 existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
                             }
-                                _context.SaleDetail.Update(existingDetail);
 
+                            _context.SaleDetail.Update(existingDetail);
+
+                            // 🟢 NEW: Update ProfitHistory record for edited detail
+                            var profit = await _context.ProfitHistories.FirstOrDefaultAsync(p => p.SaleDetailId == existingDetail.Id);
+                            if (profit != null)
+                            {
+                                var product = await _context.Products.FindAsync(detail.ProductId);
+                                existingDetail.CostPrice = product.AverageCostPrice;
+                                existingDetail.ProfitAmount = Math.Round((detail.UnitPrice - existingDetail.CostPrice) * detail.Quantity, 2);
+
+                                profit.CostPrice = existingDetail.CostPrice;
+                                profit.SellingPrice = existingDetail.UnitPrice;
+                                profit.Quantity = existingDetail.Quantity;
+                                profit.ProfitAmount = existingDetail.ProfitAmount;
+                                profit.RecordedAt = DateTime.Now;
+
+                                _context.ProfitHistories.Update(profit);
+                            }
+                            else
+                            {
+                                var product = await _context.Products.FindAsync(detail.ProductId);
+                                var ph = new ProfitHistory
+                                {
+                                    SaleId = existingSales.Id,
+                                    SaleDetailId = detail.Id,
+                                    ProductId = detail.ProductId,
+                                    CostPrice = product.AverageCostPrice,
+                                    SellingPrice = detail.UnitPrice,
+                                    Quantity = detail.Quantity,
+                                    ProfitAmount = Math.Round((detail.UnitPrice - product.AverageCostPrice) * detail.Quantity, 2),
+                                    RecordedAt = DateTime.Now,
+                                    ReferenceNumber = existingSales.SaleNumber
+                                };
+                                _context.ProfitHistories.Add(ph);
+                            }
+                            // 🟢 END NEW
                         }
                         else
                         {
@@ -228,7 +286,40 @@ namespace Infrastructure.Services
                             _context.StockHistories.Update(stockProduct);
                             stockProduct.UpdatedAt = DateTime.Now;
 
-                           _context.SaleDetail.Add(detail);
+                            _context.SaleDetail.Add(detail);
+
+                            // 🟢 NEW: Add new ProfitHistory + StockHistory entries for new details
+                            var product = await _context.Products.FindAsync(detail.ProductId);
+                            detail.CostPrice = product.AverageCostPrice;
+                            detail.ProfitAmount = Math.Round((detail.UnitPrice - product.AverageCostPrice) * detail.Quantity, 2);
+
+                            var phNew = new ProfitHistory
+                            {
+                                SaleId = existingSales.Id,
+                                SaleDetailId = detail.Id,
+                                ProductId = detail.ProductId,
+                                CostPrice = detail.CostPrice,
+                                SellingPrice = detail.UnitPrice,
+                                Quantity = detail.Quantity,
+                                ProfitAmount = detail.ProfitAmount,
+                                RecordedAt = DateTime.Now,
+                                ReferenceNumber = existingSales.SaleNumber
+                            };
+                            _context.ProfitHistories.Add(phNew);
+
+                            var shNew = new StockHistory
+                            {
+                                ProductId = detail.ProductId,
+                                ActionType = "Sale",
+                                QuantityChanged = -detail.Quantity,
+                                PreviousStockLevel = stockProduct.NewStockLevel + detail.Quantity,
+                                NewStockLevel = stockProduct.NewStockLevel,
+                                ReferenceId = existingSales.Id,
+                                ReferenceNumber = existingSales.SaleNumber,
+                                ActionDate = DateTime.Now
+                            };
+                            _context.StockHistories.Add(shNew);
+                            // 🟢 END NEW
                         }
                     }
                 }
@@ -246,6 +337,7 @@ namespace Infrastructure.Services
                 throw;
             }
         }
+
 
         public async Task<bool> DeleteAsync(Guid id)
         {
