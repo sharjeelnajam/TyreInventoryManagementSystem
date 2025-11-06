@@ -1,3 +1,11 @@
 ﻿@page "/"
-
 <PageTitle>Home</PageTitle>
+@* @if (IsAdmin)
+{
+    <IMS.Components.Pages.DashBoard.Dashboard />
+}
+else
+{
+    <h1>Welcome to IMS!</h1>
+} *@
+

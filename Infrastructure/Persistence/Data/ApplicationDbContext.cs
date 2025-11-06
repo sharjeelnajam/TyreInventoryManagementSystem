@@ -56,4 +56,5 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<PurchaseDetail> PurchaseDetails { get; set; }
     public DbSet<StockHistory> StockHistories { get; set; }
     public DbSet<ProfitHistory> ProfitHistories { get; set; }
+    public DbSet<Expense> Expenses { get; set; }
 }

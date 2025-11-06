@@ -1,14 +1,19 @@
 ﻿@page "/dashboard"
+@attribute [Authorize(Roles = "Admin")]
+
 @using Infrastructure.Services
+@using Domain
 @using System.Globalization
+@using Microsoft.AspNetCore.Authorization
+@inject IStaffService staffService
+@inject ICustomerService customerService
 @inject IProfitReportService ProfitReportService
+@inject IProductService productService
 @rendermode InteractiveServer
 
 <PageTitle>Dashboard</PageTitle>
 
 <div class="container mt-4">
-    <h3 class="fw-bold mb-4">📊 Business Dashboard Overview</h3>
-
     @if (isLoading)
     {
         <div class="text-center mt-5">
@@ -19,59 +24,93 @@
     }
     else
     {
-        <!-- Profit Summary Cards -->
-        <div class="row g-4">
-            <div class="col-sm-6 col-lg-3">
-                <div class="card shadow-sm border-0 text-white" style="background-color:#ffc107;">
-                    <div class="card-body d-flex justify-content-between align-items-center">
+        <!-- Filter -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white fw-bold">
+                <i class="bi bi-funnel me-2"></i>Profit Filter
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Start Date</label>
+                        <input type="date" class="form-control" @bind="startDate" @bind:format="yyyy-MM-dd" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">End Date</label>
+                        <input type="date" class="form-control" @bind="endDate" @bind:format="yyyy-MM-dd" />
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" @onclick="ApplyFilter">
+                            <i class="bi bi-filter-circle me-2"></i>
+                            Apply Filter
+                        </button>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(filterMessage))
+                {
+                    <div class="mt-2 text-info small">
+                        <i class="bi bi-info-circle me-1"></i>@filterMessage
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Summary cards -->
+        <div class="row g-3 align-items-stretch">
+            <div class="col-sm-6 col-lg-3 d-flex">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card" style="background-color:#5a6268;">
+                    <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
-                            <h6 class="fw-bold mb-1">Today's Profit</h6>
-                            <h4 class="fw-bold">@TodayProfit.ToString("C", new CultureInfo("ur-PK"))</h4>
+                            <h6 class="fw-bold mb-1 small">Filtered Profit</h6>
+                            <h5 class="fw-bold mb-0">@MonthlyProfit.ToString("C", new CultureInfo("ur-PK"))</h5>
+                            <small class="opacity-75">
+                                @(startDate.HasValue && endDate.HasValue
+                                    ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
+                                    : "Current Month")
+                            </small>
                         </div>
-                        <i class="bi bi-cash-coin fs-2 opacity-75"></i>
+                        <i class="bi bi-cash-coin fs-3 opacity-75"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="col-sm-6 col-lg-3">
-                <div class="card shadow-sm border-0 text-white" style="background-color:#17a2b8;">
-                    <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="col-sm-6 col-lg-3 d-flex">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card" style="background-color:#17a2b8;">
+                    <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
-                            <h6 class="fw-bold mb-1">Weekly Profit</h6>
-                            <h4 class="fw-bold">@WeeklyProfit.ToString("C", new CultureInfo("ur-PK"))</h4>
+                            <h6 class="fw-bold mb-1 small">Total Staff</h6>
+                            <h5 class="fw-bold mb-0">@Staffs.Count()</h5>
                         </div>
-                        <i class="bi bi-bar-chart-line fs-2 opacity-75"></i>
+                        <i class="bi bi-people fs-3 opacity-75"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="col-sm-6 col-lg-3">
-                <div class="card shadow-sm border-0 text-white" style="background-color:#007bff;">
-                    <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="col-sm-6 col-lg-3 d-flex">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card" style="background-color:#007bff;">
+                    <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
-                            <h6 class="fw-bold mb-1">Monthly Profit</h6>
-                            <h4 class="fw-bold">@MonthlyProfit.ToString("C", new CultureInfo("ur-PK"))</h4>
+                            <h6 class="fw-bold mb-1 small">Total Customer</h6>
+                            <h5 class="fw-bold mb-0">@customers.Count()</h5>
                         </div>
-                        <i class="bi bi-calendar3 fs-2 opacity-75"></i>
+                        <i class="bi bi-person-badge fs-3 opacity-75"></i>
                     </div>
                 </div>
             </div>
 
-            <div class="col-sm-6 col-lg-3">
-                <div class="card shadow-sm border-0 text-white" style="background-color:#28a745;">
-                    <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="col-sm-6 col-lg-3 d-flex">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card" style="background-color:#28a745;">
+                    <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
-                            <h6 class="fw-bold mb-1">Total Profit</h6>
-                            <h4 class="fw-bold">@TotalProfit.ToString("C", new CultureInfo("ur-PK"))</h4>
+                            <h6 class="fw-bold mb-1 small">Total Products</h6>
+                            <h5 class="fw-bold mb-0">@products.Count()</h5>
                         </div>
-                        <i class="bi bi-graph-up-arrow fs-2 opacity-75"></i>
+                        <i class="bi bi-box-seam fs-3 opacity-75"></i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Divider -->
-        <hr class="my-4" />
 
         <!-- Future Expansion Row -->
         <div class="row g-4">
@@ -103,21 +142,49 @@
 </div>
 
 @code {
-    private decimal TotalProfit;
+    private List<Product> products = new();
+    private List<Customer> customers = new();
+    private List<Staff> Staffs = new();
     private decimal MonthlyProfit;
-    private decimal WeeklyProfit;
-    private decimal TodayProfit;
     private bool isLoading = true;
+
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private string filterMessage = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         isLoading = true;
 
-        TodayProfit = await ProfitReportService.GetTodayProfitAsync();
-        WeeklyProfit = await ProfitReportService.GetWeekProfitAsync();
-        MonthlyProfit = await ProfitReportService.GetMonthProfitAsync();
-        TotalProfit = await ProfitReportService.GetYearProfitAsync();
+        var today = DateTime.Today;
+        startDate = new DateTime(today.Year, today.Month, 1);
+        endDate = startDate.Value.AddMonths(1).AddDays(-1);
+
+        await LoadData();
 
         isLoading = false;
+    }
+
+    private async Task LoadData()
+    {
+        if (startDate.HasValue && endDate.HasValue)
+        {
+            MonthlyProfit = await ProfitReportService.GetProfitByDateRangeAsync(startDate.Value, endDate.Value);
+            filterMessage = $"Showing profit from {startDate.Value:MMM dd, yyyy} to {endDate.Value:MMM dd, yyyy}";
+        }
+        else
+        {
+            MonthlyProfit = await ProfitReportService.GetMonthProfitAsync();
+            filterMessage = "Showing current month profit";
+        }
+
+        Staffs = await staffService.GetAllStaffAsync();
+        customers = await customerService.GetCustomersAsync();
+        products = await productService.GetAllAsync();
+    }
+
+    private async Task ApplyFilter()
+    {
+        await LoadData();
     }
 }

@@ -8,9 +8,8 @@ namespace Domain.Enums
 {
     public enum CustomerType
     {
-        WalkIn = 1,
-        Regular = 2,
-        Corporate = 3,
-        Credit = 4
+        Retail = 1,
+        Whole_Sale = 2,
+        Trade = 3
     }
 }

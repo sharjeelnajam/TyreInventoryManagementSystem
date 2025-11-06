@@ -51,28 +51,28 @@
                     {
                         <tr>
                             <td class="text-center">
-                                @if (HasValidImage(item.ImagePath))
-                                {
-                                    <div class="d-flex justify-content-center align-items-center position-relative">
+                                <div class="d-flex justify-content-center align-items-center position-relative" style="width:60px; height:60px; margin: 0 auto;">
+                                    @if (HasValidImage(item.ImagePath))
+                                    {
                                         <img src="@GetImageUrl(item.ImagePath)"
                                              alt="@item.ProductName"
-                                             class="border rounded shadow-sm"
-                                             style="width:60px; height:60px; object-fit:cover;"
+                                             class="border rounded shadow-sm product-image"
+                                             style="width:100%; height:100%; object-fit:cover; position:absolute; top:0; left:0;"
                                              loading="lazy"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                                        <div class="image-fallback d-flex justify-content-center align-items-center text-muted small fst-italic"
-                                             style="width:60px; height:60px; border:1px dashed #ccc; border-radius:8px; display:none;">
+                                        <div class="image-fallback d-none justify-content-center align-items-center text-muted small fst-italic"
+                                             style="width:100%; height:100%; border:1px dashed #ccc; border-radius:8px; background-color:#f8f9fa;">
                                             No Image
                                         </div>
-                                    </div>
-                                }
-                                else
-                                {
-                                    <div class="d-flex justify-content-center align-items-center text-muted small fst-italic"
-                                         style="width:60px; height:60px; border:1px dashed #ccc; border-radius:8px;">
-                                        No Image
-                                    </div>
-                                }
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-center align-items-center text-muted small fst-italic"
+                                             style="width:100%; height:100%; border:1px dashed #ccc; border-radius:8px; background-color:#f8f9fa;">
+                                            No Image
+                                        </div>
+                                    }
+                                </div>
                             </td>
                             <td>@item.ProductName</td>
                             <td>@item.Brand</td>
@@ -93,16 +93,10 @@
                                 }
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary me-2"
-                                        title="Edit"
-                                        @onclick="() => EditProduct(item.Id)">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger"
-                                        title="Delete"
-                                        @onclick="() => DeleteProduct(item.Id)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
+                                   title="Edit" @onclick="() => EditProduct(item.Id)"></i>
+                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                   title="Delete" @onclick="() => DeleteProduct(item.Id)"></i>
                             </td>
                         </tr>
                     }
@@ -153,45 +147,50 @@
         products = await ProductService.GetAllAsync();
     }
 
-    // Check if the image path is valid
+    // Improved image validation
     private bool HasValidImage(string? imagePath)
     {
         if (string.IsNullOrWhiteSpace(imagePath))
             return false;
 
-        if (imagePath.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+        // Check for explicit invalid values
+        var invalidValues = new[] { "NULL", "null", "undefined", "none", "no image", "-", "N/A", "test", "default" };
+        if (invalidValues.Any(value =>
+            imagePath.Equals(value, StringComparison.OrdinalIgnoreCase)))
             return false;
 
-        // Check for common invalid patterns
-        var invalidPatterns = new[] { "no image", "null", "undefined", "none" };
-        if (invalidPatterns.Any(pattern =>
-            imagePath.Contains(pattern, StringComparison.OrdinalIgnoreCase)))
-            return false;
+        // Check if it's a valid file path with extension
+        var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg" };
+        var hasValidExtension = validExtensions.Any(ext =>
+            imagePath.ToLower().EndsWith(ext));
 
-        // Check if it looks like a file path
-        var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
-        return validExtensions.Any(ext =>
-            imagePath.ToLower().Contains(ext));
+        // Also check if it contains common image path patterns
+        var hasImagePattern = imagePath.Contains("/images/") ||
+                             imagePath.Contains("/img/") ||
+                             imagePath.Contains("upload") ||
+                             imagePath.Contains("product");
+
+        return hasValidExtension || hasImagePattern;
     }
 
-    // Helper method to get validated image URL
+    // Improved URL generation
     private string GetImageUrl(string? imagePath)
     {
         if (!HasValidImage(imagePath))
             return string.Empty;
 
-        // Clean the path
-        var cleanPath = imagePath!.Trim().Replace("\\", "/");
+        var cleanPath = imagePath!.Trim();
 
-        // Remove leading slashes if multiple exist
-        while (cleanPath.StartsWith("//"))
-            cleanPath = cleanPath.Substring(1);
+        // If it's already a full URL, return as is
+        if (cleanPath.StartsWith("http://") || cleanPath.StartsWith("https://"))
+            return cleanPath;
 
-        // Ensure it starts with a single slash
-        if (!cleanPath.StartsWith("/"))
-            cleanPath = "/" + cleanPath;
+        // Handle relative paths
+        if (cleanPath.StartsWith("/"))
+            return cleanPath;
 
-        return cleanPath;
+        // Ensure it starts with a slash for relative paths
+        return "/" + cleanPath;
     }
 
     // Format price display

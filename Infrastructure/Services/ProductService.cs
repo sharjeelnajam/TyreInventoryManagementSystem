@@ -92,9 +92,18 @@ namespace Infrastructure.Services
                 existing.Quantity = product.Quantity;
                 existing.Barcode = product.Barcode;
 
+                if (!string.IsNullOrEmpty(product.ImagePath))
+                {
+                    existing.ImagePath = product.ImagePath;
+                }
+                // If product.ImagePath is null/empty and you want to allow image removal:
+                else if (product.ImagePath == null)
+                {
+                    existing.ImagePath = null; // This allows removing the image
+                }
+
                 existing.UpdatedAt = DateTime.UtcNow;
 
-                _context.Products.Update(existing);
                 await _context.SaveChangesAsync();
 
                 return existing;

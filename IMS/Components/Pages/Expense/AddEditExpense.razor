@@ -1,0 +1,195 @@
+﻿@using Domain
+@using Domain.Enums
+@using Infrastructure.Services
+@inject IExpenseService ExpenseService
+@inject IJSRuntime JS
+
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header  text-black">
+                    <h5 class="modal-title">@ModalTitle</h5>
+                    <button type="button" class="btn-close" @onclick="HideModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@expenses" OnValidSubmit="SaveAll">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        @if (!isEditMode)
+                        {
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label>Date</label>
+                                    <InputDate @bind-Value="commonDate" class="form-control" readonly />
+                                </div>
+                                <div class="col-md-8">
+                                    <label>Notes (optional)</label>
+                                    <InputText @bind-Value="commonNote" class="form-control" placeholder="Enter general notes" />
+                                </div>
+                            </div>
+
+                            <h5>Expense Items</h5>
+                        }
+
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Amount (Rs)</th>
+                                    @if (!isEditMode)
+                                    {
+                                        <th>Description</th>
+                                        <th style="width:50px;text-align:center;">Action</th>
+                                    }
+                                    else
+                                    {
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var expense in expenses)
+                                {
+                                    <tr @key="expense.Id">
+                                        <td><InputText class="form-control form-control-sm" @bind-Value="expense.Title" /></td>
+                                        <td>
+                                            <InputSelect class="form-select form-select-sm" @bind-Value="expense.Category">
+                                                @foreach (var cat in Enum.GetValues<ExpenseCategory>())
+                                                {
+                                                    <option value="@cat">@cat</option>
+                                                }
+                                            </InputSelect>
+                                        </td>
+                                        <td><InputNumber class="form-control form-control-sm" @bind-Value="expense.Amount" /></td>
+                                        @if (isEditMode)
+                                        {
+                                            <td><InputDate class="form-control form-control-sm" @bind-Value="expense.Date" /></td>
+                                        }
+                                        <td><InputText class="form-control form-control-sm" @bind-Value="expense.Description" /></td>
+                                        @if (!isEditMode)
+                                        {
+                                            <td style="text-align:center;">
+                                                <button class="btn btn-sm btn-danger" type="button" @onclick="() => ConfirmDelete(expense)">X</button>
+                                            </td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        @if (!isEditMode)
+                        {
+                            <button class="btn btn-sm btn-outline-primary mt-2" type="button" @onclick="AddRow">
+                                + Add Expense
+                            </button>
+                        }
+
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" class="btn btn-success me-2">💾 Save</button>
+                            <button type="button" class="btn btn-secondary" @onclick="HideModal">Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .modal {
+        display: block;
+    }
+
+        .modal.fade:not(.show) {
+            display: none;
+        }
+</style>
+
+@code {
+    private List<Expense> expenses = new();
+    private DateTime commonDate = DateTime.Today;
+    private string? commonNote;
+    private string ModalTitle = "Add Expense";
+    private bool IsVisible;
+
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private bool isEditMode => SelectedExpense != null;
+    private Expense? SelectedExpense;
+
+    public void ShowModal(Expense? exp)
+    {
+        SelectedExpense = exp;
+        if (exp != null)
+        {
+            ModalTitle = "Edit Expense";
+            expenses = new List<Expense>
+            {
+                new Expense
+                {
+                    Id = exp.Id,
+                    Title = exp.Title,
+                    Amount = exp.Amount,
+                    Category = exp.Category,
+                    Date = exp.Date,
+                    Description = exp.Description
+                }
+            };
+        }
+        else
+        {
+            ModalTitle = "Add Expense";
+            expenses = new List<Expense> { new Expense { Id = Guid.NewGuid(), Date = DateTime.Today } };
+        }
+
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    private void HideModal() => IsVisible = false;
+
+    private void AddRow() => expenses.Add(new Expense { Id = Guid.NewGuid(), Date = commonDate });
+
+    private async Task ConfirmDelete(Expense expense)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this expense?");
+        if (confirmed)
+        {
+            RemoveRow(expense);
+        }
+    }
+
+    private void RemoveRow(Expense expense)
+    {
+        if (expenses.Count > 1)
+            expenses.Remove(expense);
+    }
+
+    private async Task SaveAll()
+    {
+        if (isEditMode)
+        {
+            var exp = expenses.First();
+            await ExpenseService.UpdateAsync(exp);
+        }
+        else
+        {
+            foreach (var exp in expenses)
+            {
+                exp.Date = commonDate;
+                exp.Description = string.IsNullOrEmpty(exp.Description) ? commonNote : exp.Description;
+
+                if (!string.IsNullOrWhiteSpace(exp.Title) && exp.Amount > 0)
+                    await ExpenseService.AddAsync(exp);
+            }
+        }
+
+        IsVisible = false;
+        await OnSaved.InvokeAsync();
+    }
+}

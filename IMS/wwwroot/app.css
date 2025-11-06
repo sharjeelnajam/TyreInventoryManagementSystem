@@ -49,3 +49,14 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+.dashboard-card {
+    min-height: 120px; /* smaller height */
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+    /* subtle hover lift */
+    .dashboard-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }

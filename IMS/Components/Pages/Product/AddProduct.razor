@@ -51,18 +51,37 @@
             <InputText class="form-control" @bind-Value="product.Barcode" />
         </div>
 
-        <!-- ✅ NEW: Product Image Upload -->
+        <!-- Product Image Upload -->
         <div class="col-md-6 mb-3">
             <label class="form-label">Product Image</label>
             <InputFile OnChange="OnFileChange" />
-            @if (!string.IsNullOrEmpty(product.ImagePath))
+
+            @if (HasValidImage(product.ImagePath))
             {
                 <div class="mt-2">
+                    <p class="small text-muted mb-1">Current Image:</p>
                     <img src="@product.ImagePath" alt="Product Image" class="img-thumbnail" style="max-height: 150px;" />
+                    <div class="mt-1">
+                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveImage">
+                            <i class="bi bi-trash"></i> Remove Image
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="mt-2 text-muted small">
+                    <i class="bi bi-image"></i> No image uploaded
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(uploadStatus))
+            {
+                <div class="alert alert-info mt-2 small">
+                    @uploadStatus
                 </div>
             }
         </div>
-        <!-- ✅ NEW CODE END -->
     </div>
 
     <div class="d-flex justify-content-end mt-0">
@@ -79,7 +98,8 @@
     [Parameter] public Guid? Id { get; set; }
     private Product product = new();
     private IBrowserFile uploadedFile;
-    private string oldImagePath; // ✅ NEW: to remember previous image
+    private string originalImagePath;
+    private string uploadStatus;
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,61 +109,149 @@
             if (existing != null)
             {
                 product = existing;
-                oldImagePath = existing.ImagePath; // ✅ NEW
+                originalImagePath = existing.ImagePath; // Store original image path
             }
         }
     }
 
     private async Task OnFileChange(InputFileChangeEventArgs e)
     {
-        uploadedFile = e.File;
-
-        if (uploadedFile != null)
+        try
         {
-            var uploadsFolder = Path.Combine(Env.WebRootPath, "uploads", "products");
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
+            uploadedFile = e.File;
+            uploadStatus = "Uploading image...";
 
-            // ✅ NEW: Delete old image if it exists
-            if (!string.IsNullOrEmpty(oldImagePath))
+            if (uploadedFile != null)
             {
-                var oldFilePath = Path.Combine(Env.WebRootPath, oldImagePath.TrimStart('/'));
-                if (System.IO.File.Exists(oldFilePath))
-                    System.IO.File.Delete(oldFilePath);
+                // Validate file type
+                var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
+                var fileExtension = Path.GetExtension(uploadedFile.Name).ToLower();
+
+                if (!validExtensions.Contains(fileExtension))
+                {
+                    uploadStatus = "Invalid file type. Please upload an image file.";
+                    return;
+                }
+
+                // Delete old image if it exists and is different from original
+                if (!string.IsNullOrEmpty(product.ImagePath) && product.ImagePath != originalImagePath)
+                {
+                    DeleteImageFile(product.ImagePath);
+                }
+
+                var uploadsFolder = Path.Combine(Env.WebRootPath, "uploads", "products");
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = $"{Guid.NewGuid()}{fileExtension}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var stream = uploadedFile.OpenReadStream(maxAllowedSize: 10_000_000))
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await stream.CopyToAsync(fileStream);
+                }
+
+                product.ImagePath = $"/uploads/products/{fileName}";
+                uploadStatus = "Image uploaded successfully!";
+
+                StateHasChanged();
             }
+        }
+        catch (Exception ex)
+        {
+            uploadStatus = $"Error uploading image: {ex.Message}";
+        }
+    }
 
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(uploadedFile.Name)}";
-            var filePath = Path.Combine(uploadsFolder, fileName);
-
-            using (var stream = uploadedFile.OpenReadStream(maxAllowedSize: 10_000_000))
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
+    private void RemoveImage()
+    {
+        if (!string.IsNullOrEmpty(product.ImagePath))
+        {
+            // Only delete if this is a newly uploaded image (not the original)
+            if (product.ImagePath != originalImagePath)
             {
-                await stream.CopyToAsync(fileStream);
+                DeleteImageFile(product.ImagePath);
             }
-
-            // ✅ NEW: Save relative path for database
-            product.ImagePath = $"/uploads/products/{fileName}";
+            product.ImagePath = null;
+            uploadStatus = "Image removed!";
+            StateHasChanged();
         }
     }
 
     private async Task HandleValidSubmit()
     {
-        if (Id.HasValue)
+        try
         {
-            var updated = await ProductService.UpdateAsync(product);
-            if (updated != null)
-                Navigation.NavigateTo("/products");
+            bool success;
+
+            if (Id.HasValue)
+            {
+                // If no new image was uploaded and image was removed, keep original
+                if (string.IsNullOrEmpty(product.ImagePath) && !string.IsNullOrEmpty(originalImagePath))
+                {
+                    product.ImagePath = originalImagePath;
+                }
+
+                var updated = await ProductService.UpdateAsync(product);
+                success = updated != null;
+
+                if (success && !string.IsNullOrEmpty(originalImagePath) && product.ImagePath != originalImagePath)
+                {
+                    // Delete original image only after successful update
+                    DeleteImageFile(originalImagePath);
+                }
+            }
             else
-                Console.WriteLine("Failed to update product.");
+            {
+                var added = await ProductService.AddAsync(product);
+                success = added != null;
+            }
+
+            if (success)
+            {
+                Navigation.NavigateTo("/products");
+            }
+            else
+            {
+                uploadStatus = "Failed to save product.";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            var added = await ProductService.AddAsync(product);
-            if (added != null)
-                Navigation.NavigateTo("/products");
-            else
-                Console.WriteLine("Failed to add product.");
+            uploadStatus = $"Error saving product: {ex.Message}";
         }
+    }
+
+    private void DeleteImageFile(string imagePath)
+    {
+        if (string.IsNullOrEmpty(imagePath) || !imagePath.StartsWith("/uploads/"))
+            return;
+
+        try
+        {
+            var fullPath = Path.Combine(Env.WebRootPath, imagePath.TrimStart('/'));
+            if (System.IO.File.Exists(fullPath))
+            {
+                System.IO.File.Delete(fullPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting image file: {ex.Message}");
+        }
+    }
+
+    private bool HasValidImage(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath))
+            return false;
+
+        var invalidValues = new[] { "NULL", "null", "undefined", "none", "no image", "-", "N/A" };
+        if (invalidValues.Any(value => imagePath.Equals(value, StringComparison.OrdinalIgnoreCase)))
+            return false;
+
+        return true;
     }
 
     private void GoBack() => Navigation.NavigateTo("/products");

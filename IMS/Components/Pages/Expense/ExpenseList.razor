@@ -1,0 +1,101 @@
+﻿@page "/expenses"
+@using Domain
+@using Infrastructure.Services
+@inject IExpenseService ExpenseService
+@inject IJSRuntime jSRuntime
+@rendermode InteractiveServer
+@inject IJSRuntime JS
+
+<PageTitle>Expenses</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold"><i class="bi bi-wallet2 me-2"></i> Expense Management</h3>
+        <button class="btn btn-primary" @onclick="() => AddEditRef.ShowModal(null)">
+            <i class="bi bi-plus-circle me-1"></i> Add Expense
+        </button>
+    </div>
+
+    @if (expenses == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Loading expenses...</p>
+        </div>
+    }
+    else if (!expenses.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i> No expenses found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Date</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Amount (Rs.)</th>
+                        <th>Description</th>
+                        <th style="width:130px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var exp in expenses.OrderByDescending(e => e.Date))
+                    {
+                        <tr>
+                            <td>@exp.Date.ToString("dd-MMM-yyyy")</td>
+                            <td>@exp.Title</td>
+                            <td>@exp.Category</td>
+                            <td>@exp.Amount.ToString("N0")</td>
+                            <td>@exp.Description</td>
+                            <td>
+                                <i class="bi bi-pencil-square text-primary fs-5 me-2 cursor-pointer"
+                                   title="Edit" @onclick="() => AddEditRef.ShowModal(exp)"></i>
+                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                   title="Delete" @onclick="() => ConfirmDelete(exp.Id)"></i>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- Add/Edit Expense Component (handles its own modal) -->
+<AddEditExpense @ref="AddEditRef" OnSaved="ReloadExpenses" />
+
+@code {
+    private List<Expense>? expenses;
+    private AddEditExpense? AddEditRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadExpenses();
+    }
+
+    private async Task ReloadExpenses()
+    {
+        expenses = await ExpenseService.GetAllAsync();
+        StateHasChanged();
+    }
+
+    private async Task ConfirmDelete(Guid id)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this expense?");
+        if (confirmed)
+        {
+           await DeleteExpense(id);
+        }
+    }
+
+    private async Task DeleteExpense(Guid id)
+    {
+        await ExpenseService.DeleteAsync(id);
+        await ReloadExpenses();
+    }
+}
