@@ -18,10 +18,17 @@ namespace IMS.Components.Pages
             {
                 if (user.IsInRole("Admin"))
                 {
-                    // ✅ redirect admin users immediately
+                    // Redirect admin users immediately
                     NavigationManager.NavigateTo("/dashboard", forceLoad: true);
-                    return;
                 }
+                // If user is authenticated but not admin, do nothing or redirect somewhere else if needed
+                return;
+            }
+
+            // Only redirect to login if user is NOT authenticated and is on the home page
+            if (NavigationManager.Uri.Equals("https://localhost:7172/"))
+            {
+                NavigationManager.NavigateTo("/Account/Login", forceLoad: true);
             }
         }
     }

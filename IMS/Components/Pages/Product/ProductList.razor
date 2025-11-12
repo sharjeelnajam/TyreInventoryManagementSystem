@@ -39,9 +39,6 @@
                         <th>Name</th>
                         <th>Brand</th>
                         <th>Tyre Size</th>
-                        <th>Purchase</th>
-                        <th>Selling</th>
-                        <th>Qty</th>
                         <th>Barcode</th>
                         <th style="width:150px;">Actions</th>
                     </tr>
@@ -77,11 +74,6 @@
                             <td>@item.ProductName</td>
                             <td>@item.Brand</td>
                             <td>@item.TyreSize</td>
-                            <td>@FormatPrice(item.PurchasePrice)</td>
-                            <td>@FormatPrice(item.SellingPrice)</td>
-                            <td>
-                                <span class="@GetQuantityClass(item.Quantity)">@item.Quantity</span>
-                            </td>
                             <td>
                                 @if (!string.IsNullOrEmpty(item.Barcode))
                                 {

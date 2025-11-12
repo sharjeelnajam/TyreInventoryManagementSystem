@@ -1,4 +1,4 @@
-﻿@page "/tenants"
+﻿@page "/branches"
 @using Domain
 @using Infrastructure.Services
 @inject ITenantService TenantService
@@ -144,8 +144,8 @@
         isLoading = false;
     }
 
-    private void AddTenant() => Navigation.NavigateTo("/tenants/addedit");
-    private void EditTenant(Guid id) => Navigation.NavigateTo($"/tenants/addedit/{id}");
+    private void AddTenant() => Navigation.NavigateTo("/branches/addedit");
+    private void EditTenant(Guid id) => Navigation.NavigateTo($"/branches/addedit/{id}");
 
     private async Task DeleteTenant(Guid id)
     {

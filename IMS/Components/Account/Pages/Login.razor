@@ -156,6 +156,12 @@
                     NavigationManager.NavigateTo("/dashboard", forceLoad: true);
                     return;
                 }
+                else if (await SignInManager.UserManager.IsInRoleAsync(user, "SuperAdmin"))
+                {
+
+                    NavigationManager.NavigateTo("/branches", forceLoad: true);
+                    return;
+                }
                 else
                 {
                     _roleToSaveAfterRender = "User";

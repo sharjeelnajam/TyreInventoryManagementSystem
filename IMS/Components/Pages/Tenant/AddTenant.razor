@@ -1,4 +1,4 @@
-﻿@page "/tenants/addedit/{Id:guid?}"
+﻿@page "/branches/addedit/{Id:guid?}"
 @using Domain
 @using Infrastructure.Services
 @inject ITenantService TenantService
@@ -91,11 +91,11 @@
             await TenantService.AddTenantAsync(tenant, Guid.Empty);
         }
 
-        Navigation.NavigateTo("/tenants");
+        Navigation.NavigateTo("/branches");
     }
 
     private void Cancel()
     {
-        Navigation.NavigateTo("/tenants");
+        Navigation.NavigateTo("/branches");
     }
 }

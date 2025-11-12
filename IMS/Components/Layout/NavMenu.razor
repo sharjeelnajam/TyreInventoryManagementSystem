@@ -22,7 +22,7 @@
         <div class="nav-item px-3">
             <AuthorizeView Roles="SuperAdmin">
                 <Authorized>
-                    <NavLink class="nav-link d-flex align-items-center" href="/tenants">
+                    <NavLink class="nav-link d-flex align-items-center" href="/branches">
                         <span class="bi bi-person-fill-nav-menu"></span>
                         <span>Branches</span>
                     </NavLink>
@@ -75,11 +75,11 @@
 
         <AuthorizeView>
             <NotAuthorized>
-                <div class="nav-item px-3">
+             @*    <div class="nav-item px-3">
                     <NavLink class="nav-link" href="Account/Register">
                         <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
                     </NavLink>
-                </div>
+                </div> *@
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="Account/Login">
                         <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
@@ -127,8 +127,29 @@
                     </NavLink>
                 </div>
 
+                <div class="nav-item px-3">
+                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/products">
+                        <span class="bi bi-box-fill"></span>Products
+                    </NavLink>
+                </div>
 
+                  <div class="nav-item px-3">
+                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/purchases">
+                        <span class="bi bi-cart-fill me-2"></span>Purchases
+                    </NavLink>
+                </div>
 
+                <div class="nav-item px-3">
+                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/sales">
+                        <span class="bi bi-cart-fill me-2"></span>Sales
+                    </NavLink>
+                </div> 
+                
+                <div class="nav-item px-3">
+                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/stock-history">
+                        <span class="bi bi-cart-fill me-2"></span>Stock
+                    </NavLink>
+                </div>
             </Authorized>
         </AuthorizeView>
     </nav>

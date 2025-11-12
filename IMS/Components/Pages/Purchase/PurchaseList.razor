@@ -20,7 +20,6 @@
             <th>Total</th>
             <th>Net Amount</th>
             <th>Status</th>
-            <th>Approved</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -36,7 +35,6 @@
                     <td>@purchase.TotalAmount</td>
                     <td>@purchase.NetAmount</td>
                     <td>@purchase.PaymentStatus</td>
-                    <td>@(purchase.IsApproved ? "Yes" : "No")</td>
                     <td>
                         <span role="button" title="Edit" class="text-warning me-2"
                               @onclick="() => EditPurchase(purchase.Id)">
