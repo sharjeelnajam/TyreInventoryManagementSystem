@@ -44,6 +44,10 @@
                               @onclick="() => EditSale(sale.Id)">
                             <i class="bi bi-pencil-square fs-5"></i>
                         </span>
+                        <span role="button" title="Download Receipt" class="text-success me-2"
+                              @onclick="() => DownloadReceipt(sale.Id)">
+                            <i class="bi bi-download fs-5"></i>
+                        </span>
                     @*     <span role="button" title="Delete" class="text-danger"
                               @onclick="() => DeleteSale(sale.Id)">
                             <i class="bi bi-trash fs-5"></i>
@@ -105,5 +109,19 @@
     {
         isModalOpen = false;
         sales = await SaleService.GetAllAsync();
+    }
+
+    private async Task DownloadReceipt(Guid saleId)
+    {
+        var sale = await SaleService.GetByIdAsync(saleId);
+        if (sale == null)
+            return;
+
+        // Call your API endpoint to generate PDF and get it as byte[]
+        var pdfBytes = await SaleService.GenerateReceiptPdfAsync(saleId);
+
+        // Convert to Base64 and trigger JS download
+        string base64 = Convert.ToBase64String(pdfBytes);
+        await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber}.pdf", base64);
     }
 }

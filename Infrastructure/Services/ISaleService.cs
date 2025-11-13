@@ -15,5 +15,6 @@ namespace Infrastructure.Services
         Task UpdateAsync(Sale sale);
         Task<bool> DeleteAsync(Guid id);
         Task<List<SaleDetail>> GetSaleDetailsByProductIdAsync(Guid productId);
+        Task<byte[]> GenerateReceiptPdfAsync(Guid saleId);
     }
 }

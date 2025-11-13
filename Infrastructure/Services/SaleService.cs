@@ -2,12 +2,17 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection.Metadata;
 using System.Security.Claims;
 using System.Text;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace Infrastructure.Services
@@ -147,8 +152,6 @@ namespace Infrastructure.Services
                 return false;
             }
         }
-
-
 
         public async Task UpdateAsync(Sale sale)
         {
@@ -338,7 +341,6 @@ namespace Infrastructure.Services
             }
         }
 
-
         public async Task<bool> DeleteAsync(Guid id)
         {
             if (id == Guid.Empty) return false;
@@ -376,6 +378,173 @@ namespace Infrastructure.Services
                 throw;
             }
            
+        }
+
+        public async Task<byte[]> GenerateReceiptPdfAsync(Guid saleId)
+        {
+            var sale = await _context.Sale
+                .Include(x => x.Customer)
+                .Include(x => x.SaleDetails)
+                .ThenInclude(x => x.Product)
+                .FirstOrDefaultAsync(x => x.Id == saleId);
+
+            if (sale == null)
+                return Array.Empty<byte>();
+
+            // ✅ Load logo
+            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "logo", "logo.png");
+            byte[]? logoData = File.Exists(logoPath) ? await File.ReadAllBytesAsync(logoPath) : null;
+
+            QuestPDF.Settings.License = LicenseType.Community;
+
+            var document = QuestPDF.Fluent.Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Margin(0);
+
+
+                    // ✅ Add background image
+                    // ✅ Load background image
+                    var backgroundPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "logo", "backgroundImage.png");
+                    if (File.Exists(backgroundPath))
+                    {
+                        var bgImage = File.ReadAllBytes(backgroundPath);
+                        page.Background()
+        .Image(bgImage)
+        .FitWidth()
+        .FitHeight();
+                    }
+                    // 🧾 HEADER
+                    page.Header().Column(col =>
+                    {
+                     
+
+                        // Logo + Name
+                        col.Item().PaddingTop(20).AlignCenter().Column(centerCol =>
+                        {
+                            centerCol.Item().Row(logoRow =>
+                            {
+                                if (logoData != null)
+                                {
+                                    logoRow.ConstantItem(90).Image(logoData);
+                                }
+
+                                logoRow.AutoItem().Text("H&H").Bold().FontSize(80);
+                            });
+
+                            centerCol.Item().Text("BRINGING SAFETY TO THE ROAD").FontSize(12);
+                        });
+
+                        // Invoice title and date
+                        col.Item().PaddingTop(60).PaddingLeft(40).PaddingBottom(40).Column(customerCol =>
+                        {
+                            customerCol.Item().Text("Invoice").FontSize(14);
+                            customerCol.Item().Text($"Date: {DateTime.Now:dd MMM yyyy}").FontSize(14);
+                        });
+
+                        // Customer info
+                        col.Item().PaddingLeft(40).PaddingBottom(60).Column(customerCol =>
+                        {
+                            customerCol.Item().Text("Sold To:").Bold().FontSize(14);
+                            customerCol.Item().Text($"{sale.Customer?.Name?.ToUpper() ?? "N/A"}").FontSize(14);
+                            customerCol.Item().Text($"{sale.Customer?.Email ?? "N/A"}").FontSize(16);
+                        });
+                    });
+
+                    // 🧾 CONTENT
+                    page.Content().PaddingLeft(40).Column(contentCol =>
+                    {
+                        // Table
+                        contentCol.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(3);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(2);
+                                columns.RelativeColumn(2);
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().PaddingBottom(5).Text("Description").Bold().FontSize(14);
+                                header.Cell().PaddingBottom(5).Text("Quantity").Bold().FontSize(14);
+                                header.Cell().PaddingBottom(5).Text("Unit Price").Bold().FontSize(14);
+                                header.Cell().PaddingBottom(5).Text("Total").Bold().FontSize(14);
+                                header.Cell().ColumnSpan(4)
+                                             .PaddingTop(4)
+                                             .PaddingBottom(4)
+                                             .LineHorizontal(1)
+                                             .LineColor(QuestPDF.Helpers.Colors.Black);
+                            });
+
+                            foreach (var item in sale.SaleDetails)
+                            {
+                                table.Cell().PaddingVertical(3).Text(item.Product?.ProductName ?? "N/A").FontSize(14);
+                                table.Cell().PaddingVertical(3).Text(item.Quantity.ToString()).FontSize(14);
+                                table.Cell().PaddingVertical(3).Text($"Rs {item.UnitPrice:0.00}").FontSize(14);
+                                table.Cell().PaddingVertical(3).Text($"Rs {item.TotalPrice:0.00}").FontSize(14);
+                            }
+                        });
+
+                        // VAN info
+                        var vanRegistration = "SD63 WTM";
+                        if (!string.IsNullOrEmpty(vanRegistration))
+                        {
+                            contentCol.Item().PaddingTop(30).Text($"VAN Registration: {vanRegistration}").FontSize(14);
+                            contentCol.Item().PaddingBottom(20).Text("");
+                        }
+
+                        // Totals
+                        contentCol.Item().Column(totalsCol =>
+                        {
+                            totalsCol.Item().AlignLeft().Text($"SubTotal: Rs {sale.TotalAmount:0.00}").FontSize(14);
+
+                            var vatAmount = sale.TotalAmount * 0.2m;
+                            totalsCol.Item().AlignLeft().Text($"VAT (20%): Rs {vatAmount:0.00}").FontSize(14);
+
+                            var totalDue = sale.TotalAmount + vatAmount;
+                            totalsCol.Item().AlignLeft().Text($"Total Amount Due: Rs {totalDue:0.00}").Bold().FontSize(14);
+                        });
+
+                        // Payment Info
+                        contentCol.Item().PaddingTop(40).Column(paymentCol =>
+                        {
+                            paymentCol.Item().Text("Payment Terms: Due on Receipt").FontSize(14);
+                            paymentCol.Item().Text("Payment Method: Bank Transfer").FontSize(14);
+                        });
+
+                        // Thank you
+                        contentCol.Item().PaddingTop(30).AlignLeft().Column(thankYouCol =>
+                        {
+                            thankYouCol.Item().PaddingVertical(10).Text("Thank you for your business!").Italic().FontSize(20);
+                        });
+                    });
+
+                    // 🧾 FOOTER
+                    page.Footer().Row(row =>
+                    {
+                        // Left
+                        row.RelativeItem().PaddingLeft(10).AlignLeft().Text("© Location").FontSize(12);
+
+                        // Center
+                        row.RelativeItem().AlignCenter().Column(centerCol =>
+                        {
+                            centerCol.Item().Text("H&H").Bold().FontSize(10);
+                            centerCol.Item().Text("123 Business Street, London, UK, WC1A 1AB").FontSize(9);
+                            centerCol.Item().Text("A company of London Holdings Ltd, Vehicle Solutions Company Inc.").FontSize(9);
+                        });
+
+                        // Right
+                        row.RelativeItem().PaddingRight(20).AlignRight().Text("Phone: +44 20 1234 5678").FontSize(12);
+                    });
+                });
+            });
+
+            using var ms = new MemoryStream();
+            document.GeneratePdf(ms);
+            return ms.ToArray();
         }
 
     }
