@@ -71,28 +71,6 @@
                             </div>
                         </div>
 
-                        <!-- Discount & Tax Section -->
-                        <div class="row mt-3">
-                            <div class="col-md-6">
-                                <label>Discount</label>
-                                <InputNumber TValue="decimal?"
-                                             Value="Sale.Discount"
-                                             ValueChanged="OnDiscountChanged"
-                                             ValueExpression="@(() => Sale.Discount)"
-                                             class="form-control" />
-                            </div>
-
-                            <div class="col-md-6">
-                                <label>Tax (%)</label>
-                                <InputNumber TValue="decimal?"
-                                             Value="Sale.TaxAmount"
-                                             ValueChanged="OnTaxChanged"
-                                             ValueExpression="@(() => Sale.TaxAmount)"
-                                             class="form-control" />
-                            </div>
-                            <!-- Total & Net yahan se hata diye -->
-                        </div>
-
                         <hr />
 
                         <!-- Sale Items Section -->
@@ -170,14 +148,50 @@
                             + Add Item
                         </button>
 
-                        <!-- Total & Net Amounts - Sale Items ke neeche -->
-                        <div class="row mt-3 border-top pt-2">
+
+
+                        <div class="row mt-4 border-top pt-3">
                             <div class="col-md-6"></div>
-                            <div class="col-md-6 text-end">
-                                <div class="fw-bold fs-5">Total: @Sale.TotalAmount.ToString("N2")</div>
-                                <div class="fw-bold fs-6">Net: @Sale.NetAmount.ToString("N2")</div>
+
+                            <div class="col-md-6">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <div class="row g-3 align-items-center">
+
+                                            <div class="col-md-4">
+                                                <label>Discount</label>
+                                                <InputNumber TValue="decimal?"
+                                                             Value="Sale.Discount"
+                                                             ValueChanged="OnDiscountChanged"
+                                                             ValueExpression="@(() => Sale.Discount)"
+                                                             class="form-control" />
+                                            </div>
+
+                                            <div class="col-md-4">
+                                                <label>Tax (%)</label>
+                                                <InputNumber TValue="decimal?"
+                                                             Value="Sale.TaxAmount"
+                                                             ValueChanged="OnTaxChanged"
+                                                             ValueExpression="@(() => Sale.TaxAmount)"
+                                                             class="form-control" />
+                                            </div>
+
+                                            <div class="col-md-2 text-end">
+                                                <label class="form-label fw-semibold mb-0">Total</label>
+                                                <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
+                                            </div>
+
+                                            <div class="col-md-2 text-end">
+                                                <label class="form-label fw-semibold mb-0">Net</label>
+                                                <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
+
 
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
@@ -261,6 +275,8 @@
             if (Id != Guid.Empty)
             {
                 Sale = await SaleService.GetByIdAsync(Id);
+                Sale.Discount ??= 0;
+                Sale.TaxAmount ??= 0;
             }
             else
             {
@@ -268,7 +284,9 @@
                     {
                         SaleDate = DateTime.Now,
                         SaleNumber = $"SO-{DateTime.Now:yyyyMMddHHmmss}",
-                        SaleDetails = new List<SaleDetail>()
+                        SaleDetails = new List<SaleDetail>(),
+                        Discount = 0,
+                        TaxAmount = 0
                     };
             }
         }

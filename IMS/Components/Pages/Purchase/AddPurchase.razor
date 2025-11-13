@@ -14,71 +14,41 @@
 
     <div class="row">
         <div class="col-md-4">
-            <label>Purchase #</label>
-            <InputText @bind-Value="Purchase.PurchaseNumber" class="form-control" readonly/>
+            <label class="form-label fw-semibold">Purchase #</label>
+            <InputText @bind-Value="Purchase.PurchaseNumber" class="form-control" readonly />
         </div>
         <div class="col-md-4">
-            <label>Date</label>
-            <InputDate @bind-Value="Purchase.PurchaseDate" class="form-control" readonly/>
+            <label class="form-label fw-semibold">Date</label>
+            <InputDate @bind-Value="Purchase.PurchaseDate" class="form-control" readonly />
         </div>
     </div>
 
-    <div class="row mt-2">
-        <div class="col-md-3">
-            <label>Discount</label>
-            <InputNumber TValue="decimal?"
-            Value="Purchase.Discount"
-            ValueChanged="OnDiscountChanged"
-            ValueExpression="@(() => Purchase.Discount)"
-            class="form-control" />
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Payment Status</label>
+            <InputSelect @bind-Value="Purchase.PaymentStatus" class="form-select">
+                <option value="">-- Select Payment Status --</option>
+                <option value="Paid">Paid</option>
+                <option value="Unpaid">Unpaid</option>
+                <option value="Partial">Partial</option>
+            </InputSelect>
         </div>
 
-        <div class="col-md-3">
-            <label>Tax</label>
-            <InputNumber TValue="decimal?"
-            Value="Purchase.TaxAmount"
-            ValueChanged="OnTaxChanged"
-            ValueExpression="@(() => Purchase.TaxAmount)"
-            class="form-control" />
-        </div>
-
-        <div class="col-md-3">
-            <label>Total</label>
-            <InputNumber @bind-Value="Purchase.TotalAmount" class="form-control" readonly />
-        </div>
-
-        <div class="col-md-3">
-            <label>Net</label>
-            <InputNumber @bind-Value="Purchase.NetAmount" class="form-control" readonly />
-        </div>
-
-        <div class="row mt-2">
-            <div class="col-md-4">
-                <label>Payment Status</label>
-                <InputSelect @bind-Value="Purchase.PaymentStatus" class="form-control">
-                    <option value="">-- Select Payment Status --</option>
-                    <option value="Paid">Paid</option>
-                    <option value="Unpaid">Unpaid</option>
-                    <option value="Partial">Partial</option>
-                </InputSelect>
-            </div>
-
-            <div class="col-md-4">
-                <label>Supplier</label>
-                <InputSelect @bind-Value="Purchase.SupplierId" class="form-control">
-                    <option value="">-- Select Supplier --</option>
-                    @foreach (var s in suppliers)
-                    {
-                        <option value="@s.Id">@s.Name</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="@(() => Purchase.SupplierId)" />
-            </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Supplier</label>
+            <InputSelect @bind-Value="Purchase.SupplierId" class="form-select">
+                <option value="">-- Select Supplier --</option>
+                @foreach (var s in suppliers)
+                {
+                    <option value="@s.Id">@s.Name</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => Purchase.SupplierId)" />
         </div>
     </div>
 
-    <hr />
-    <h5>Purchase Items</h5>
+    <hr class="mt-4" />
+    <h5 class="fw-bold mb-3">Purchase Items</h5>
 
     <table class="table table-sm table-bordered align-middle">
         <thead class="table-light">
@@ -161,16 +131,65 @@
         </tbody>
     </table>
 
-
     <button class="btn btn-sm btn-primary mt-2" type="button" @onclick="AddDetail">
         + Add Item
     </button>
 
-    <div class="d-flex justify-content-end mt-3">
-        <button class="btn btn-success me-2" type="submit">Save</button>
-        <button class="btn btn-secondary" type="button" @onclick="Close">Cancel</button>
+    <hr class="mt-4" />
+
+    <!-- Moved Discount and Tax to Bottom -->
+    <div class="row mt-4 border-top pt-3">
+        <div class="col-md-6"></div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Discount</label>
+                            <InputNumber TValue="decimal?"
+                                         Value="Purchase.Discount"
+                                         ValueChanged="OnDiscountChanged"
+                                         ValueExpression="@(() => Purchase.Discount)"
+                                         class="form-control text-end" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Tax (%)</label>
+                            <InputNumber TValue="decimal?"
+                                         Value="Purchase.TaxAmount"
+                                         ValueChanged="OnTaxChanged"
+                                         ValueExpression="@(() => Purchase.TaxAmount)"
+                                         class="form-control text-end" />
+                        </div>
+
+                        <div class="col-md-2 text-end">
+                            <label class="form-label fw-semibold mb-0">Total</label>
+                            <div class="fw-bold fs-5">@Purchase.TotalAmount.ToString("N2")</div>
+                        </div>
+
+                        <div class="col-md-2 text-end">
+                            <label class="form-label fw-semibold mb-0">Net</label>
+                            <div class="fw-bold fs-5">@Purchase.NetAmount.ToString("N2")</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="d-flex justify-content-end mt-4">
+        <button class="btn btn-success me-2 px-4" type="submit">
+            <i class="bi bi-save me-1"></i> Save
+        </button>
+        <button class="btn btn-secondary px-4" type="button" @onclick="Close">
+            <i class="bi bi-x-circle me-1"></i> Cancel
+        </button>
     </div>
 </EditForm>
+
 
 @if (ShowErrorPopup)
 {
@@ -218,6 +237,9 @@
         if (PurchaseId.HasValue)
         {
             Purchase = await PurchaseService.GetPurchaseByIdAsync(PurchaseId.Value);
+            //ensure no null values
+            Purchase.Discount ??= 0;
+            Purchase.TaxAmount ??= 0;
 
         }
         else
@@ -226,7 +248,9 @@
                 {
                     PurchaseDate = DateTime.Today,
                     PurchaseNumber = $"PO-{DateTime.Now:yyyyMMddHHmmss}",
-                    PurchaseDetails = new List<PurchaseDetail>()
+                    PurchaseDetails = new List<PurchaseDetail>(),
+                    Discount = 0,
+                    TaxAmount = 0
                 };
         }
     }
@@ -331,7 +355,7 @@
     }
 
     private void RecalculateTotals()
-    {
+        {
 
         if (Purchase.PurchaseDetails == null)
         {

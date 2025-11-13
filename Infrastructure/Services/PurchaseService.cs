@@ -116,7 +116,7 @@ namespace Infrastructure.Services
 
                         // Check for existing stock history entry for product
                         var stockProduct = await _context.StockHistories
-                            .FirstOrDefaultAsync(p => p.ProductId == detail.ProductId && p.ReferenceId == purchase.Id);
+                            .FirstOrDefaultAsync(p => p.ProductId == detail.ProductId);
 
                         if (stockProduct != null)
                         {
