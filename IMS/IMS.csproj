@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="wwwroot\uploads\ExpenseFiles\" />
     <Folder Include="wwwroot\uploads\products\" />
   </ItemGroup>
 

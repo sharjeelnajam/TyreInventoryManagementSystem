@@ -17,13 +17,13 @@
                     <EditForm Model="@expenses" OnValidSubmit="SaveAll">
                         <DataAnnotationsValidator />
                         <ValidationSummary />
-
+                            
                         @if (!isEditMode)
                         {
                             <div class="row mb-3">
                                 <div class="col-md-4">
                                     <label>Date</label>
-                                    <InputDate @bind-Value="commonDate" class="form-control" readonly />
+                                    <InputDate @bind-Value="commonDate" class="form-control" />
                                 </div>
                                 <div class="col-md-8">
                                     <label>Notes (optional)</label>
@@ -43,12 +43,14 @@
                                     @if (!isEditMode)
                                     {
                                         <th>Description</th>
+                                        <th>Document</th>
                                         <th style="width:50px;text-align:center;">Action</th>
                                     }
                                     else
                                     {
                                         <th>Date</th>
                                         <th>Description</th>
+                                        <th>Document</th>
                                     }
                                 </tr>
                             </thead>
@@ -71,6 +73,26 @@
                                             <td><InputDate class="form-control form-control-sm" @bind-Value="expense.Date" /></td>
                                         }
                                         <td><InputText class="form-control form-control-sm" @bind-Value="expense.Description" /></td>
+
+                                        <!-- New File Upload Column -->
+                                        <td>
+                                            <InputFile OnChange="@(e => OnFileSelected(expense, e))" />
+
+                                            @if (!string.IsNullOrEmpty(expense.UploadedFile))
+                                            {
+                                                <div class="d-flex align-items-center mt-1">
+                                                    <span class="small text-muted me-2">@expense.UploadedFile</span>
+
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-danger"
+                                                            title="Remove File"
+                                                            @onclick="() => RemoveFile(expense)">
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            }
+                                        </td>
+
                                         @if (!isEditMode)
                                         {
                                             <td style="text-align:center;">
@@ -137,7 +159,8 @@
                     Amount = exp.Amount,
                     Category = exp.Category,
                     Date = exp.Date,
-                    Description = exp.Description
+                    Description = exp.Description,
+                       UploadedFile = exp.UploadedFile
                 }
             };
         }
@@ -169,6 +192,54 @@
         if (expenses.Count > 1)
             expenses.Remove(expense);
     }
+
+    private async Task OnFileSelected(Expense expense, InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        if (file != null)
+        {
+            // Create unique file name
+            var uniqueFileName = $"{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+
+            // Build full path: wwwroot/uploads/ExpenseFiles/<guid>.pdf
+            var folderPath = Path.Combine("wwwroot", "uploads", "ExpenseFiles");
+            Directory.CreateDirectory(folderPath); // Ensure folder exists
+
+            var uploadPath = Path.Combine(folderPath, uniqueFileName);
+
+            // Save file
+            using var stream = new FileStream(uploadPath, FileMode.Create);
+            await file.OpenReadStream().CopyToAsync(stream);
+
+            // Store the correct relative path in DB
+            expense.UploadedFile = $"uploads/ExpenseFiles/{uniqueFileName}";
+        }
+    }
+
+    private void RemoveFile(Expense expense)
+    {
+        if (!string.IsNullOrWhiteSpace(expense.UploadedFile))
+        {
+            // Convert URLs to local file system paths
+            var relativePath = expense.UploadedFile.Replace("/", Path.DirectorySeparatorChar.ToString());
+
+            var physicalPath = Path.Combine("wwwroot", relativePath);
+
+            // Delete file if exists
+            if (System.IO.File.Exists(physicalPath))
+            {
+                System.IO.File.Delete(physicalPath);
+            }
+
+            // Update model
+            expense.UploadedFile = null;
+        }
+
+        StateHasChanged();
+    }
+
+
 
     private async Task SaveAll()
     {

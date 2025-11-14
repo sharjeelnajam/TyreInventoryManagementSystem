@@ -144,8 +144,18 @@
         isLoading = false;
     }
 
-    private void AddTenant() => Navigation.NavigateTo("/branches/addedit");
-    private void EditTenant(Guid id) => Navigation.NavigateTo($"/branches/addedit/{id}");
+    private void AddTenant()
+    {
+        Navigation.NavigateTo("/branches/addedit");
+        StateHasChanged();
+    }
+
+    private void EditTenant(Guid id)
+    {
+        Navigation.NavigateTo($"/branches/addedit/{id}");
+        StateHasChanged();
+    }
+    
 
     private async Task DeleteTenant(Guid id)
     {

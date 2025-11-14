@@ -18,8 +18,11 @@
 <body>
     <Routes />
 
-    <component type="typeof(App)" render-mode="Server" />
+   @*  <component type="typeof(App)" render-mode="Server" />
     <script src="_framework/blazor.server.js"></script>
+    <script src="js/site.js"></script> *@
+    <component type="typeof(App)" render-mode="Server" />
+    <script src="_framework/blazor.web.js"></script>
     <script src="js/site.js"></script>
 </body>
 

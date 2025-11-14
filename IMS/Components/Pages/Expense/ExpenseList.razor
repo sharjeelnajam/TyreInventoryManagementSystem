@@ -57,6 +57,13 @@
                                    title="Edit" @onclick="() => AddEditRef.ShowModal(exp)"></i>
                                 <i class="bi bi-trash text-danger fs-5 cursor-pointer"
                                    title="Delete" @onclick="() => ConfirmDelete(exp.Id)"></i>
+
+                                @if (!string.IsNullOrEmpty(exp.UploadedFile))
+                                {
+                                    <i class="bi bi-eye text-success fs-5 ms-2 cursor-pointer"
+                                       title="Preview Document"
+                                       @onclick="() => PreviewFile(exp.UploadedFile)"></i>
+                                }
                             </td>
                         </tr>
                     }
@@ -92,7 +99,12 @@
            await DeleteExpense(id);
         }
     }
-
+    private async Task PreviewFile(string filePath)
+    {
+        // Opens the file in a new browser tab
+        var encodedPath = Uri.EscapeUriString(filePath);
+        await JS.InvokeVoidAsync("window.open", filePath, "_blank");
+    }
     private async Task DeleteExpense(Guid id)
     {
         await ExpenseService.DeleteAsync(id);

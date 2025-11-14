@@ -28,6 +28,17 @@
             <label class="form-label">Tyre Size</label>
             <InputText class="form-control" @bind-Value="product.TyreSize" />
             <ValidationMessage For="@(() => product.TyreSize)" />
+        </div> 
+        
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Type</label>
+            <InputText class="form-control" @bind-Value="product.Type" />
+            <ValidationMessage For="@(() => product.Type)" />
+        </div> 
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Thread</label>
+            <InputText class="form-control" @bind-Value="product.Thread" />
+            <ValidationMessage For="@(() => product.Thread)" />
         </div>
         <div class="col-md-6 mb-3">
             <label class="form-label">Tread Depth (mm)</label>

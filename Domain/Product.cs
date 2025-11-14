@@ -38,6 +38,12 @@ namespace Domain
         [Required(ErrorMessage = "Quantity is required")]
         public int Quantity { get; set; }
 
+        [Required(ErrorMessage = "Product Type is required")]
+        public string Type { get; set; }
+
+        [Required(ErrorMessage = "Product Thread is required")]
+        public string Thread { get; set; }
+
         [Precision(18, 2)]
         public decimal AverageCostPrice { get; set; }
 

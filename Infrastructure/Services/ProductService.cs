@@ -85,6 +85,8 @@ namespace Infrastructure.Services
                 existing.Description = product.Description;
                 existing.DOT = product.DOT;
                 existing.Brand = product.Brand;
+                existing.Type = product.Type;
+                existing.Thread = product.Thread;
                 existing.TyreSize = product.TyreSize;
                 existing.TreadDepth = product.TreadDepth;
                 existing.PurchasePrice = product.PurchasePrice;
