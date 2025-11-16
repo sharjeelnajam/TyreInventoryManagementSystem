@@ -5,15 +5,81 @@
 @using Domain
 @using System.Globalization
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
 @inject IStaffService staffService
 @inject ICustomerService customerService
 @inject IProfitReportService ProfitReportService
 @inject IProductService productService
+@inject IJSRuntime JS
+@inject ApplicationDbContext _context;
 @rendermode InteractiveServer
 
 <PageTitle>Dashboard</PageTitle>
 
-<div class="container mt-4">
+@if (showThreshold)
+{
+    <div class="threshold-overlay"></div>
+
+    <div class="threshold-modal">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-danger text-white fw-bold d-flex justify-content-between">
+                <span>
+                    <i class="bi bi-exclamation-octagon me-2"></i>
+                    Low Stock Products (≤ 5)
+                </span>
+
+                <button class="btn btn-light btn-sm me-2" @onclick="DownloadThresholdPdf">
+                    <i class="bi bi-download"></i> Download PDF
+                </button>
+
+                <button class="btn btn-light btn-sm" @onclick="ToggleThreshold">
+                    <i class="bi bi-arrow-left"></i> Back
+                </button>
+               
+            </div>
+
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Stock</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @if (thresholdProducts.Any())
+                        {
+                            @foreach (var item in thresholdProducts)
+                            {
+                                <tr>
+                                    <td>@(++srNo)</td>
+                                    <td>@item.Product.ProductName</td>
+                                    <td>@item.Product.Type</td>
+                                    <td class="fw-bold text-danger">@item.QuantityChanged</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center py-3">
+                                    <i class="bi bi-check-circle text-success me-1"></i>
+                                    All products have sufficient stock.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+
+<div class="container mt-4 @(showThreshold ? "disable-page" : "")">
     @if (isLoading)
     {
         <div class="text-center mt-5">
@@ -55,6 +121,12 @@
             </div>
         </div>
 
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-danger" @onclick="ToggleThreshold">
+                <i class="bi bi-exclamation-triangle me-2"></i> Threshold Products
+            </button>
+        </div>
+
         <!-- Summary cards -->
         <div class="row g-3 align-items-stretch">
             <div class="col-sm-6 col-lg-3 d-flex">
@@ -65,8 +137,8 @@
                             <h5 class="fw-bold mb-0">@MonthlyProfit.ToString("C", new CultureInfo("ur-PK"))</h5>
                             <small class="opacity-75">
                                 @(startDate.HasValue && endDate.HasValue
-                                    ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
-                                    : "Current Month")
+                                        ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
+                                        : "Current Month")
                             </small>
                         </div>
                         <i class="bi bi-cash-coin fs-3 opacity-75"></i>
@@ -111,7 +183,6 @@
             </div>
         </div>
 
-
         <!-- Future Expansion Row -->
         <div class="row g-4">
             <div class="col-lg-6">
@@ -141,12 +212,49 @@
     }
 </div>
 
+<style>
+    .threshold-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        z-index: 9998;
+    }
+
+    .threshold-modal {
+        position: fixed;
+        top: 8%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 10px;
+        z-index: 9999;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .disable-page {
+        filter: blur(5px);
+        pointer-events: none;
+        user-select: none;
+    }
+</style>
+
+
 @code {
     private List<Product> products = new();
     private List<Customer> customers = new();
     private List<Staff> Staffs = new();
     private decimal MonthlyProfit;
     private bool isLoading = true;
+    private bool showThreshold = false;
+    private List<StockHistory> thresholdProducts = new();
+    private int srNo = 0;
 
     private DateTime? startDate;
     private DateTime? endDate;
@@ -182,6 +290,80 @@
         customers = await customerService.GetCustomersAsync();
         products = await productService.GetAllAsync();
     }
+
+    private void ToggleThreshold()
+    {
+        showThreshold = !showThreshold;
+
+        if (showThreshold)
+        {
+            LoadThresholdProducts();
+        }
+    }
+    private void LoadThresholdProducts()
+    {
+        srNo = 0;
+        thresholdProducts = _context.StockHistories
+            .Where(p => p.QuantityChanged <= 5)
+            .Include(p => p.Product)
+            .OrderBy(p => p.QuantityChanged)
+            .ToList();
+        // .OrderBy(p => p.StockQty)
+            // .ToList();
+    }
+
+    private async Task DownloadThresholdPdf()
+    {
+        try
+        {
+            using var ms = new MemoryStream();
+
+            var writer = new iText.Kernel.Pdf.PdfWriter(ms);
+            var pdf = new iText.Kernel.Pdf.PdfDocument(writer);
+            var doc = new iText.Layout.Document(pdf);
+
+            // Title
+            doc.Add(new iText.Layout.Element.Paragraph("Low Stock Products Report")
+                .SetFontSize(18)
+                .SetBold()
+                .SetMarginBottom(20));
+
+            // Create Table
+            var table = new iText.Layout.Element.Table(4).UseAllAvailableWidth();
+
+            table.AddHeaderCell("Sr#");
+            table.AddHeaderCell("Product");
+            table.AddHeaderCell("Category");
+            table.AddHeaderCell("Stock");
+
+            int count = 1;
+            foreach (var item in thresholdProducts)
+            {
+                table.AddCell(count.ToString());
+                table.AddCell(item.Product.ProductName);
+                table.AddCell(item.Product.Type);
+                table.AddCell(item.QuantityChanged.ToString());
+                count++;
+            }
+
+            doc.Add(table);
+            doc.Close();
+
+            var fileBytes = ms.ToArray();
+            var base64 = Convert.ToBase64String(fileBytes);
+
+            await JS.InvokeVoidAsync(
+                "downloadFileFromBytes",
+                "LowStockProducts.pdf",
+                base64
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+
 
     private async Task ApplyFilter()
     {
