@@ -1,4 +1,5 @@
 ﻿@page "/Account/Register"
+@layout LoginLayout
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -8,6 +9,7 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Security.Claims
 @using global::Shared.MultiTenancy
+@using IMS.Components.Layout
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
@@ -21,9 +23,9 @@
 <PageTitle>Register</PageTitle>
 
 <div class="register-bg d-flex justify-content-center align-items-center">
-    <div class="card register-card shadow-lg border-0 rounded-4 p-4" style="max-width: 480px; width: 100%;">
+    <div class="card register-card shadow-lg  border-0 rounded-4 p-4" style="max-width: 480px; width: 100%;">
         <div class="text-center mb-4">
-            <div class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center shadow"
+            <div class="rounded-circle bg-secondary text-white d-inline-flex justify-content-center align-items-center shadow"
                  style="width:70px; height:70px;">
                 <i class="bi bi-person-plus-fill fs-1"></i>
             </div>
@@ -86,8 +88,7 @@
         height: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden; /* scroll remove */
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); /* blue bg */
+        overflow: hidden; 
     }
 
     .register-bg {

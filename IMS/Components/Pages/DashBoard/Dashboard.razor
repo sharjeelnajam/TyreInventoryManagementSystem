@@ -6,6 +6,8 @@
 @using System.Globalization
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
+@using QuestPDF.Fluent
+@using QuestPDF.Infrastructure
 @inject IStaffService staffService
 @inject ICustomerService customerService
 @inject IProfitReportService ProfitReportService
@@ -28,13 +30,15 @@
                     Low Stock Products (≤ 5)
                 </span>
 
-                <button class="btn btn-light btn-sm me-2" @onclick="DownloadThresholdPdf">
-                    <i class="bi bi-download"></i> Download PDF
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-light btn-sm" @onclick="DownloadThresholdPdf">
+                        <i class="bi bi-download"></i> Download PDF
+                    </button>
 
-                <button class="btn btn-light btn-sm" @onclick="ToggleThreshold">
-                    <i class="bi bi-arrow-left"></i> Back
-                </button>
+                    <button class="btn btn-light btn-sm" @onclick="ToggleThreshold">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </button>
+                </div>
                
             </div>
 
@@ -58,7 +62,7 @@
                                     <td>@(++srNo)</td>
                                     <td>@item.Product.ProductName</td>
                                     <td>@item.Product.Type</td>
-                                    <td class="fw-bold text-danger">@item.QuantityChanged</td>
+                                    <td class="fw-bold">@item.QuantityChanged</td>
                                 </tr>
                             }
                         }
@@ -79,7 +83,8 @@
 }
 
 
-<div class="container mt-4 @(showThreshold ? "disable-page" : "")">
+<div class="ps-0 pe-0 container-fluid mt-1 @(showThreshold ? "disable-page" : "")">
+
     @if (isLoading)
     {
         <div class="text-center mt-5">
@@ -90,6 +95,11 @@
     }
     else
     {
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-danger " @onclick="ToggleThreshold">
+                <i class="bi bi-exclamation-triangle me-2"></i> Threshold 
+            </button>
+        </div>
         <!-- Filter -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-white fw-bold">
@@ -99,18 +109,35 @@
                 <div class="row g-3 align-items-end">
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Start Date</label>
-                        <input type="date" class="form-control" @bind="startDate" @bind:format="yyyy-MM-dd" />
+
+                        <InputDate TValue="DateTime?"
+                                   Value="startDate"
+                                   ValueChanged="OnStartDateChanged"
+                                   ValueExpression="@(() => startDate)"
+                                   class="form-control" />
+
+                        @if (!string.IsNullOrEmpty(DateError))
+                        {
+                            <span class="text-danger">@DateError</span>
+                        }
                     </div>
+
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">End Date</label>
-                        <input type="date" class="form-control" @bind="endDate" @bind:format="yyyy-MM-dd" />
+
+                        <InputDate TValue="DateTime?"
+                                   Value="endDate"
+                                   ValueChanged="OnEndDateChanged"
+                                   ValueExpression="@(() => endDate)"
+                                   class="form-control" />
+
+                        @if (!string.IsNullOrEmpty(DateError))
+                        {
+                            <span class="text-danger">@DateError</span>
+                        }
                     </div>
-                    <div class="col-md-3">
-                        <button class="btn btn-primary w-100" @onclick="ApplyFilter">
-                            <i class="bi bi-filter-circle me-2"></i>
-                            Apply Filter
-                        </button>
-                    </div>
+
+
                 </div>
                 @if (!string.IsNullOrEmpty(filterMessage))
                 {
@@ -121,11 +148,6 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-end mb-3">
-            <button class="btn btn-danger" @onclick="ToggleThreshold">
-                <i class="bi bi-exclamation-triangle me-2"></i> Threshold Products
-            </button>
-        </div>
 
         <!-- Summary cards -->
         <div class="row g-3 align-items-stretch">
@@ -255,6 +277,7 @@
     private bool showThreshold = false;
     private List<StockHistory> thresholdProducts = new();
     private int srNo = 0;
+    private string? DateError { get; set; }
 
     private DateTime? startDate;
     private DateTime? endDate;
@@ -316,41 +339,21 @@
     {
         try
         {
-            using var ms = new MemoryStream();
+            var model = thresholdProducts.Select((item, i) => new LowStockRow
+                {
+                    SrNo = i + 1,
+                    Product = item.Product.ProductName,
+                    Type = item.Product.Type,
+                    Stock = item.QuantityChanged
+                }).ToList();
 
-            var writer = new iText.Kernel.Pdf.PdfWriter(ms);
-            var pdf = new iText.Kernel.Pdf.PdfDocument(writer);
-            var doc = new iText.Layout.Document(pdf);
+            var doc = new LowStockReportDocument(model);
 
-            // Title
-            doc.Add(new iText.Layout.Element.Paragraph("Low Stock Products Report")
-                .SetFontSize(18)
-                .SetBold()
-                .SetMarginBottom(20));
+            QuestPDF.Settings.License = LicenseType.Community;
 
-            // Create Table
-            var table = new iText.Layout.Element.Table(4).UseAllAvailableWidth();
+            var pdfBytes = doc.GeneratePdf();
 
-            table.AddHeaderCell("Sr#");
-            table.AddHeaderCell("Product");
-            table.AddHeaderCell("Category");
-            table.AddHeaderCell("Stock");
-
-            int count = 1;
-            foreach (var item in thresholdProducts)
-            {
-                table.AddCell(count.ToString());
-                table.AddCell(item.Product.ProductName);
-                table.AddCell(item.Product.Type);
-                table.AddCell(item.QuantityChanged.ToString());
-                count++;
-            }
-
-            doc.Add(table);
-            doc.Close();
-
-            var fileBytes = ms.ToArray();
-            var base64 = Convert.ToBase64String(fileBytes);
+            string base64 = Convert.ToBase64String(pdfBytes);
 
             await JS.InvokeVoidAsync(
                 "downloadFileFromBytes",
@@ -364,6 +367,32 @@
         }
     }
 
+    private async Task OnStartDateChanged(DateTime? value)
+    {
+        startDate = value;
+        ValidateDates();
+        await LoadData();   // Auto refresh dashboard
+    }
+
+    private async Task OnEndDateChanged(DateTime? value)
+    {
+        endDate = value;
+        ValidateDates();
+        await LoadData();   // Auto refresh dashboard
+    }
+
+    private void ValidateDates()
+    {
+        DateError = null;
+
+        if (startDate.HasValue && endDate.HasValue)
+        {
+            if (startDate > endDate)
+            {
+                DateError = "Start Date cannot be greater than End Date.";
+            }
+        }
+    }
 
     private async Task ApplyFilter()
     {

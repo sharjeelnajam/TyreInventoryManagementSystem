@@ -1,19 +1,9 @@
 ﻿using Domain;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Client;
 using QuestPDF.Fluent;
-using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection.Metadata;
 using System.Security.Claims;
-using System.Text;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace Infrastructure.Services
 {

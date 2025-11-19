@@ -1,9 +1,11 @@
 ﻿@page "/Account/Login"
+@layout LoginLayout
 
 @using System.ComponentModel.DataAnnotations
 @using Domain.Identity
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Identity
+@using IMS.Components.Layout
 
 @inject IJSRuntime JSRuntime
 @inject SignInManager<ApplicationUser> SignInManager
@@ -13,29 +15,29 @@
 
 <PageTitle>Log in</PageTitle>
 
-<div class="login-bg d-flex justify-content-center align-items-center vh-100">
-    <div class="card login-card shadow-lg border-0 rounded-4 p-4" style="max-width: 420px; width: 100%;">
+<div class="login-bg d-flex justify-content-center align-items-center">
+    <div class="login-card shadow-lg rounded-4 p-5">
+        <!-- Logo & Heading -->
         <div class="text-center mb-4">
-            <div class="rounded-circle bg-primary text-white d-inline-flex justify-content-center align-items-center shadow"
-                 style="width:70px; height:70px;">
-                <i class="bi bi-person-fill fs-1"></i>
+            <div class="logo-circle mb-3">
+                <i class="bi bi-person-fill fs-2"></i>
             </div>
-            <h3 class="fw-bold mt-3">Welcome Back</h3>
-            <p class="text-muted">Sign in to continue</p>
+            <h2 class="fw-bold mb-1">Welcome Back!</h2>
+            <p class="text-muted small">Sign in to access your account</p>
         </div>
 
         <StatusMessage Message="@errorMessage" />
 
-        <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
+        <EditForm Model="Input" OnValidSubmit="LoginUser" FormName="login">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger mb-3" role="alert" />
 
             <!-- Email -->
             <div class="mb-3">
                 <label for="email" class="form-label fw-semibold">Email</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white"><i class="bi bi-envelope"></i></span>
-                    <InputText @bind-Value="Input.Email" class="form-control shadow-sm" id="email" autocomplete="username" placeholder="name@example.com" />
+                <div class="input-group shadow-sm rounded">
+                    <span class="input-group-text bg-white text-primary"><i class="bi bi-envelope"></i></span>
+                    <InputText @bind-Value="Input.Email" class="form-control border-start-0" id="email" placeholder="name@example.com" autocomplete="username" />
                 </div>
                 <ValidationMessage For="() => Input.Email" class="text-danger small mt-1" />
             </div>
@@ -43,26 +45,29 @@
             <!-- Password -->
             <div class="mb-3">
                 <label for="password" class="form-label fw-semibold">Password</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white"><i class="bi bi-lock"></i></span>
-                    <InputText type="password" @bind-Value="Input.Password" class="form-control shadow-sm" id="password" autocomplete="current-password" placeholder="password" />
+                <div class="input-group shadow-sm rounded">
+                    <span class="input-group-text bg-white text-primary"><i class="bi bi-lock"></i></span>
+                    <InputText type="password" @bind-Value="Input.Password" class="form-control border-start-0" id="password" placeholder="Enter your password" autocomplete="current-password" />
                 </div>
                 <ValidationMessage For="() => Input.Password" class="text-danger small mt-1" />
             </div>
 
-            <!-- Remember me -->
-            <div class="form-check mb-3">
-                <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" id="rememberMe" />
-                <label class="form-check-label" for="rememberMe">Remember me</label>
+            <!-- Remember me & forgot -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="form-check">
+                    <InputCheckbox @bind-Value="Input.RememberMe" class="form-check-input" id="rememberMe" />
+                    <label class="form-check-label" for="rememberMe">Remember me</label>
+                </div>
+                <a href="Account/ForgotPassword" class="small text-decoration-none text-primary">Forgot password?</a>
             </div>
 
             <!-- Submit -->
-            <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm rounded-pill">
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm login-btn">
                 <i class="bi bi-box-arrow-in-right me-2"></i> Log in
             </button>
         </EditForm>
 
-        <hr />
+        <hr class="my-4" />
 
         <div class="text-center small">
             <p><a href="Account/ForgotPassword">Forgot your password?</a></p>
@@ -77,31 +82,74 @@
         height: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden; /* scrollbar hata do */
-        background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+        font-family: 'Inter', sans-serif;
     }
 
     .login-bg {
-        min-height: calc(100vh - 120px);
+        min-height: 100vh;
         display: flex;
-        align-items: center;
         justify-content: center;
-        padding: 40px 0; /* pehle hi padding di hui hai */
+        align-items: center;
+        padding: 20px;
     }
 
     .login-card {
         background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
-        margin: 40px 0;
+        backdrop-filter: blur(12px);
+        max-width: 420px;
+        width: 100%;
+        padding: 40px 30px;
+        border-radius: 1rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .logo-circle {
+        width: 80px;
+        height: 80px;
+        background:  #c0c0c0;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+        color: #fff;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        font-size: 2rem;
+    }
+
+    .input-group {
+        border-radius: 0.5rem;
+        overflow: hidden;
     }
 
     .input-group-text {
-        border-radius: 0.5rem 0 0 0.5rem;
+        border: none;
+        font-size: 1.1rem;
     }
 
     .form-control {
-        border-radius: 0 0.5rem 0.5rem 0;
+        border: none;
+        box-shadow: none;
     }
+
+    .login-btn {
+        background: linear-gradient(135deg, #4e73df, #224abe);
+        border: none;
+        transition: background 0.3s ease;
+    }
+
+        .login-btn:hover {
+            background: linear-gradient(135deg, #224abe, #4e73df);
+        }
+
+    a {
+        text-decoration: none;
+    }
+
+        a:hover {
+            text-decoration: underline;
+        }
 </style>
 
 @code {

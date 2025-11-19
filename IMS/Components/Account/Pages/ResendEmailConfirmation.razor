@@ -1,4 +1,5 @@
 ﻿@page "/Account/ResendEmailConfirmation"
+@layout LoginLayout
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -6,6 +7,7 @@
 @using Domain.Identity
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
+@using IMS.Components.Layout
 
 
 @inject UserManager<ApplicationUser> UserManager
@@ -13,26 +15,95 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Resend email confirmation</PageTitle>
+<PageTitle>Resend Email Confirmation</PageTitle>
 
-<h1>Resend email confirmation</h1>
-<h2>Enter your email.</h2>
-<hr />
-<StatusMessage Message="@message" />
-<div class="row">
-    <div class="col-md-4">
+<div class="resend-bg d-flex justify-content-center align-items-center">
+    <div class="resend-card shadow-lg rounded-4 p-5">
+        <div class="text-center mb-4">
+            <div class="logo-circle mb-3">
+                <i class="bi bi-envelope-fill fs-2"></i>
+            </div>
+            <h2 class="fw-bold mb-1">Resend Email Confirmation</h2>
+            <p class="text-muted small">Enter your email to receive a confirmation link</p>
+        </div>
+
+        <StatusMessage Message="@message" />
+
         <EditForm Model="Input" FormName="resend-email-confirmation" OnValidSubmit="OnValidSubmitAsync" method="post">
             <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
+            <ValidationSummary class="text-danger mb-3" role="alert" />
+
             <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" class="form-control" aria-required="true" placeholder="name@example.com" />
+                <InputText @bind-Value="Input.Email" class="form-control" placeholder="name@example.com" aria-required="true" />
                 <label for="email" class="form-label">Email</label>
-                <ValidationMessage For="() => Input.Email" class="text-danger" />
+                <ValidationMessage For="() => Input.Email" class="text-danger small mt-1" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Resend</button>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold resend-btn">
+                Resend
+            </button>
         </EditForm>
     </div>
 </div>
+
+<style>
+    .resend-bg {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .resend-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(12px);
+        width: 100%;
+        max-width: 420px;
+        padding: 40px 30px;
+        border-radius: 1rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+        .resend-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+        }
+
+    .logo-circle {
+        width: 80px;
+        height: 80px;
+        background: #c0c0c0;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+        color: #fff;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        font-size: 2rem;
+    }
+
+    .form-floating .form-control {
+        border-radius: 0.5rem;
+        padding: 1rem 0.75rem;
+    }
+
+    .resend-btn {
+        background: linear-gradient(135deg, #4e73df, #224abe);
+        border: none;
+        transition: background 0.3s ease;
+    }
+
+        .resend-btn:hover {
+            background: linear-gradient(135deg, #224abe, #4e73df);
+        }
+
+    .text-muted {
+        color: #6c757d !important;
+    }
+</style>
 
 @code {
     private string? message;
