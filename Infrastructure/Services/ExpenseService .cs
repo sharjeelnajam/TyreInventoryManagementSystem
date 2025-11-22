@@ -104,5 +104,49 @@ namespace Infrastructure.Services
             }
         
         }
+
+        public async Task<decimal> GetProfitAsync(DateTime start, DateTime end)
+        {
+            try
+            {
+                return await _context.Expenses
+                    .Where(p => p.Date >= start && p.Date < end)
+                    .SumAsync(p => p.Amount);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public Task<decimal> GetMonthProfitAsync()
+        {
+            try
+            {
+                var start = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                var end = start.AddMonths(1);
+                return GetProfitAsync(start, end);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public async Task<decimal> GetProfitByDateRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                // Include the end date in the range by adding one day and using less than
+                var adjustedEndDate = endDate.AddDays(1);
+                return await _context.Expenses
+                    .Where(p => p.Date >= startDate && p.Date < adjustedEndDate)
+                    .SumAsync(p => p.Amount);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
     }
 }

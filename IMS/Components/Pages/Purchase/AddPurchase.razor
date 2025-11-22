@@ -4,6 +4,7 @@
 @inject IProductService ProductService
 @inject IPurchaseService PurchaseService
 @inject ApplicationDbContext _context
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
 <h4>@(Purchase.Id == Guid.Empty ? "Add" : "Edit")</h4>
@@ -48,7 +49,12 @@
     </div>
 
     <hr class="mt-4" />
-    <h5 class="fw-bold mb-3">Purchase Items</h5>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0">Purchase Items</h5>
+        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenAddProductModal">
+            <i class="bi bi-plus-circle me-1"></i> Add New Product
+        </button>
+    </div>  
 
     <table class="table table-sm table-bordered align-middle">
         <thead class="table-light">
@@ -68,24 +74,51 @@
                 @foreach (var detail in Purchase.PurchaseDetails)
                 {
                     <tr>
-                        <td style="width: 220px;">
-                            <InputSelect TValue="Guid"
-                                         Value="detail.ProductId"
-                                         ValueChanged="@(v => OnProductChange(detail, v))"
-                                         ValueExpression="@(() => detail.ProductId)"
-                                         class="form-select form-select-sm">
-                                <option value="">-- Select Product --</option>
-                                @foreach (var p in products)
-                                {
-                                    bool isSelected = p.Id == detail.ProductId;
-                                    bool isAlreadyUsed = Purchase.PurchaseDetails
-                                    .Any(d => d.ProductId == p.Id && d != detail);
+                        <td style="width: 220px; position: relative;">
+                            <!-- Searchable Dropdown -->
+                            <div class="dropdown">
+                                <input type="text"
+                                       class="form-control form-control-sm"
+                                       placeholder="Search product..."
+                                       value="@GetSearchText(detail)"
+                                       @oninput="(e) => OnSearchInput(e, detail)"
+                                       @onfocus="() => ShowDropdown(detail)"
+                                       @onblur="() => HideDropdown(detail)" />
 
-                                    <option value="@p.Id" disabled="@(!isSelected && isAlreadyUsed)">
-                                        @p.ProductName
-                                    </option>
+                                @if (GetDropdownState(detail))
+                                {
+                                    <div class="dropdown-menu show d-block position-absolute w-100"
+                                         style="z-index: 1060; max-height: 250px; overflow-y: auto; background: white;">
+                                        @foreach (var product in GetFilteredProducts(detail))
+                                        {
+                                            bool isSelected = product.Id == detail.ProductId;
+                                            bool isAlreadyUsed = Purchase.PurchaseDetails
+                                            .Any(d => d.ProductId == product.Id && d != detail);
+
+                                            <button type="button"
+                                                    class="dropdown-item @(isSelected ? "active" : "") @(isAlreadyUsed && !isSelected ? "text-muted" : "")"
+                                                    disabled="@(!isSelected && isAlreadyUsed)"
+                                                    @onclick="() => SelectProduct(detail, product)"
+                                                    @onkeydown="(e) => HandleKeyDown(e, detail, product)">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span>
+                                                        @product.ProductName - @product.Brand - @product.TyreSize
+                                                    </span>
+                                                    @if (isAlreadyUsed && !isSelected)
+                                                    {
+                                                        <small class="text-danger ms-2">(Already added)</small>
+                                                    }
+                                                </div>
+                                            </button>
+                                        }
+                                        @if (!GetFilteredProducts(detail).Any())
+                                        {
+                                            <div class="dropdown-item text-muted">No products found</div>
+                                        }
+                                    </div>
                                 }
-                            </InputSelect>
+                            </div>
+
                             <ValidationMessage For="@(() => detail.ProductId)" />
                         </td>
 
@@ -119,7 +152,7 @@
                         </td>
 
                         <td style="width: 100px; text-align:center;">
-                            @(detail.Quantity * detail.UnitPrice)
+                            @((detail.Quantity * detail.UnitPrice).ToString("N2"))
                         </td>
 
                         <td style="width: 50px; text-align:center;">
@@ -152,7 +185,7 @@
                                          Value="Purchase.Discount"
                                          ValueChanged="OnDiscountChanged"
                                          ValueExpression="@(() => Purchase.Discount)"
-                                         class="form-control text-end" />
+                                         class="form-control" />
                         </div>
 
                         <div class="col-md-4">
@@ -161,7 +194,7 @@
                                          Value="Purchase.TaxAmount"
                                          ValueChanged="OnTaxChanged"
                                          ValueExpression="@(() => Purchase.TaxAmount)"
-                                         class="form-control text-end" />
+                                         class="form-control" />
                         </div>
 
                         <div class="col-md-2 text-end">
@@ -190,14 +223,135 @@
     </div>
 </EditForm>
 
+<!-- Add Product Modal -->
+@if (showProductModal)
+{
+    <div class="modal show d-block" style="background-color: rgba(0,0,0,0.5); z-index: 1070;" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-light text-black">
+                    <h5 class="modal-title">
+                        <i class="bi bi-box-seam me-2"></i> Add New Product
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseProductModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@NewProduct" OnValidSubmit="SaveNewProduct">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Product Name *</label>
+                                <InputText class="form-control" @bind-Value="NewProduct.ProductName" />
+                                <ValidationMessage For="@(() => NewProduct.ProductName)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Brand *</label>
+                                <InputText class="form-control" @bind-Value="NewProduct.Brand" />
+                                <ValidationMessage For="@(() => NewProduct.Brand)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tyre Size</label>
+                                <InputText class="form-control" @bind-Value="NewProduct.TyreSize" />
+                                <ValidationMessage For="@(() => NewProduct.TyreSize)" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Type</label>
+                                <InputText class="form-control" @bind-Value="NewProduct.Type" />
+                                <ValidationMessage For="@(() => NewProduct.Type)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Thread</label>
+                                <InputText class="form-control" @bind-Value="NewProduct.Thread" />
+                                <ValidationMessage For="@(() => NewProduct.Thread)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tread Depth (mm)</label>
+                                <InputNumber class="form-control" @bind-Value="NewProduct.TreadDepth" />
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Quantity</label>
+                                <InputNumber class="form-control" @bind-Value="NewProduct.Quantity" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Date of Manufacture (DOT)</label>
+                                <InputDate class="form-control" @bind-Value="NewProduct.DOT" />
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Description</label>
+                                <InputTextArea class="form-control" @bind-Value="NewProduct.Description" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Barcode</label>
+                                <InputText class="form-control" @bind-Value="NewProduct.Barcode" />
+                            </div>
+
+                            <!-- Product Image Upload -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Product Image</label>
+                                <InputFile OnChange="OnFileChange" class="form-control" />
+                                <small class="text-muted">Max file size: 10MB. Supported formats: JPG, PNG, GIF, BMP, WebP</small>
+
+                                @if (HasValidImage(NewProduct.ImagePath))
+                                {
+                                    <div class="mt-2">
+                                        <p class="small text-muted mb-1">Current Image:</p>
+                                        <img src="@NewProduct.ImagePath" alt="Product Image" class="img-thumbnail" style="max-height: 150px;" />
+                                        <div class="mt-1">
+                                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveNewProductImage">
+                                                <i class="bi bi-trash"></i> Remove Image
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                                else if (uploadedFile != null)
+                                {
+                                    <div class="mt-2 text-success small">
+                                        <i class="bi bi-check-circle"></i> File selected: @uploadedFile.Name
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mt-2 text-muted small">
+                                        <i class="bi bi-image"></i> No image uploaded
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrEmpty(uploadStatus))
+                                {
+                                    <div class="alert alert-info mt-2 small">
+                                        @uploadStatus
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-success" disabled="@isSavingProduct">
+                                <i class="bi bi-save me-1"></i>
+                                @(isSavingProduct ? "Saving..." : "Save Product")
+                            </button>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseProductModal" disabled="@isSavingProduct">
+                                Cancel
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @if (ShowErrorPopup)
 {
     <div class="modal show" style="display:block; background-color:rgba(0,0,0,0.5)">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">Error</h5>
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">success</h5>
                     <button type="button" class="btn-close" @onclick="() => ShowErrorPopup = false"></button>
                 </div>
                 <div class="modal-body">
@@ -211,6 +365,8 @@
     </div>
 }
 
+
+
 @code {
     [Parameter] public Guid? PurchaseId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
@@ -220,15 +376,25 @@
     private string? ErrorMessage { get; set; }
     private bool ShowErrorPopup { get; set; }
 
+    // Searchable dropdown state
+    private Dictionary<Guid, bool> dropdownStates = new();
+    private Dictionary<Guid, string> searchTexts = new();
+
+    // Product modal state
+    private bool showProductModal = false;
+    private Product NewProduct = new Product();
+    private IBrowserFile uploadedFile;
+    private string uploadStatus = "";
+    private bool isSavingProduct = false;
+
     private Purchase Purchase = new Purchase
         {
             PurchaseDate = DateTime.Today,
-            PurchaseDetails = new List<PurchaseDetail>() // 👈 empty list se initialize
+            PurchaseDetails = new List<PurchaseDetail>()
         };
 
     protected override async Task OnInitializedAsync()
     {
-        // ek hi scope me sequential await karo
         suppliers = await LoadSuppliersAsync();
         products = await LoadProductsAsync();
 
@@ -237,10 +403,18 @@
         if (PurchaseId.HasValue)
         {
             Purchase = await PurchaseService.GetPurchaseByIdAsync(PurchaseId.Value);
-            //ensure no null values
             Purchase.Discount ??= 0;
             Purchase.TaxAmount ??= 0;
 
+            // Initialize dropdown states for existing items
+            if (Purchase.PurchaseDetails != null)
+            {
+                foreach (var detail in Purchase.PurchaseDetails)
+                {
+                    dropdownStates[detail.Id] = false;
+                    searchTexts[detail.Id] = "";
+                }
+            }
         }
         else
         {
@@ -255,6 +429,148 @@
         }
     }
 
+    // Product Modal Methods
+    private void OpenAddProductModal()
+    {
+        NewProduct = new Product();
+        uploadedFile = null;
+        uploadStatus = "";
+        showProductModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseProductModal()
+    {
+        if (!isSavingProduct)
+        {
+            showProductModal = false;
+            NewProduct = new Product();
+            uploadedFile = null;
+            uploadStatus = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnFileChange(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            uploadedFile = e.File;
+            uploadStatus = "Uploading image...";
+
+            if (uploadedFile != null)
+            {
+                // Validate file type
+                var validExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp" };
+                var fileExtension = Path.GetExtension(uploadedFile.Name).ToLower();
+
+                if (!validExtensions.Contains(fileExtension))
+                {
+                    uploadStatus = "Invalid file type. Please upload an image file.";
+                    return;
+                }
+
+                // Validate file size (10MB max)
+                if (uploadedFile.Size > 10_000_000)
+                {
+                    uploadStatus = "File size too large. Maximum size is 10MB.";
+                    return;
+                }
+
+                uploadStatus = "Image validation passed. File will be saved when you submit the form.";
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            uploadStatus = $"Error uploading image: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveNewProductImage()
+    {
+        NewProduct.ImagePath = null;
+        uploadedFile = null;
+        uploadStatus = "Image removed!";
+        StateHasChanged();
+    }
+
+    private async Task SaveNewProduct()
+    {
+        isSavingProduct = true;
+        StateHasChanged();
+
+        try
+        {
+            // Handle file upload if a file was selected
+            if (uploadedFile != null)
+            {
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "products");
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                var fileExtension = Path.GetExtension(uploadedFile.Name).ToLower();
+                var fileName = $"{Guid.NewGuid()}{fileExtension}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var stream = uploadedFile.OpenReadStream(maxAllowedSize: 10_000_000))
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await stream.CopyToAsync(fileStream);
+                }
+
+                NewProduct.ImagePath = $"/uploads/products/{fileName}";
+            }
+
+            // Save the product
+            var savedProduct = await ProductService.AddAsync(NewProduct);
+
+            if (savedProduct != null)
+            {
+                // Refresh products list
+                products = await LoadProductsAsync();
+
+                // Close modal
+                showProductModal = false;
+                uploadStatus = "Product saved successfully!";
+
+                // Show success message
+                ErrorMessage = "Product added successfully! It will now appear in the product dropdown.";
+                ShowErrorPopup = true;
+            }
+            else
+            {
+                uploadStatus = "Failed to save product. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadStatus = $"Error saving product: {ex.Message}";
+            ErrorMessage = $"Error saving product: {ex.Message}";
+            ShowErrorPopup = true;
+        }
+        finally
+        {
+            isSavingProduct = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool HasValidImage(string? imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath))
+            return false;
+
+        var invalidValues = new[] { "NULL", "null", "undefined", "none", "no image", "-", "N/A" };
+        if (invalidValues.Any(value => imagePath.Equals(value, StringComparison.OrdinalIgnoreCase)))
+            return false;
+
+        return true;
+    }
+
+    // Existing methods remain the same...
     private async Task SavePurchase()
     {
         try
@@ -273,24 +589,26 @@
         }
         catch (Exception ex)
         {
-
-            // Show friendly message to user
             ErrorMessage = ex.Message;
             ShowErrorPopup = true;
         }
-
     }
 
     private void AddDetail()
     {
-        Purchase.PurchaseDetails.Add(new PurchaseDetail
+        var newDetail = new PurchaseDetail
             {
-                Id = Guid.Empty,
+                Id = Guid.NewGuid(),
                 Quantity = 1,
                 UnitPrice = 0,
                 SellingPrice = 0,
                 TotalPrice = 0
-            });
+            };
+
+        Purchase.PurchaseDetails.Add(newDetail);
+        dropdownStates[newDetail.Id] = false;
+        searchTexts[newDetail.Id] = "";
+
         RecalculateTotals();
     }
 
@@ -300,18 +618,112 @@
 
         if (availableStock != null && detail.Quantity > availableStock.NewStockLevel)
         {
-            ErrorMessage = $"{detail.Product.ProductName} removal failed due to insufficient stock. Current stock: {availableStock.NewStockLevel} units";
+            ErrorMessage = $"{GetProductName(detail.ProductId)} removal failed due to insufficient stock. Current stock: {availableStock.NewStockLevel} units";
             ShowErrorPopup = true;
             StateHasChanged();
             return;
         }
 
         Purchase.PurchaseDetails.Remove(detail);
+        dropdownStates.Remove(detail.Id);
+        searchTexts.Remove(detail.Id);
+
         RecalculateTotals();
         StateHasChanged();
-        return;
     }
 
+    // Searchable Dropdown Methods
+    private string GetSearchText(PurchaseDetail detail)
+    {
+        return searchTexts.ContainsKey(detail.Id) ? searchTexts[detail.Id] : "";
+    }
+
+    private bool GetDropdownState(PurchaseDetail detail)
+    {
+        return dropdownStates.ContainsKey(detail.Id) && dropdownStates[detail.Id];
+    }
+
+    private void OnSearchInput(ChangeEventArgs e, PurchaseDetail detail)
+    {
+        var text = e.Value?.ToString() ?? "";
+        searchTexts[detail.Id] = text;
+
+        // Auto-show dropdown when typing
+        if (!string.IsNullOrWhiteSpace(text) && !GetDropdownState(detail))
+        {
+            ShowDropdown(detail);
+        }
+    }
+
+    private void ShowDropdown(PurchaseDetail detail)
+    {
+        // Close all other dropdowns
+        foreach (var key in dropdownStates.Keys.ToList())
+        {
+            dropdownStates[key] = false;
+        }
+
+        dropdownStates[detail.Id] = true;
+        StateHasChanged();
+    }
+
+    private async void HideDropdown(PurchaseDetail detail)
+    {
+        // Small delay to allow click event to fire
+        await Task.Delay(200);
+        if (dropdownStates.ContainsKey(detail.Id))
+        {
+            dropdownStates[detail.Id] = false;
+            StateHasChanged();
+        }
+    }
+
+    private IEnumerable<Product> GetFilteredProducts(PurchaseDetail currentDetail)
+    {
+        var searchText = GetSearchText(currentDetail);
+        var query = products.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            query = query.Where(p =>
+                (p.ProductName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true) ||
+                (p.Brand?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true) ||
+                (p.TyreSize?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true)
+            );
+        }
+
+        return query.OrderBy(p => p.ProductName);
+    }
+
+    private void SelectProduct(PurchaseDetail detail, Product product)
+    {
+        var previousProductId = detail.ProductId;
+        detail.ProductId = product.Id;
+        detail.Brand = product.Brand;
+
+        // Update search text to show selected product
+        searchTexts[detail.Id] = $"{product.ProductName} {product.Brand} {product.TyreSize}";
+        dropdownStates[detail.Id] = false;
+
+        RecalculateTotals();
+        StateHasChanged();
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e, PurchaseDetail detail, Product product)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            SelectProduct(detail, product);
+        }
+    }
+
+    private string GetProductName(Guid productId)
+    {
+        var product = products.FirstOrDefault(p => p.Id == productId);
+        return product != null ? $"{product.ProductName} - {product.Brand} - {product.TyreSize}" : "Unknown";
+    }
+
+    // Existing methods
     private void OnQuantityChanged(PurchaseDetail detail, int newValue)
     {
         detail.Quantity = newValue;
@@ -328,11 +740,11 @@
 
     private void OnProductChange(PurchaseDetail detail, Guid selectedProductId)
     {
-        var selectedProduct = products.FirstOrDefault(p => p.Id == selectedProductId);
-        if (selectedProduct != null)
+        // This method is kept for compatibility, but now handled by SelectProduct
+        var product = products.FirstOrDefault(p => p.Id == selectedProductId);
+        if (product != null)
         {
-            detail.ProductId = selectedProduct.Id;
-            detail.Brand = selectedProduct.Brand;
+            SelectProduct(detail, product);
         }
     }
 
@@ -351,12 +763,11 @@
     private void OnSellingPriceChanged(PurchaseDetail detail, decimal value)
     {
         detail.SellingPrice = value;
-        StateHasChanged(); // Refresh the UI to update validation
+        StateHasChanged();
     }
 
     private void RecalculateTotals()
-        {
-
+    {
         if (Purchase.PurchaseDetails == null)
         {
             Purchase.TotalAmount = 0;
@@ -373,7 +784,6 @@
         await OnClose.InvokeAsync();
     }
 
-    // helper methods bana diye taki code readable ho
     private async Task<List<Supplier>> LoadSuppliersAsync()
     {
         var list = await SupplierService.GetAllAsync();

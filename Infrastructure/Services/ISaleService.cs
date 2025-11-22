@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Domain.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,5 +17,7 @@ namespace Infrastructure.Services
         Task<bool> DeleteAsync(Guid id);
         Task<List<SaleDetail>> GetSaleDetailsByProductIdAsync(Guid productId);
         Task<byte[]> GenerateReceiptPdfAsync(Guid saleId);
+        Task<List<TopProductDto>> GetTopSellingProductsAsync();
+        Task<int> GetTotalInvoicesAsync();
     }
 }

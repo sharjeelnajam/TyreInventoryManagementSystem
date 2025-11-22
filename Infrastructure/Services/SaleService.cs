@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Domain.DTO;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
@@ -535,6 +536,25 @@ namespace Infrastructure.Services
             using var ms = new MemoryStream();
             document.GeneratePdf(ms);
             return ms.ToArray();
+        }
+
+        public async Task<List<TopProductDto>> GetTopSellingProductsAsync()
+        {
+            return await _context.SaleDetail
+                .GroupBy(x => new { x.ProductId, x.Product.ProductName })
+                .Select(g => new TopProductDto
+                {
+                    ProductName = g.Key.ProductName,
+                    Quantity = g.Sum(x => x.Quantity)
+                })
+                .OrderByDescending(x => x.Quantity)
+                .Take(5)
+                .ToListAsync();
+        }
+
+        public async Task<int> GetTotalInvoicesAsync()
+        {
+            return await _context.Sale.CountAsync();
         }
 
     }

@@ -3,12 +3,15 @@
 
 @using Infrastructure.Services
 @using Domain
+@using Domain.DTO
 @using System.Globalization
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using QuestPDF.Fluent
 @using QuestPDF.Infrastructure
 @inject IStaffService staffService
+@inject ISaleService saleService
+@inject IExpenseService expenseService
 @inject ICustomerService customerService
 @inject IProfitReportService ProfitReportService
 @inject IProductService productService
@@ -39,7 +42,7 @@
                         <i class="bi bi-arrow-left"></i> Back
                     </button>
                 </div>
-               
+
             </div>
 
             <div class="card-body p-0">
@@ -111,10 +114,10 @@
                         <label class="form-label fw-semibold">Start Date</label>
 
                         <InputDate TValue="DateTime?"
-                                   Value="startDate"
-                                   ValueChanged="OnStartDateChanged"
-                                   ValueExpression="@(() => startDate)"
-                                   class="form-control" />
+                        Value="startDate"
+                        ValueChanged="OnStartDateChanged"
+                        ValueExpression="@(() => startDate)"
+                        class="form-control" />
 
                         @if (!string.IsNullOrEmpty(DateError))
                         {
@@ -126,10 +129,10 @@
                         <label class="form-label fw-semibold">End Date</label>
 
                         <InputDate TValue="DateTime?"
-                                   Value="endDate"
-                                   ValueChanged="OnEndDateChanged"
-                                   ValueExpression="@(() => endDate)"
-                                   class="form-control" />
+                        Value="endDate"
+                        ValueChanged="OnEndDateChanged"
+                        ValueExpression="@(() => endDate)"
+                        class="form-control" />
 
                         @if (!string.IsNullOrEmpty(DateError))
                         {
@@ -150,17 +153,22 @@
 
 
         <!-- Summary cards -->
+        <!-- Summary cards -->
         <div class="row g-3 align-items-stretch">
+
+            <!-- Filtered Profit -->
             <div class="col-sm-6 col-lg-3 d-flex">
-                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card" style="background-color:#5a6268;">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card"
+                     style="background-color:#6c757d;">
+                    <!-- Purple -->
                     <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
                             <h6 class="fw-bold mb-1 small">Filtered Profit</h6>
                             <h5 class="fw-bold mb-0">@MonthlyProfit.ToString("C", new CultureInfo("ur-PK"))</h5>
                             <small class="opacity-75">
                                 @(startDate.HasValue && endDate.HasValue
-                                        ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
-                                        : "Current Month")
+                                    ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
+                                    : "Current Month")
                             </small>
                         </div>
                         <i class="bi bi-cash-coin fs-3 opacity-75"></i>
@@ -168,8 +176,31 @@
                 </div>
             </div>
 
+            <!-- Total Expense -->
             <div class="col-sm-6 col-lg-3 d-flex">
-                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card" style="background-color:#17a2b8;">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card"
+                     style="background-color:#fd7e14;">
+                    <!-- Orange -->
+                    <div class="card-body d-flex justify-content-between align-items-center p-3">
+                        <div>
+                            <h6 class="fw-bold mb-1 small">Total Expense</h6>
+                            <h5 class="fw-bold mb-0">@MonthlyExpense.ToString("C", new CultureInfo("ur-PK"))</h5>
+                            <small class="opacity-75">
+                                @(startDate.HasValue && endDate.HasValue
+                                    ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
+                                    : "Current Month")
+                            </small>
+                        </div>
+                        <i class="bi bi-cash-coin fs-3 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Staff -->
+            <div class="col-sm-6 col-lg-3 d-flex">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card"
+                     style="background-color:#20c997;">
+                    <!-- Teal -->
                     <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
                             <h6 class="fw-bold mb-1 small">Total Staff</h6>
@@ -180,8 +211,11 @@
                 </div>
             </div>
 
+            <!-- Total Customer -->
             <div class="col-sm-6 col-lg-3 d-flex">
-                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card" style="background-color:#007bff;">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card"
+                     style="background-color:#007bff;">
+                    <!-- Blue -->
                     <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
                             <h6 class="fw-bold mb-1 small">Total Customer</h6>
@@ -192,8 +226,11 @@
                 </div>
             </div>
 
+            <!-- Total Products -->
             <div class="col-sm-6 col-lg-3 d-flex">
-                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card" style="background-color:#28a745;">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card"
+                     style="background-color:#dc3545;">
+                    <!-- Red -->
                     <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
                             <h6 class="fw-bold mb-1 small">Total Products</h6>
@@ -203,7 +240,24 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Total Invoices -->
+            <div class="col-sm-6 col-lg-3 d-flex">
+                <div class="card shadow-sm border-0 text-white h-100 w-100 dashboard-card"
+                     style="background-color:#808080;">
+                    <!-- Indigo -->
+                    <div class="card-body d-flex justify-content-between align-items-center p-3">
+                        <div>
+                            <h6 class="fw-bold mb-1 small">Total Invoices</h6>
+                            <h5 class="fw-bold mb-0">@TotalInvoices</h5>
+                        </div>
+                        <i class="bi bi-receipt fs-3 opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+
         </div>
+
 
         <!-- Future Expansion Row -->
         <div class="row g-4">
@@ -221,13 +275,11 @@
 
             <div class="col-lg-6">
                 <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white fw-bold">
-                        Top Selling Products (Coming Soon)
+                    <div class="card p-3 shadow-sm border-0">
+                        <h5>Top 5 Selling Products</h5>
+                        <canvas id="topProductsChart"></canvas>
                     </div>
-                    <div class="card-body text-center text-muted">
-                        <i class="bi bi-box-seam fs-1 text-secondary"></i>
-                        <p class="mt-3">This section will display top-selling products in the next phase.</p>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -236,34 +288,34 @@
 
 <style>
     .threshold-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(5px);
-        z-index: 9998;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(5px);
+    z-index: 9998;
     }
 
     .threshold-modal {
-        position: fixed;
-        top: 8%;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 80%;
-        max-height: 80vh;
-        overflow-y: auto;
-        background: white;
-        border-radius: 10px;
-        z-index: 9999;
-        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    position: fixed;
+    top: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 10px;
+    z-index: 9999;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
 
     .disable-page {
-        filter: blur(5px);
-        pointer-events: none;
-        user-select: none;
+    filter: blur(5px);
+    pointer-events: none;
+    user-select: none;
     }
 </style>
 
@@ -273,11 +325,17 @@
     private List<Customer> customers = new();
     private List<Staff> Staffs = new();
     private decimal MonthlyProfit;
+    private decimal MonthlyExpense;
     private bool isLoading = true;
     private bool showThreshold = false;
     private List<StockHistory> thresholdProducts = new();
     private int srNo = 0;
     private string? DateError { get; set; }
+    int TotalInvoices = 0;
+    List<TopProductDto> TopProducts = new();
+    private bool _isFirstRender = true;
+    bool chartLoaded = false;
+
 
     private DateTime? startDate;
     private DateTime? endDate;
@@ -296,18 +354,37 @@
         isLoading = false;
     }
 
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!isLoading && !chartLoaded)
+        {
+            chartLoaded = true;
+
+            await JS.InvokeVoidAsync("loadTopProductsChart",
+                TopProducts.Select(x => x.ProductName).ToList(),
+                TopProducts.Select(x => x.Quantity).ToList());
+        }
+    }
+
+
     private async Task LoadData()
     {
         if (startDate.HasValue && endDate.HasValue)
         {
             MonthlyProfit = await ProfitReportService.GetProfitByDateRangeAsync(startDate.Value, endDate.Value);
+            MonthlyExpense = await expenseService.GetProfitByDateRangeAsync(startDate.Value, endDate.Value);
             filterMessage = $"Showing profit from {startDate.Value:MMM dd, yyyy} to {endDate.Value:MMM dd, yyyy}";
         }
         else
         {
             MonthlyProfit = await ProfitReportService.GetMonthProfitAsync();
+            MonthlyExpense = await expenseService.GetMonthProfitAsync();
             filterMessage = "Showing current month profit";
         }
+
+        TotalInvoices = await saleService.GetTotalInvoicesAsync();
+        TopProducts = await saleService.GetTopSellingProductsAsync();
 
         Staffs = await staffService.GetAllStaffAsync();
         customers = await customerService.GetCustomersAsync();
@@ -323,6 +400,7 @@
             LoadThresholdProducts();
         }
     }
+
     private void LoadThresholdProducts()
     {
         srNo = 0;

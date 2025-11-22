@@ -4,6 +4,7 @@
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
 @inject ApplicationDbContext _context
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
 @if (IsVisible)
@@ -31,11 +32,9 @@
                                 <label>Date</label>
                                 <InputDate @bind-Value="Sale.SaleDate" class="form-control" readonly />
                             </div>
-
                         </div>
 
                         <div class="row mt-3">
-
                             <div class="col-md-4">
                                 <label>Payment Method</label>
                                 <InputSelect class="form-control" @bind-Value="Sale.PaymentMethod">
@@ -91,23 +90,49 @@
                                     @foreach (var detail in Sale.SaleDetails)
                                     {
                                         <tr>
-                                            <td>
-                                                <InputSelect TValue="Guid"
-                                                             Value="detail.ProductId"
-                                                             ValueChanged="@(v => OnProductChanged(detail, v))"
-                                                             ValueExpression="@(() => detail.ProductId)"
-                                                             class="form-control">
-                                                    <option value="">-- Select Product --</option>
-                                                    @foreach (var p in products)
-                                                    {
-                                                        bool isSelected = p.Id == detail.ProductId;
-                                                        bool isAlreadyUsed = Sale.SaleDetails.Any(d => d.ProductId == p.Id && d != detail);
+                                            <td style="min-width: 300px; position: relative;">
+                                                <!-- Searchable Dropdown -->
+                                                <div class="dropdown">
+                                                    <input type="text"
+                                                           class="form-control"
+                                                           placeholder="Search product..."
+                                                           value="@GetSearchText(detail)"
+                                                           @oninput="(e) => OnSearchInput(e, detail)"
+                                                           @onfocus="() => ShowDropdown(detail)"
+                                                           @onblur="() => HideDropdown(detail)" />
 
-                                                        <option value="@p.Id" disabled="@(!isSelected && isAlreadyUsed)">
-                                                            @p.ProductName
-                                                        </option>
+                                                    @if (GetDropdownState(detail))
+                                                    {
+                                                        <div class="dropdown-menu show d-block position-absolute w-100"
+                                                             style="z-index: 1060; max-height: 250px; overflow-y: auto; background: white;">
+                                                            @foreach (var product in GetFilteredProducts(detail))
+                                                            {
+                                                                bool isSelected = product.Id == detail.ProductId;
+                                                                bool isAlreadyUsed = Sale.SaleDetails.Any(d => d.ProductId == product.Id && d != detail);
+
+                                                                <button type="button"
+                                                                        class="dropdown-item @(isSelected ? "active" : "") @(isAlreadyUsed && !isSelected ? "text-muted" : "")"
+                                                                        disabled="@(!isSelected && isAlreadyUsed)"
+                                                                        @onclick="() => SelectProduct(detail, product)"
+                                                                        @onkeydown="(e) => HandleKeyDown(e, detail, product)">
+                                                                    <div class="d-flex justify-content-between align-items-center">
+                                                                        <span>
+                                                                            @product.ProductName - @product.Brand - @product.TyreSize
+                                                                        </span>
+                                                                        @if (isAlreadyUsed && !isSelected)
+                                                                        {
+                                                                            <small class="text-danger ms-2">(Already added)</small>
+                                                                        }
+                                                                    </div>
+                                                                </button>
+                                                            }
+                                                            @if (!GetFilteredProducts(detail).Any())
+                                                            {
+                                                                <div class="dropdown-item text-muted">No products found</div>
+                                                            }
+                                                        </div>
                                                     }
-                                                </InputSelect>
+                                                </div>
 
                                                 <ValidationMessage For="@(() => detail.ProductId)" />
                                             </td>
@@ -148,16 +173,12 @@
                             + Add Item
                         </button>
 
-
-
                         <div class="row mt-4 border-top pt-3">
                             <div class="col-md-6"></div>
-
                             <div class="col-md-6">
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body">
                                         <div class="row g-3 align-items-center">
-
                                             <div class="col-md-4">
                                                 <label>Discount</label>
                                                 <InputNumber TValue="decimal?"
@@ -166,7 +187,6 @@
                                                              ValueExpression="@(() => Sale.Discount)"
                                                              class="form-control" />
                                             </div>
-
                                             <div class="col-md-4">
                                                 <label>Tax (%)</label>
                                                 <InputNumber TValue="decimal?"
@@ -175,12 +195,10 @@
                                                              ValueExpression="@(() => Sale.TaxAmount)"
                                                              class="form-control" />
                                             </div>
-
                                             <div class="col-md-2 text-end">
                                                 <label class="form-label fw-semibold mb-0">Total</label>
                                                 <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
                                             </div>
-
                                             <div class="col-md-2 text-end">
                                                 <label class="form-label fw-semibold mb-0">Net</label>
                                                 <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
@@ -190,8 +208,6 @@
                                 </div>
                             </div>
                         </div>
-
-
 
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
@@ -205,6 +221,7 @@
         </div>
     </div>
 }
+
 <!-- Add Customer Popup -->
 @if (showCustomerModal)
 {
@@ -242,7 +259,6 @@
         </div>
     </div>
 }
-
 @code {
     [Parameter] public Guid Id { get; set; }
     [Parameter] public bool IsVisible { get; set; }
@@ -258,6 +274,10 @@
     protected List<StockHistory> Stocks = new();
     private List<Product> products = new();
 
+    // Searchable dropdown state
+    private string searchText = string.Empty;
+    private Dictionary<Guid, bool> dropdownStates = new();
+    private Dictionary<Guid, string> searchTexts = new();
 
     protected bool showCustomerModal = false;
     protected Customer NewCustomer { get; set; } = new();
@@ -266,17 +286,25 @@
     {
         if (IsVisible)
         {
-
             Customers = await CustomerService.GetCustomersAsync();
             products = await ProductService.GetAllAsync();
             Stocks = _context.StockHistories.ToList();
-
 
             if (Id != Guid.Empty)
             {
                 Sale = await SaleService.GetByIdAsync(Id);
                 Sale.Discount ??= 0;
                 Sale.TaxAmount ??= 0;
+
+                // Initialize dropdown states for existing items
+                if (Sale.SaleDetails != null)
+                {
+                    foreach (var detail in Sale.SaleDetails)
+                    {
+                        dropdownStates[detail.Id] = false;
+                        searchTexts[detail.Id] = "";
+                    }
+                }
             }
             else
             {
@@ -312,13 +340,17 @@
 
     protected void AddItem()
     {
-        Sale.SaleDetails.Add(new SaleDetail
+        var newDetail = new SaleDetail
             {
-                Id = Guid.Empty,
+                Id = Guid.NewGuid(),
                 Quantity = 0,
                 UnitPrice = 0,
                 TotalPrice = 0
-            });
+            };
+
+        Sale.SaleDetails.Add(newDetail);
+        dropdownStates[newDetail.Id] = false;
+        searchTexts[newDetail.Id] = "";
     }
 
     protected void RemoveItem(SaleDetail item)
@@ -327,10 +359,119 @@
         if (quantityErrors.ContainsKey(item.ProductId))
             quantityErrors.Remove(item.ProductId);
 
+        dropdownStates.Remove(item.Id);
+        searchTexts.Remove(item.Id);
+
         isFormValid = !quantityErrors.Any();
         RecalculateTotals();
     }
 
+    // Searchable Dropdown Methods
+    private string GetSearchText(SaleDetail detail)
+    {
+        return searchTexts.ContainsKey(detail.Id) ? searchTexts[detail.Id] : "";
+    }
+
+    private bool GetDropdownState(SaleDetail detail)
+    {
+        return dropdownStates.ContainsKey(detail.Id) && dropdownStates[detail.Id];
+    }
+
+    private void OnSearchInput(ChangeEventArgs e, SaleDetail detail)
+    {
+        var text = e.Value?.ToString() ?? "";
+        searchTexts[detail.Id] = text;
+
+        // Auto-show dropdown when typing
+        if (!string.IsNullOrWhiteSpace(text) && !GetDropdownState(detail))
+        {
+            ShowDropdown(detail);
+        }
+    }
+
+    private void ShowDropdown(SaleDetail detail)
+    {
+        // Close all other dropdowns
+        foreach (var key in dropdownStates.Keys.ToList())
+        {
+            dropdownStates[key] = false;
+        }
+
+        dropdownStates[detail.Id] = true;
+        StateHasChanged();
+    }
+
+    private async void HideDropdown(SaleDetail detail)
+    {
+        // Small delay to allow click event to fire
+        await Task.Delay(200);
+        if (dropdownStates.ContainsKey(detail.Id))
+        {
+            dropdownStates[detail.Id] = false;
+            StateHasChanged();
+        }
+    }
+
+    private IEnumerable<Product> GetFilteredProducts(SaleDetail currentDetail)
+    {
+        var searchText = GetSearchText(currentDetail);
+        var query = products.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            query = query.Where(p =>
+                (p.ProductName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true) ||
+                (p.Brand?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true) ||
+                (p.TyreSize?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true)
+            );
+        }
+
+        return query.OrderBy(p => p.ProductName);
+    }
+
+    private void SelectProduct(SaleDetail detail, Product product)
+    {
+        var previousProductId = detail.ProductId;
+        detail.ProductId = product.Id;
+
+        var stockProduct = _context.PurchaseDetails
+            .Where(p => p.ProductId == product.Id)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefault();
+
+        if (previousProductId != product.Id)
+        {
+            detail.Quantity = 1;
+            detail.UnitPrice = stockProduct?.SellingPrice ?? 0;
+            detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+
+            if (quantityErrors.ContainsKey(previousProductId))
+                quantityErrors.Remove(previousProductId);
+        }
+
+        // Update search text to show selected product
+        searchTexts[detail.Id] = $"{product.ProductName} {product.Brand} {product.TyreSize}";
+        dropdownStates[detail.Id] = false;
+
+        RecalculateTotals();
+        StateHasChanged();
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e, SaleDetail detail, Product product)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            SelectProduct(detail, product);
+        }
+    }
+
+    private string GetProductName(Guid productId)
+    {
+        var product = products.FirstOrDefault(p => p.Id == productId);
+        return product != null ? $"{product.ProductName} - {product.Brand} - {product.TyreSize}" : "Unknown";
+    }
+
+    // Existing methods
     private void OnDiscountChanged(decimal? newValue)
     {
         Sale.Discount = newValue ?? 0;
@@ -343,47 +484,31 @@
         RecalculateTotals();
     }
 
-    // NEW METHOD: Handle product selection change
     private void OnProductChanged(SaleDetail detail, Guid newProductId)
     {
-        var previousProductId = detail.ProductId;
-        detail.ProductId = newProductId;
-
-        var product = _context.PurchaseDetails
-        .Where(p => p.ProductId == newProductId)
-        .OrderByDescending(p => p.CreatedAt)
-        .FirstOrDefault();
-
-        if (previousProductId != newProductId)
+        // This method is kept for compatibility, but now handled by SelectProduct
+        var product = products.FirstOrDefault(p => p.Id == newProductId);
+        if (product != null)
         {
-            detail.Quantity = 0;
-            detail.UnitPrice = product?.SellingPrice ?? 0;
-            detail.TotalPrice = 0;
-            isFormValid = true;
-
-            if (quantityErrors.ContainsKey(previousProductId))
-                quantityErrors.Remove(previousProductId);
+            SelectProduct(detail, product);
         }
-
-        RecalculateTotals();
     }
-
 
     private void OnQuantityChanged(SaleDetail detail, int newValue)
     {
         detail.Quantity = newValue;
 
-        var existingvalue = _context.SaleDetail.FirstOrDefault(s => s.ProductId == detail.ProductId);
+        var existingValue = _context.SaleDetail.FirstOrDefault(s => s.ProductId == detail.ProductId);
 
-        if(Id != Guid.Empty && existingvalue != null)
+        if (Id != Guid.Empty && existingValue != null)
         {
-            if (newValue > existingvalue.Quantity)
+            if (newValue > existingValue.Quantity)
             {
-                newValue = newValue - existingvalue.Quantity;
+                newValue = newValue - existingValue.Quantity;
             }
-            else if (newValue < existingvalue.Quantity)
+            else if (newValue < existingValue.Quantity)
             {
-                newValue = existingvalue.Quantity - newValue;
+                newValue = existingValue.Quantity - newValue;
             }
         }
 
@@ -391,25 +516,18 @@
 
         if (stockProduct == null)
         {
-            quantityErrors[detail.ProductId] = $"No Available Stock againset this product pleae purchase first";
+            quantityErrors[detail.ProductId] = $"No available stock for this product. Please purchase first.";
             isFormValid = false;
             return;
         }
 
-        // Calculate total quantity of same product in all rows
-        // var totalQtyForThisProduct = Sale.SaleDetails
-        //     .Where(x => x.ProductId == detail.ProductId)
-        //     .Sum(x => x.Quantity);
-
-        // Check if exceeds available stock
         if (newValue > stockProduct.NewStockLevel)
         {
-            quantityErrors[detail.ProductId] = $"Your entered quantity exceeds available stock: {stockProduct.NewStockLevel}";
+            quantityErrors[detail.ProductId] = $"Quantity exceeds available stock: {stockProduct.NewStockLevel}";
             isFormValid = false;
         }
         else
         {
-            // remove error for this product if valid now
             if (quantityErrors.ContainsKey(detail.ProductId))
                 quantityErrors.Remove(detail.ProductId);
 
@@ -435,12 +553,13 @@
             Sale.NetAmount = 0;
             return;
         }
+
         var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
-        Sale.TotalAmount = total > 0 ? total - Sale.Discount ?? 0 : 0;
+        Sale.TotalAmount = total > 0 ? total - (Sale.Discount ?? 0) : 0;
         Sale.NetAmount = total > 0 ? total - (Sale.Discount ?? 0) + (Sale.TaxAmount ?? 0) : 0;
     }
 
-    // Customer popup
+    // Customer popup methods
     protected void OpenAddCustomer()
     {
         NewCustomer = new Customer();
