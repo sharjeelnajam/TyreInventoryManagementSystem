@@ -65,7 +65,7 @@
                                     <td>@(++srNo)</td>
                                     <td>@item.Product.ProductName</td>
                                     <td>@item.Product.Type</td>
-                                    <td class="fw-bold">@item.QuantityChanged</td>
+                                    <td class="fw-bold">@item.NewStockLevel</td>
                                 </tr>
                             }
                         }
@@ -405,9 +405,9 @@
     {
         srNo = 0;
         thresholdProducts = _context.StockHistories
-            .Where(p => p.QuantityChanged <= 5)
+            .Where(p => p.NewStockLevel <= 5)
             .Include(p => p.Product)
-            .OrderBy(p => p.QuantityChanged)
+            .OrderBy(p => p.NewStockLevel)
             .ToList();
         // .OrderBy(p => p.StockQty)
             // .ToList();
@@ -422,7 +422,7 @@
                     SrNo = i + 1,
                     Product = item.Product.ProductName,
                     Type = item.Product.Type,
-                    Stock = item.QuantityChanged
+                    Stock = item.NewStockLevel
                 }).ToList();
 
             var doc = new LowStockReportDocument(model);
