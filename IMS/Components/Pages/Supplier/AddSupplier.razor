@@ -4,77 +4,115 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
-<div class="modal-backdrop fade show"></div>
-<div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">@ModalTitle</h5>
-                <button type="button" class="btn-close" aria-label="Close" @onclick="Close"></button>
-            </div>
 
-            <div class="modal-body">
-                <EditForm Model="Supplier" OnValidSubmit="SaveSupplier">
-                    <DataAnnotationsValidator />
+    <div class="modal fade show d-block" tabindex="-1" style="background-color:rgba(0,0,0,0.4)">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content shadow-lg border-0" style="border-radius:14px;">
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label>Name *</label>
-                            <InputText class="form-control" @bind-Value="Supplier.Name" />
-                            <ValidationMessage For="@(() => Supplier.Name)" />
-                        </div>
-                        <div class="col-md-6">
-                            <label>Phone *</label>
-                            <InputText class="form-control" @bind-Value="Supplier.Phone" />
-                            <ValidationMessage For="@(() => Supplier.Phone)" />
-                        </div>
-                        <div class="col-md-6">
-                            <label>Email</label>
-                            <InputText class="form-control" @bind-Value="Supplier.Email" />
-                        </div>
-                        <div class="col-md-6">
-                            <label>Address</label>
-                            <InputText class="form-control" @bind-Value="Supplier.Address" />
-                        </div>
-                        <div class="col-md-6">
-                            <label>City</label>
-                            <InputText class="form-control" @bind-Value="Supplier.City" />
-                        </div>
-                        <div class="col-md-6">
-                            <label>Company Name</label>
-                            <InputText class="form-control" @bind-Value="Supplier.CompanyName" />
-                        </div>
-                        <div class="col-md-6">
-                            <label>Tax Number</label>
-                            <InputText class="form-control" @bind-Value="Supplier.TaxNumber" />
-                        </div>
-                        <div class="col-md-6">
-                            <label>Contact Person</label>
-                            <InputText class="form-control" @bind-Value="Supplier.ContactPerson" />
-                        </div>
-                        <div class="col-md-6">
-                            <label>Payment Terms</label>
-                            <InputSelect class="form-control" @bind-Value="Supplier.PaymentTerms">
-                                <option value="">-- Select --</option>
-                                <option value="Net 30">Net 30</option>
-                                <option value="Advance">Advance</option>
-                            </InputSelect>
-                        </div>
-                        <div class="col-md-6 d-flex align-items-center mt-3">
-                            <InputCheckbox class="form-check-input me-2" @bind-Value="Supplier.IsActive" />
-                            <label class="form-check-label">Is Active</label>
-                        </div>
-                    </div>
+                <!-- Header -->
+                <div class="modal-header text-white"
+                     style="background: linear-gradient(135deg, #4b6cb7, #182848); border-top-left-radius:14px; border-top-right-radius:14px;">
+                    <h5 class="modal-title fw-bold">@ModalTitle</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                </div>
 
-                    <div class="mt-4 text-end">
-                        <button type="submit" class="btn btn-primary me-2">Save</button>
-                        <button type="button" class="btn btn-secondary" @onclick="Close">Cancel</button>
-                    </div>
-                </EditForm>
+                <!-- Body -->
+                <div class="modal-body px-4 py-4">
+                    <EditForm Model="Supplier" OnValidSubmit="SaveSupplier">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Name *</label>
+                                <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Supplier.Name" />
+                                <ValidationMessage For="@(() => Supplier.Name)" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Phone *</label>
+                                <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Supplier.Phone" />
+                                <ValidationMessage For="@(() => Supplier.Phone)" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Email</label>
+                                <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Supplier.Email" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Address</label>
+                                <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Supplier.Address" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">City</label>
+                                <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Supplier.City" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Company Name</label>
+                                <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Supplier.CompanyName" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Tax Number</label>
+                                <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Supplier.TaxNumber" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Contact Person</label>
+                                <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Supplier.ContactPerson" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Payment Terms</label>
+                                <InputSelect class="form-select form-select-lg shadow-sm"
+                                             @bind-Value="Supplier.PaymentTerms">
+                                    <option value="">-- Select --</option>
+                                    <option value="Net 30">Net 30</option>
+                                    <option value="Advance">Advance</option>
+                                </InputSelect>
+                            </div>
+
+                            <div class="col-md-6 d-flex align-items-center mt-3">
+                                <InputCheckbox class="form-check-input me-2 fs-5"
+                                               @bind-Value="Supplier.IsActive" />
+                                <label class="form-check-label fw-semibold">Is Active</label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit"
+                                    class="btn text-white px-4 py-2 me-2 shadow-sm"
+                                    style="border-radius:8px; background: linear-gradient(135deg,#28a745,#218838);">
+                                Save
+                            </button>
+
+                            <button type="button"
+                                    class="btn btn-light px-4 py-2 border shadow-sm"
+                                    style="border-radius:8px;"
+                                    @onclick="Close">
+                                Cancel
+                            </button>
+                        </div>
+
+                    </EditForm>
+                </div>
+
             </div>
         </div>
     </div>
-</div>
+
+<style>
+    .modal {
+        display: block;
+    }
+
+        .modal.fade:not(.show) {
+            display: none;
+        }
+</style>
+
 
 @code {
     [Parameter] public Supplier Supplier { get; set; } = new();

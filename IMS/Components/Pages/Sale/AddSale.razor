@@ -3,6 +3,7 @@
 @inject ISaleService SaleService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
+@inject IWholesalerService WholesalerService
 @inject ApplicationDbContext _context
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -34,8 +35,9 @@
                             </div>
                         </div>
 
-                        <div class="row mt-3">
-                            <div class="col-md-4">
+                        <div class="row mt-4 g-2">
+
+                            <div class="col-md-3">
                                 <label>Payment Method</label>
                                 <InputSelect class="form-control" @bind-Value="Sale.PaymentMethod">
                                     <option value="">-- Select Method --</option>
@@ -45,7 +47,7 @@
                                 </InputSelect>
                             </div>
 
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label>Payment Status</label>
                                 <InputSelect @bind-Value="Sale.PaymentStatus" class="form-control">
                                     <option value="">-- Select Payment Status --</option>
@@ -55,20 +57,55 @@
                                 </InputSelect>
                             </div>
 
-                            <div class="col-md-4">
-                                <label>Customer</label>
-                                <InputSelect class="form-control" @bind-Value="Sale.CustomerId">
-                                    <option value="">-- Select Customer --</option>
-                                    @foreach (var customer in Customers)
-                                    {
-                                        <option value="@customer.Id">@customer.Name</option>
-                                    }
-                                </InputSelect>
-                                <button type="button" class="btn btn-link p-0 mt-1" @onclick="OpenAddCustomer">
-                                    + Add New Customer
-                                </button>
+                            @if (!isWholesalerMode)
+                            {
+                                <div class="col-md-3">
+                                    <label>Customer</label>
+                                    <InputSelect class="form-control" @bind-Value="Sale.CustomerId">
+                                        <option value="">-- Select Customer --</option>
+                                        @foreach (var customer in Customers)
+                                        {
+                                            <option value="@customer.Id">@customer.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <button type="button" class="btn btn-link p-0 mt-1" @onclick="OpenAddCustomer">
+                                        + Add New Customer
+                                    </button>
+                                </div>
+                            }
+
+                            @if (isWholesalerMode)
+                            {
+                                <div class="col-md-3">
+                                    <label>Wholesaler</label>
+                                    <InputSelect class="form-control" @bind-Value="Sale.WholesalerId">
+                                        <option value="">-- Select Wholesaler --</option>
+                                        @foreach (var w in Wholesalers)
+                                        {
+                                            <option value="@w.Id">@w.Name (@w.Type)</option>
+                                        }
+                                    </InputSelect>
+                                    <button type="button" class="btn btn-link p-0 mt-1" @onclick="OpenAddWholesaler">
+                                        + Add New Wholesaler
+                                    </button>
+                                </div>
+                            }
+
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Bill To</label>
+                                <div class="form-check form-switch mt-1">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           @bind="isWholesalerMode"
+                                           id="toggleSwitch" />
+                                    <label class="form-check-label" for="toggleSwitch">
+                                        @(isWholesalerMode ? "Wholesaler" : "Customer")
+                                    </label>
+                                </div>
                             </div>
+
                         </div>
+
 
                         <hr />
 
@@ -259,6 +296,61 @@
         </div>
     </div>
 }
+
+
+<!-- Add Wholesaler Popup -->
+@if (showWholesalerModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color:rgba(0,0,0,0.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Add Wholesaler</h5>
+                    <button type="button" class="btn-close" @onclick="CloseWholesalerModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@NewWholesaler" OnValidSubmit="SaveWholesaler">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label>Name</label>
+                            <InputText class="form-control" @bind-Value="NewWholesaler.Name" />
+                            <ValidationMessage For="@(()=>NewWholesaler.Name)" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Email</label>
+                            <InputText class="form-control" @bind-Value="NewWholesaler.Email" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Phone</label>
+                            <InputText class="form-control" @bind-Value="NewWholesaler.Phone" />
+                            <ValidationMessage For="@(()=>NewWholesaler.Phone)" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Address</label>
+                            <InputText class="form-control" @bind-Value="NewWholesaler.Address" />
+                        </div>
+                        <div class="mb-3">
+                            <label>Type</label>
+                            <InputSelect class="form-select" @bind-Value="NewWholesaler.Type">
+                                @foreach (var t in Enum.GetValues<Domain.Enums.WholesalerType>())
+                                {
+                                    <option value="@t">@t</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-primary">Save</button>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseWholesalerModal">Cancel</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
 @code {
     [Parameter] public Guid Id { get; set; }
     [Parameter] public bool IsVisible { get; set; }
@@ -282,6 +374,11 @@
     protected bool showCustomerModal = false;
     protected Customer NewCustomer { get; set; } = new();
 
+    protected List<Wholesaler> Wholesalers { get; set; } = new();
+    protected bool showWholesalerModal = false;
+    protected Wholesaler NewWholesaler { get; set; } = new();
+
+
     protected override async Task OnParametersSetAsync()
     {
         if (IsVisible)
@@ -289,6 +386,8 @@
             Customers = await CustomerService.GetCustomersAsync();
             products = await ProductService.GetAllAsync();
             Stocks = _context.StockHistories.ToList();
+
+            Wholesalers = await WholesalerService.GetAllAsync();
 
             if (Id != Guid.Empty)
             {
@@ -332,8 +431,9 @@
         else
             await SaleService.UpdateAsync(Sale);
 
-        IsVisible = false;
+     
         await OnClose.InvokeAsync();
+        IsVisible = false;
     }
 
     protected void Close() => OnClose.InvokeAsync();
@@ -559,6 +659,26 @@
         Sale.NetAmount = total > 0 ? total - (Sale.Discount ?? 0) + (Sale.TaxAmount ?? 0) : 0;
     }
 
+    private bool isWholesalerMode
+    {
+        get => _isWholesalerMode;
+        set
+        {
+            _isWholesalerMode = value;
+
+            if (value)
+            {
+                Sale.CustomerId = Guid.Empty;   // Clear customer
+            }
+            else
+            {
+                Sale.WholesalerId = Guid.Empty; // Clear wholesaler
+            }
+        }
+    }
+    private bool _isWholesalerMode;
+
+
     // Customer popup methods
     protected void OpenAddCustomer()
     {
@@ -578,4 +698,34 @@
     {
         showCustomerModal = false;
     }
+
+    // WholeSaler popup methods
+    protected void OpenAddWholesaler()
+    {
+        NewWholesaler = new Wholesaler();
+        showWholesalerModal = true;
+    }
+
+    protected async Task SaveWholesaler()
+    {
+        // ensure Id is set (if your service expects auto-generated, Wholesaler constructor may set it)
+        if (NewWholesaler.Id == Guid.Empty)
+            NewWholesaler.Id = Guid.NewGuid();
+
+        await WholesalerService.AddAsync(NewWholesaler);
+
+        // reload lists
+        Wholesalers = await WholesalerService.GetAllAsync();
+        // pre-select the newly added wholesaler for this sale
+        Sale.WholesalerId = NewWholesaler.Id;
+
+        showWholesalerModal = false;
+        StateHasChanged();
+    }
+
+    protected void CloseWholesalerModal()
+    {
+        showWholesalerModal = false;
+    }
+
 }

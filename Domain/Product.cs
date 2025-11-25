@@ -21,8 +21,7 @@ namespace Domain
         [Required(ErrorMessage = "Brand is required")]
         public string Brand { get; set; } = default!;
 
-        [Required(ErrorMessage = "Tyre size is required")]
-        public string TyreSize { get; set; } = default!;
+        public string? TyreSize { get; set; } = default!;
 
         [Precision(18, 2)]
         public decimal? TreadDepth { get; set; }  // mm

@@ -6,50 +6,80 @@
 
 <EditForm Model="CustomerModel" OnValidSubmit="HandleValidSubmit">
     <DataAnnotationsValidator />
-    <ValidationSummary />
 
-    <div class="mb-3">
-        <label>Name</label>
-        <InputText @bind-Value="CustomerModel.Name" class="form-control" />
-        <ValidationMessage For="@(()=>CustomerModel.Name)" />
+    <div class="p-4 shadow-lg border-0" style="border-radius:14px; background:white;">
+
+        <h4 class="fw-bold mb-4 pb-2 border-bottom"
+            style="background: linear-gradient(90deg,#4b6cb7,#182848); -webkit-background-clip:text; color:transparent;">
+            Customer Details
+        </h4>
+
+        <div class="row g-3">
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Name *</label>
+                <InputText @bind-Value="CustomerModel.Name"
+                           class="form-control form-control-lg shadow-sm" />
+                <ValidationMessage For="@(() => CustomerModel.Name)" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Phone *</label>
+                <InputText @bind-Value="CustomerModel.Phone"
+                           class="form-control form-control-lg shadow-sm" />
+                <ValidationMessage For="@(() => CustomerModel.Phone)" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Email</label>
+                <InputText @bind-Value="CustomerModel.Email"
+                           class="form-control form-control-lg shadow-sm" />
+                <ValidationMessage For="@(() => CustomerModel.Email)" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">City</label>
+                <InputText @bind-Value="CustomerModel.City"
+                           class="form-control form-control-lg shadow-sm" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold">Customer Type *</label>
+                <InputSelect @bind-Value="CustomerModel.CustomerType"
+                             class="form-select form-select-lg shadow-sm">
+                    @foreach (var type in Enum.GetValues(typeof(CustomerType)))
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => CustomerModel.CustomerType)" />
+            </div>
+
+            <div class="col-md-6 d-flex align-items-center mt-3">
+                <InputCheckbox @bind-Value="CustomerModel.IsActive"
+                               class="form-check-input me-2 fs-5" />
+                <label class="form-check-label fw-semibold">Active</label>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4">
+            <button type="submit"
+                    class="btn text-white px-4 py-2 me-2 shadow-sm"
+                    style="border-radius:8px; background: linear-gradient(135deg,#28a745,#218838);">
+                Save
+            </button>
+
+            <button type="button"
+                    class="btn btn-light px-4 py-2 border shadow-sm"
+                    style="border-radius:8px;"
+                    @onclick="OnCancelled">
+                Cancel
+            </button>
+        </div>
+
     </div>
-
-    <div class="mb-3">
-        <label>Phone</label>
-        <InputText @bind-Value="CustomerModel.Phone" class="form-control" />
-        <ValidationMessage For="@(()=>CustomerModel.Phone)" />
-    </div>
-
-    <div class="mb-3">
-        <label>Email</label>
-        <InputText @bind-Value="CustomerModel.Email" class="form-control" />
-        <ValidationMessage For="@(()=>CustomerModel.Email)" />
-    </div>
-
-    <div class="mb-3">
-        <label>City</label>
-        <InputText @bind-Value="CustomerModel.City" class="form-control" />
-    </div>
-
-    <div class="mb-3">
-        <label>Customer Type</label>
-        <InputSelect @bind-Value="CustomerModel.CustomerType" class="form-select">
-            @foreach (var type in Enum.GetValues(typeof(CustomerType)))
-            {
-                <option value="@type">@type</option>
-            }
-        </InputSelect>
-        <ValidationMessage For="@(()=>CustomerModel.CustomerType)" />
-    </div>
-
-    <div class="form-check mb-3">
-        <InputCheckbox @bind-Value="CustomerModel.IsActive" class="form-check-input" />
-        <label class="form-check-label">Active</label>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Save</button>
-    <button type="button" class="btn btn-secondary" @onclick="OnCancelled">Cancel</button>
 </EditForm>
+
 
 @code {
     [Parameter] public Customer CustomerModel { get; set; }

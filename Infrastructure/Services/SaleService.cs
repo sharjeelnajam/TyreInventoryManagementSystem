@@ -23,11 +23,18 @@ namespace Infrastructure.Services
         {
             try
             {
-                var Sales = await _context.Sale.Include(s => s.Customer)
-                    .Include(s => s.SaleDetails).ThenInclude(s => s.Product) // if relation exists
+                var sales = await _context.Sale
+                    .Include(s => s.SaleDetails)
+                        .ThenInclude(sd => sd.Product)
                     .ToListAsync();
 
-                return Sales ?? new List<Sale>();
+                // Manually load and attach customers
+                await HydrateSalesWithCustomers(sales);
+
+                // Manually load and attach wholesalers if needed
+                await HydrateSalesWithWholesalers(sales);
+
+                return sales ?? new List<Sale>();
             }
             catch (Exception ex)
             {
@@ -42,7 +49,21 @@ namespace Infrastructure.Services
 
             try
             {
-                return await _context.Sale.Include(s => s.SaleDetails).ThenInclude(s => s.Product).Include(s => s.Customer).AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+                var sale = await _context.Sale
+            .Include(s => s.SaleDetails)
+                .ThenInclude(sd => sd.Product)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == id);
+
+                if (sale == null) return null;
+
+                // Manually load and attach customer
+                await HydrateSaleWithCustomer(sale);
+
+                // Manually load and attach wholesaler if needed
+                await HydrateSaleWithWholesaler(sale);
+
+                return sale;
             }
             catch (Exception ex)
             {
@@ -156,6 +177,7 @@ namespace Infrastructure.Services
                 // Update fields
                 existingSales.SaleNumber = sale.SaleNumber;
                 existingSales.CustomerId = sale.CustomerId;
+                existingSales.WholesalerId = sale.WholesalerId;
                 existingSales.TotalAmount = sale.TotalAmount;
                 existingSales.Discount = sale.Discount;
                 existingSales.TaxAmount = sale.TaxAmount;
@@ -356,19 +378,22 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.SaleDetail
-                        .Include(sd => sd.Sale)
-                            .ThenInclude(s => s.Customer)
-                        .Where(sd => sd.ProductId == productId)
-                        .OrderByDescending(sd => sd.Sale.SaleDate)
-                        .ToListAsync();
-            }
-            catch (Exception)
-            {
+                var saleDetails = await _context.SaleDetail
+                    .Include(sd => sd.Sale)
+                    .Where(sd => sd.ProductId == productId)
+                    .OrderByDescending(sd => sd.Sale.SaleDate)
+                    .ToListAsync();
 
+                // Manually hydrate customers for all related sales
+                await HydrateSalesWithCustomers(saleDetails.Select(sd => sd.Sale).ToList());
+
+                return saleDetails;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error in GetSaleDetailsByProductIdAsync: {ex.Message}");
                 throw;
             }
-           
         }
 
         public async Task<byte[]> GenerateReceiptPdfAsync(Guid saleId)
@@ -409,7 +434,7 @@ namespace Infrastructure.Services
                     // 🧾 HEADER
                     page.Header().Column(col =>
                     {
-                     
+
 
                         // Logo + Name
                         col.Item().PaddingTop(20).AlignCenter().Column(centerCol =>
@@ -557,5 +582,72 @@ namespace Infrastructure.Services
             return await _context.Sale.CountAsync();
         }
 
+        private async Task HydrateSalesWithCustomers(List<Sale> sales)
+        {
+            var customerIds = sales.Where(s => s.CustomerId.HasValue)
+                                  .Select(s => s.CustomerId.Value)
+                                  .Distinct()
+                                  .ToList();
+
+            if (!customerIds.Any()) return;
+
+            var customers = await _context.Customer
+                .Where(c => customerIds.Contains(c.Id))
+                .ToDictionaryAsync(c => c.Id);
+
+            foreach (var sale in sales)
+            {
+                if (sale.CustomerId.HasValue && customers.TryGetValue(sale.CustomerId.Value, out var customer))
+                {
+                    sale.Customer = customer;
+                }
+            }
+        }
+
+        private async Task HydrateSalesWithWholesalers(List<Sale> sales)
+        {
+            var wholesalerIds = sales.Where(s => s.WholesalerId.HasValue)
+                                    .Select(s => s.WholesalerId.Value)
+                                    .Distinct()
+                                    .ToList();
+
+            if (!wholesalerIds.Any()) return;
+
+            var wholesalers = await _context.Wholesalers
+                .Where(w => wholesalerIds.Contains(w.Id))
+                .ToDictionaryAsync(w => w.Id);
+
+            foreach (var sale in sales)
+            {
+                if (sale.WholesalerId.HasValue && wholesalers.TryGetValue(sale.WholesalerId.Value, out var wholesaler))
+                {
+                    sale.Wholesaler = wholesaler;
+                }
+            }
+        }
+        private async Task HydrateSaleWithCustomer(Sale sale)
+        {
+            if (sale.CustomerId.HasValue)
+            {
+                var customer = await _context.Customer
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.Id == sale.CustomerId.Value);
+
+                sale.Customer = customer;
+            }
+        }
+
+        private async Task HydrateSaleWithWholesaler(Sale sale)
+        {
+            if (sale.WholesalerId.HasValue)
+            {
+                var wholesaler = await _context.Wholesalers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(w => w.Id == sale.WholesalerId.Value);
+
+                sale.Wholesaler = wholesaler;
+            }
+
+        }
     }
 }

@@ -1,0 +1,125 @@
+﻿@page "/wholesalers"
+@using Domain
+@using Infrastructure.Services
+@inject IWholesalerService WholesalerService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Wholesalers</PageTitle>
+
+<div class="container mt-4">
+
+    <!-- Title + Add Button -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold">
+            <i class="bi bi-people-fill me-2"></i> Wholesaler Management
+        </h3>
+
+        <button class="btn btn-primary" @onclick="OpenAddModal">
+            <i class="bi bi-plus-circle me-1"></i> Add
+        </button>
+    </div>
+
+    <!-- Loading State -->
+    @if (Wholesalers == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Loading wholesalers...</p>
+        </div>
+    }
+    else if (!Wholesalers.Any())
+    {
+        <!-- Empty State -->
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i> No wholesalers found.
+        </div>
+    }
+    else
+    {
+        <!-- Data Table -->
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Type</th>
+                        <th style="width:130px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var w in Wholesalers)
+                    {
+                        <tr>
+                            <td>@w.Name</td>
+                            <td>@w.Phone</td>
+                            <td>@w.Email</td>
+                            <td>@w.Type</td>
+
+                            <td>
+                                <i class="bi bi-pencil-square text-primary fs-5 me-2 cursor-pointer"
+                                   title="Edit" @onclick="() => OpenEditModal(w.Id)"></i>
+
+                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                   title="Delete" @onclick="() => Delete(w.Id)"></i>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+
+@if (IsModalOpen)
+{
+    <WholesalerAddEdit Id="SelectedId" OnClose="CloseModal" />
+}
+
+@code {
+    private List<Wholesaler> Wholesalers = new();
+    private bool IsModalOpen = false;
+    private Guid SelectedId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        Wholesalers = await WholesalerService.GetAllAsync();
+    }
+
+    void OpenAddModal()
+    {
+        SelectedId = Guid.Empty;
+        IsModalOpen = true;
+    }
+
+    void OpenEditModal(Guid id)
+    {
+        SelectedId = id;
+        IsModalOpen = true;
+    }
+
+    async Task CloseModal()
+    {
+        IsModalOpen = false;
+        await Load();
+        StateHasChanged();
+    }
+
+    async Task Delete(Guid id)
+    {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this wholesaler?");
+        if (!confirmed)
+            return;
+
+        await WholesalerService.DeleteAsync(id);
+        await Load();
+    }
+}
