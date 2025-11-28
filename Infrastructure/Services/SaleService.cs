@@ -399,10 +399,15 @@ namespace Infrastructure.Services
         public async Task<byte[]> GenerateReceiptPdfAsync(Guid saleId)
         {
             var sale = await _context.Sale
-                .Include(x => x.Customer)
                 .Include(x => x.SaleDetails)
                 .ThenInclude(x => x.Product)
                 .FirstOrDefaultAsync(x => x.Id == saleId);
+            // Manually load and attach customer
+            await HydrateSaleWithCustomer(sale);
+
+            // Manually load and attach wholesaler if needed
+            await HydrateSaleWithWholesaler(sale);
+
 
             if (sale == null)
                 return Array.Empty<byte>();
@@ -463,8 +468,15 @@ namespace Infrastructure.Services
                         col.Item().PaddingLeft(40).PaddingBottom(60).Column(customerCol =>
                         {
                             customerCol.Item().Text("Sold To:").Bold().FontSize(14);
-                            customerCol.Item().Text($"{sale.Customer?.Name?.ToUpper() ?? "N/A"}").FontSize(14);
-                            customerCol.Item().Text($"{sale.Customer?.Email ?? "N/A"}").FontSize(16);
+
+                            if(sale.Customer != null)
+                            {
+                                customerCol.Item().Text($"{sale.Customer?.Name?.ToUpper() ?? "N/A"}").FontSize(14);
+                                customerCol.Item().Text($"{sale.Customer?.Email ?? "N/A"}").FontSize(16);
+                            }
+
+                            customerCol.Item().Text($"{sale.Wholesaler?.Name?.ToUpper() ?? "N/A"}").FontSize(14);
+                            customerCol.Item().Text($"{sale.Wholesaler?.Email ?? "N/A"}").FontSize(16);
                         });
                     });
 

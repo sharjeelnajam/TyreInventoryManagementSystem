@@ -24,6 +24,8 @@ namespace Domain
         public DateTime Date { get; set; } = DateTime.Today;
         
         public string? UploadedFile { get; set; }
+
+        public string? OrignalFileName { get; set; }
         public string? Description { get; set; }
 
     }

@@ -22,32 +22,14 @@
     </div>
 
     <div class="row mb-3 g-2">
-        <div class="col-md-2">
+        <div class="col-md-3">
+
             <InputText class="form-control"
-                       placeholder="Search by Name"
-                       TValue="string"
-                       Value="@searchName"
-                       ValueChanged="OnNameChanged"
-                       ValueExpression="@(() => searchName)" />
+                       placeholder="Search by Name,Type,Thread"
+                       @bind-Value="search_By_Name_Type_Thread"
+                       @oninput="@(e => OnSearchInput(e))" />
         </div>
 
-        <div class="col-md-2">
-            <InputText class="form-control"
-                       placeholder="Search by Type"
-                       TValue="string"
-                       Value="@searchType"
-                       ValueChanged="OnTypeChanged"
-                       ValueExpression="@(() => searchType)" />
-        </div>
-
-        <div class="col-md-2">
-            <InputText class="form-control"
-                       placeholder="Search by Thread"
-                       TValue="string"
-                       Value="@searchThread"
-                       ValueChanged="OnThreadChanged"
-                       ValueExpression="@(() => searchThread)" />
-        </div>
     </div>
 
     @if (products == null)
@@ -171,7 +153,7 @@
     private List<Product>? products;
     private IEnumerable<Product>? filteredProducts;
 
-    private string searchName = "";
+    private string search_By_Name_Type_Thread = "";
     private string searchType = "";
     private string searchThread = "";
 
@@ -259,36 +241,24 @@
         StateHasChanged();
     }
 
-    private void OnNameChanged(string value)
+    private void OnSearchInput(ChangeEventArgs e)
     {
-        searchName = value;
-        FilterProducts();
-    }
-
-    private void OnTypeChanged(string value)
-    {
-        searchType = value;
-        FilterProducts();
-    }
-
-    private void OnThreadChanged(string value)
-    {
-        searchThread = value;
+        search_By_Name_Type_Thread = e.Value?.ToString() ?? "";
         FilterProducts();
     }
 
     private void FilterProducts(ChangeEventArgs? e = null)
-    {
+   {
         filteredProducts = products!
             .Where(p =>
-                (string.IsNullOrWhiteSpace(searchName) ||
-                 p.ProductName.StartsWith(searchName, StringComparison.OrdinalIgnoreCase)) &&
+                (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread) ||
+                 p.ProductName.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase)) ||
 
-                (string.IsNullOrWhiteSpace(searchType) ||
-                 p.Type.StartsWith(searchType, StringComparison.OrdinalIgnoreCase)) &&
+                (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread) ||
+                 p.Type.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase)) ||
 
-                (string.IsNullOrWhiteSpace(searchThread) ||
-                 p.Thread.StartsWith(searchThread, StringComparison.OrdinalIgnoreCase))
+                (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread) ||
+                 p.Thread.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase))
             )
             .ToList();
 

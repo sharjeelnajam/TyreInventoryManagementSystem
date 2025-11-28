@@ -88,6 +88,19 @@
             </NotAuthorized>
         </AuthorizeView>
 
+        <AuthorizeView Roles="Supplier">
+            <div class="nav-item px-3">
+                <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/products">
+                    <span class="bi bi-box-fill"></span>Products
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/stock-history">
+                    <span class="bi bi-cart-fill me-2"></span>Stock
+                </NavLink>
+            </div>
+        </AuthorizeView>
      
             <AuthorizeView Roles="Admin">
                  <Authorized>
@@ -118,6 +131,13 @@
                     <NavLink class="nav-link d-flex align-items-center" href="/suppliers">
                         <span class="bi bi-person-fill-nav-menu"></span>
                         <sapn>Suppliers</sapn>
+                    </NavLink>
+                </div>
+                
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center" href="/wholesalers">
+                        <span class="bi bi-person-fill-nav-menu"></span>
+                        <sapn>WholeSalers</sapn>
                     </NavLink>
                 </div>
 

@@ -12,7 +12,7 @@
 
                 <!-- Header -->
                 <div class="modal-header text-white"
-                     style="background: linear-gradient(135deg, #4b6cb7, #182848); border-top-left-radius:14px; border-top-right-radius:14px;">
+                style="background: linear-gradient(135deg, #4b6cb7, #182848); border-top-left-radius:14px; border-top-right-radius:14px;">
                     <h5 class="modal-title fw-bold">@ModalTitle</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="HideModal"></button>
                 </div>
@@ -35,8 +35,8 @@
                                 <div class="col-md-8">
                                     <label class="form-label fw-semibold">Notes (Optional)</label>
                                     <InputText @bind-Value="commonNote"
-                                               class="form-control form-control-lg shadow-sm"
-                                               placeholder="Enter general notes" />
+                                    class="form-control form-control-lg shadow-sm"
+                                    placeholder="Enter general notes" />
                                 </div>
                             </div>
 
@@ -73,12 +73,12 @@
                                         <tr @key="expense.Id">
                                             <td>
                                                 <InputText class="form-control form-control-sm shadow-sm"
-                                                           @bind-Value="expense.Title" />
+                                                @bind-Value="expense.Title" />
                                             </td>
 
                                             <td>
                                                 <InputSelect class="form-select form-select-sm shadow-sm"
-                                                             @bind-Value="expense.Category">
+                                                @bind-Value="expense.Category">
                                                     @foreach (var cat in Enum.GetValues<ExpenseCategory>())
                                                     {
                                                         <option value="@cat">@cat</option>
@@ -88,20 +88,20 @@
 
                                             <td>
                                                 <InputNumber class="form-control form-control-sm shadow-sm"
-                                                             @bind-Value="expense.Amount" />
+                                                @bind-Value="expense.Amount" />
                                             </td>
 
                                             @if (isEditMode)
                                             {
                                                 <td>
                                                     <InputDate class="form-control form-control-sm shadow-sm"
-                                                               @bind-Value="expense.Date" />
+                                                    @bind-Value="expense.Date" />
                                                 </td>
                                             }
 
                                             <td>
                                                 <InputText class="form-control form-control-sm shadow-sm"
-                                                           @bind-Value="expense.Description" />
+                                                @bind-Value="expense.Description" />
                                             </td>
 
                                             <td>
@@ -110,11 +110,11 @@
                                                 @if (!string.IsNullOrEmpty(expense.UploadedFile))
                                                 {
                                                     <div class="d-flex align-items-center mt-1">
-                                                        <span class="small text-muted me-2">@expense.UploadedFile</span>
+                                                        <span class="small text-muted me-2">@expense.OrignalFileName</span>
 
                                                         <button type="button"
-                                                                class="btn btn-sm btn-outline-danger rounded-pill"
-                                                                @onclick="() => RemoveFile(expense)">
+                                                        class="btn btn-sm btn-outline-danger rounded-pill"
+                                                        @onclick="() => RemoveFile(expense)">
                                                             ✕
                                                         </button>
                                                     </div>
@@ -125,8 +125,8 @@
                                             {
                                                 <td class="text-center">
                                                     <button type="button"
-                                                            class="btn btn-sm btn-danger rounded-circle px-2"
-                                                            @onclick="() => ConfirmDelete(expense)">
+                                                    class="btn btn-sm btn-danger rounded-circle px-2"
+                                                    @onclick="() => ConfirmDelete(expense)">
                                                         ✕
                                                     </button>
                                                 </td>
@@ -140,23 +140,23 @@
                         @if (!isEditMode)
                         {
                             <button class="btn btn-outline-primary mt-3 px-4 py-2 shadow-sm"
-                                    type="button"
-                                    @onclick="AddRow">
+                            type="button"
+                            @onclick="AddRow">
                                 + Add Expense
                             </button>
                         }
 
                         <div class="d-flex justify-content-end mt-4">
                             <button type="submit"
-                                    class="btn text-white px-4 py-2 me-2 shadow-sm"
-                                    style="border-radius:8px; background: linear-gradient(135deg,#28a745,#218838);">
+                            class="btn text-white px-4 py-2 me-2 shadow-sm"
+                            style="border-radius:8px; background: linear-gradient(135deg,#28a745,#218838);">
                                 💾 Save
                             </button>
 
                             <button type="button"
-                                    class="btn btn-light px-4 py-2 border shadow-sm"
-                                    style="border-radius:8px;"
-                                    @onclick="HideModal">
+                            class="btn btn-light px-4 py-2 border shadow-sm"
+                            style="border-radius:8px;"
+                            @onclick="HideModal">
                                 Cancel
                             </button>
                         </div>
@@ -171,12 +171,12 @@
 
 <style>
     .modal {
-        display: block;
+    display: block;
     }
 
-        .modal.fade:not(.show) {
-            display: none;
-        }
+    .modal.fade:not(.show) {
+    display: none;
+    }
 </style>
 
 
@@ -208,7 +208,8 @@
                     Category = exp.Category,
                     Date = exp.Date,
                     Description = exp.Description,
-                       UploadedFile = exp.UploadedFile
+                    UploadedFile = exp.UploadedFile,
+                    OrignalFileName = exp.OrignalFileName
                 }
             };
         }
@@ -262,6 +263,7 @@
 
             // Store the correct relative path in DB
             expense.UploadedFile = $"uploads/ExpenseFiles/{uniqueFileName}";
+            expense.OrignalFileName = file.Name;
         }
     }
 

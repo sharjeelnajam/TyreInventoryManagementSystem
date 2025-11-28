@@ -50,6 +50,11 @@
                               @onclick="() => DownloadReceipt(sale.Id)">
                             <i class="bi bi-download fs-5"></i>
                         </span>
+
+                        <i class="bi bi-eye text-success fs-5 ms-2 cursor-pointer"
+                           title="Preview Receipt"
+                           @onclick="() => PreviewFile(sale.Id)"></i>
+                        
                     @*     <span role="button" title="Delete" class="text-danger"
                               @onclick="() => DeleteSale(sale.Id)">
                             <i class="bi bi-trash fs-5"></i>
@@ -126,4 +131,24 @@
         string base64 = Convert.ToBase64String(pdfBytes);
         await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber}.pdf", base64);
     }
+
+    private async Task PreviewFile(Guid saleId)
+    {
+        var sale = await SaleService.GetByIdAsync(saleId);
+        if (sale == null)
+            return;
+
+        // Generate PDF as byte[]
+        var pdfBytes = await SaleService.GenerateReceiptPdfAsync(saleId);
+
+        if (pdfBytes == null || pdfBytes.Length == 0)
+            return;
+
+        // Convert byte[] to base64
+        string base64Pdf = Convert.ToBase64String(pdfBytes);
+
+        // Open in a new browser tab
+        await JSRuntime.InvokeVoidAsync("openPdfInNewTab", base64Pdf);
+    }
+
 }

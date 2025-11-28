@@ -56,7 +56,7 @@ namespace Infrastructure.Services
                 if (existRole == null)
                     await _roleManager.CreateAsync(new ApplicationRole { Name = "Staff", TenantId = _tenantProvider.TenantId });
 
-                existRole = _roleManager.Roles.FirstOrDefault(x => x.Name == "Staff" && x.TenantId == _tenantProvider.TenantId); // 5. User ko Admin role do await _userManager.AddToRoleAsync(staf, "Staff",);
+                existRole = _roleManager.Roles.FirstOrDefault(x => x.Name == "Staff" && x.TenantId == _tenantProvider.TenantId);
 
                 // 5. User ko Admin role do
                 _context.UserRoles.Add(new IdentityUserRole<Guid>

@@ -329,7 +329,7 @@
                             <label>Address</label>
                             <InputText class="form-control" @bind-Value="NewWholesaler.Address" />
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3 col-md-4">
                             <label>Type</label>
                             <InputSelect class="form-select" @bind-Value="NewWholesaler.Type">
                                 @foreach (var t in Enum.GetValues<Domain.Enums.WholesalerType>())

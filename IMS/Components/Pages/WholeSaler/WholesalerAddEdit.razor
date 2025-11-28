@@ -47,7 +47,7 @@
                             <InputText class="form-control form-control-lg shadow-sm" @bind-Value="Model.Address" placeholder="Complete address" />
                         </div>
 
-                        <div class="col-md-12">
+                        <div class="col-md-4">
                             <label class="form-label fw-semibold">Type</label>
                             <InputSelect class="form-select form-select-lg shadow-sm" @bind-Value="Model.Type">
                                 @foreach (var t in Enum.GetValues<WholesalerType>())

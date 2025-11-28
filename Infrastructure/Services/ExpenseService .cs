@@ -76,6 +76,7 @@ namespace Infrastructure.Services
                 existing.UpdatedAt = DateTime.Now;
                 existing.Title = expense.Title;
                 existing.UploadedFile = expense.UploadedFile;
+                existing.OrignalFileName = expense.OrignalFileName;
                 await _context.SaveChangesAsync();
             }
             catch (Exception)

@@ -105,9 +105,33 @@
         var encodedPath = Uri.EscapeUriString(filePath);
         await JS.InvokeVoidAsync("window.open", filePath, "_blank");
     }
+
     private async Task DeleteExpense(Guid id)
     {
-        await ExpenseService.DeleteAsync(id);
+        // 1. Get expense record first
+        var expense = expenses?.FirstOrDefault(x => x.Id == id);
+
+        if (expense != null)
+        {
+            // 2. Prepare full file path
+            if (!string.IsNullOrEmpty(expense.UploadedFile))
+            {
+                var relativePath = expense.UploadedFile.Replace("/", Path.DirectorySeparatorChar.ToString());
+                var fullPath = Path.Combine("wwwroot", relativePath);
+
+                // 3. Delete file from wwwroot
+                if (System.IO.File.Exists(fullPath))
+                {
+                    System.IO.File.Delete(fullPath);
+                }
+            }
+
+            // 4. Delete expense record from DB
+            await ExpenseService.DeleteAsync(id);
+        }
+
+        // 5. Refresh list
         await ReloadExpenses();
     }
+
 }
