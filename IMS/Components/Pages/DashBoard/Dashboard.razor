@@ -531,19 +531,6 @@
     }
 
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!isLoading && !chartLoaded)
-        {
-            chartLoaded = true;
-
-            await JS.InvokeVoidAsync("loadTopProductsChart",
-                TopProducts.Select(x => x.ProductName).ToList(),
-                TopProducts.Select(x => x.Quantity).ToList());
-        }
-    }
-
-
     private async Task LoadData()
     {
         if (startDate.HasValue && endDate.HasValue)
