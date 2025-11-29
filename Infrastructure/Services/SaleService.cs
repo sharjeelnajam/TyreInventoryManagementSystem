@@ -590,11 +590,6 @@ namespace Infrastructure.Services
                 .ToListAsync();
         }
 
-        public async Task<int> GetTotalInvoicesAsync()
-        {
-            return await _context.Sale.CountAsync();
-        }
-
         public async Task<List<TopCustomerDto>> GetTopCustomersByDateAsync(DateTime start, DateTime end)
         {
             // 1. Load sales with sale details only
@@ -629,7 +624,36 @@ namespace Infrastructure.Services
             return result;
         }
 
+        public async Task<List<TopProductDetailDto>> GetTopProductsByDateAsync(DateTime start, DateTime end)
+        {
+            return await _context.SaleDetail
+                .Where(i => i.Sale.SaleDate >= start && i.Sale.SaleDate <= end)
+                .Include(i => i.Sale)
+                .Include(i => i.Product)
+                .GroupBy(i => new
+                {
+                    i.ProductId,
+                    i.Product.ProductName,
+                    BrandName = i.Product.Brand
+                })
+                .Select(g => new TopProductDetailDto
+                {
+                    ProductName = g.Key.ProductName,
+                    BrandName = g.Key.BrandName,
+                    TotalOrders = g.Select(x => x.SaleId).Distinct().Count(),
+                    TotalQuantity = g.Sum(x => x.Quantity),
+                    TotalAmount = g.Sum(x => x.TotalPrice)
+                })
+                .OrderByDescending(x => x.TotalQuantity)
+                .Take(5)
+                .ToListAsync();
+        }
 
+
+        public async Task<int> GetTotalInvoicesAsync()
+        {
+            return await _context.Sale.CountAsync();
+        }
 
         private async Task HydrateSalesWithCustomers(List<Sale> sales)
         {

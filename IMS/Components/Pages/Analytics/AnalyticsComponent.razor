@@ -1,0 +1,346 @@
+﻿@page "/analytics"
+
+@using Infrastructure.Services
+@using Domain.DTO
+@using System.Globalization
+
+@inject ISaleService SaleService
+@inject ISupplierService SupplierService
+@inject IProductService ProductService
+@rendermode InteractiveServer
+
+<PageTitle>Analytics</PageTitle>
+
+<h3 class="fw-bold mb-3"><i class="bi bi-graph-up me-2"></i>Analytics Overview</h3>
+
+@if (isLoading)
+{
+    <div class="text-center mt-5">
+        <div class="spinner-border text-primary"></div>
+    </div>
+}
+else
+{
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white fw-bold">
+            <i class="bi bi-funnel me-2"></i>Profit Filter
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Start Date</label>
+
+                    <InputDate TValue="DateTime?"
+                    Value="startDate"
+                    ValueChanged="OnStartDateChanged"
+                    ValueExpression="@(() => startDate)"
+                    class="form-control" />
+
+                    @if (!string.IsNullOrEmpty(DateError))
+                    {
+                        <span class="text-danger">@DateError</span>
+                    }
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">End Date</label>
+
+                    <InputDate TValue="DateTime?"
+                    Value="endDate"
+                    ValueChanged="OnEndDateChanged"
+                    ValueExpression="@(() => endDate)"
+                    class="form-control" />
+
+                    @if (!string.IsNullOrEmpty(DateError))
+                    {
+                        <span class="text-danger">@DateError</span>
+                    }
+                </div>
+
+
+            </div>
+            @if (!string.IsNullOrEmpty(filterMessage))
+            {
+                <div class="mt-2 text-info small">
+                    <i class="bi bi-info-circle me-1"></i>@filterMessage
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Top Customers -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">
+                    Top Customers
+                </div>
+                <div class="card-body">
+                    @if (TopCustomers.Any())
+                    {
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Orders</th>
+                                    <th>Qty</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in TopCustomers.Select((data, index) => new { data, index }))
+                                {
+                                    <tr>
+                                        <td>@(c.index + 1)</td>
+                                        <td>@c.data.CustomerName</td>
+                                        <td>@c.data.TotalOrders</td>
+                                        <td>@c.data.TotalQuantity</td>
+                                        <td>@c.data.TotalAmountSpent</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="text-muted text-center">No data in this range</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">
+                    Top 5 Products (By Quantity Sold)
+                </div>
+
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>#</th>
+                                <th>Product</th>
+                                <th>Brand</th>
+                                <th>Orders</th>
+                                <th>Qty Sold</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @if (TopProductDetails.Any())
+                            {
+                                int i = 1;
+                                @foreach (var p in TopProductDetails)
+                                {
+                                    <tr>
+                                        <td>@i</td>
+                                        <td>@p.ProductName</td>
+                                        <td>@p.BrandName</td>
+                                        <td>@p.TotalOrders</td>
+                                        <td>@p.TotalQuantity</td>
+                                        <td>@p.TotalAmount.ToString("C", new CultureInfo("ur-PK"))</td>
+                                    </tr>
+                                    i++;
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">
+                                        <i class="bi bi-info-circle text-secondary"></i>
+                                        No product sales found in this date range.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Top Suppliers -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">
+                    Top Suppliers
+                </div>
+                <div class="card-body">
+                    @if (TopSuppliers.Any())
+                    {
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Supplier</th>
+                                    <th>Orders</th>
+                                    <th>Qty</th>
+                                    <th>Paid</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in TopSuppliers.Select((data, index) => new { data, index }))
+                                {
+                                    <tr>
+                                        <td>@(s.index + 1)</td>
+                                        <td>@s.data.SupplierName</td>
+                                        <td>@s.data.TotalOrders</td>
+                                        <td>@s.data.TotalQuantity</td>
+                                        <td>@s.data.TotalAmountPaid</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="text-muted text-center">No data in this range</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Products Chart -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 p-3">
+                <h5 class="mb-3">Top Selling Products</h5>
+
+                @if (TopProducts.Any())
+                {
+                    var maxQty = TopProducts.Max(x => x.Quantity);
+
+                    @foreach (var p in TopProducts)
+                    {
+                        var percent = (p.Quantity / (double)maxQty) * 100;
+
+                        <div class="bar-row mb-2">
+                            <div class="bar-label">@p.ProductName</div>
+                            <div class="bar-track">
+                                <div class="bar-fill" style="width:@percent%"></div>
+                            </div>
+                            <div class="bar-value" style="margin-left:8px">@p.Quantity</div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-muted text-center">No data in this range</div>
+                }
+            </div>
+        </div>
+
+    </div>
+}
+
+<style>
+    .bar-track {
+    background: #eee;
+    height: 14px;
+    border-radius: 8px;
+    }
+
+    .bar-fill {
+    height: 100%;
+    background: #4e79a7;
+    border-radius: 8px;
+    }
+
+    .bar-row {
+    display: grid;
+    grid-template-columns: 150px 1fr 50px;
+    align-items: center;
+    }
+</style>
+
+@code {
+    [Parameter] public DateTime? StartDate { get; set; }
+    [Parameter] public DateTime? EndDate { get; set; }
+
+    List<TopCustomerDto> TopCustomers = new();
+    List<TopSupplierDto> TopSuppliers = new();
+    List<TopProductDto> TopProducts = new();
+    List<TopProductDetailDto> TopProductDetails = new();
+
+
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private string filterMessage = string.Empty;
+    private string? DateError { get; set; }
+
+
+    bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        var today = DateTime.Today;
+        startDate = new DateTime(today.Year, today.Month, 1);
+        endDate = startDate.Value.AddMonths(1).AddDays(-1);
+
+        await LoadAnalytics();
+
+        isLoading = false;
+       
+    }
+
+    private async Task LoadAnalytics()
+    {
+        isLoading = true;
+
+        if (startDate.HasValue && endDate.HasValue)
+        {
+            filterMessage = $"Showing profit from {startDate.Value:MMM dd, yyyy} to {endDate.Value:MMM dd, yyyy}";
+            TopCustomers = await SaleService.GetTopCustomersByDateAsync(startDate.Value, endDate.Value);
+            TopProducts = await SaleService.GetTopSellingProductsByDateAsync(startDate.Value, endDate.Value);
+            TopSuppliers = await SupplierService.GetTopSuppliersByDateAsync(startDate.Value, endDate.Value);
+            TopProductDetails = await SaleService.GetTopProductsByDateAsync(startDate.Value, endDate.Value);
+        }
+        else
+        {
+            filterMessage = "Showing current month profit";
+
+            // Current month
+            var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+            TopCustomers = await SaleService.GetTopCustomersByDateAsync(monthStart, monthEnd);
+            TopProducts = await SaleService.GetTopSellingProductsByDateAsync(monthStart, monthEnd);
+            TopSuppliers = await SupplierService.GetTopSuppliersByDateAsync(monthStart, monthEnd);
+            TopProductDetails = await SaleService.GetTopProductsByDateAsync(monthStart, monthEnd);
+        }
+
+        isLoading = false;
+    }
+
+    private async Task OnStartDateChanged(DateTime? value)
+    {
+        startDate = value;
+        ValidateDates();
+        await LoadAnalytics();   // Auto refresh dashboard
+    }
+
+    private async Task OnEndDateChanged(DateTime? value)
+    {
+        endDate = value;
+        ValidateDates();
+        await LoadAnalytics();   // Auto refresh dashboard
+    }
+
+    private void ValidateDates()
+    {
+        DateError = null;
+
+        if (startDate.HasValue && endDate.HasValue)
+        {
+            if (startDate > endDate)
+            {
+                DateError = "Start Date cannot be greater than End Date.";
+            }
+        }
+    }
+}

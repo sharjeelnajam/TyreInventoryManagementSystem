@@ -20,5 +20,6 @@ namespace Infrastructure.Services
         Task<List<TopProductDto>> GetTopSellingProductsByDateAsync(DateTime start, DateTime end);
         Task<int> GetTotalInvoicesAsync();
         Task<List<TopCustomerDto>> GetTopCustomersByDateAsync(DateTime start, DateTime end);
+        Task<List<TopProductDetailDto>> GetTopProductsByDateAsync(DateTime start, DateTime end);
     }
 }
