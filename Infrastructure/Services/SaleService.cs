@@ -575,9 +575,10 @@ namespace Infrastructure.Services
             return ms.ToArray();
         }
 
-        public async Task<List<TopProductDto>> GetTopSellingProductsAsync()
+        public async Task<List<TopProductDto>> GetTopSellingProductsByDateAsync(DateTime start, DateTime end)
         {
             return await _context.SaleDetail
+                .Where(x => x.CreatedAt >= start && x.CreatedAt <= end)
                 .GroupBy(x => new { x.ProductId, x.Product.ProductName })
                 .Select(g => new TopProductDto
                 {
@@ -593,6 +594,42 @@ namespace Infrastructure.Services
         {
             return await _context.Sale.CountAsync();
         }
+
+        public async Task<List<TopCustomerDto>> GetTopCustomersByDateAsync(DateTime start, DateTime end)
+        {
+            // 1. Load sales with sale details only
+            var sales = await _context.Sale
+                .Where(s => s.SaleDate >= start && s.SaleDate <= end)
+                .Include(s => s.SaleDetails)
+                .ToListAsync();
+
+            // 2. Hydrate customers manually
+            foreach (var sale in sales)
+            {
+                await HydrateSaleWithCustomer(sale);
+            
+                await HydrateSaleWithWholesaler(sale);
+            }
+
+            // 3. Group in memory (since Customer is hydrated)
+            var result = sales
+               .GroupBy(s => new { Customer = s.Customer?.Name ?? "----", Wholesaler = s.Wholesaler?.Name ?? "----"})
+               .Select(g => new TopCustomerDto
+               {
+                   CustomerName = g.Key.Customer,
+                   WholesalerName = g.Key.Wholesaler,
+                   TotalOrders = g.Count(),
+                   TotalQuantity = g.SelectMany(x => x.SaleDetails).Sum(x => x.Quantity),
+                   TotalAmountSpent = g.Sum(x => x.NetAmount)
+               })
+                .OrderByDescending(x => x.TotalAmountSpent)
+                .Take(5)
+                .ToList();
+
+            return result;
+        }
+
+
 
         private async Task HydrateSalesWithCustomers(List<Sale> sales)
         {

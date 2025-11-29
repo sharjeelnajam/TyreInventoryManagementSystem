@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Domain.DTO;
 using Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -158,5 +159,25 @@ namespace Infrastructure.Services
                 return false;
             }
         }
+
+        public async Task<List<TopSupplierDto>> GetTopSuppliersByDateAsync(DateTime start, DateTime end)
+        {
+            return await _context.Purchase
+                .Where(p => p.PurchaseDate >= start && p.PurchaseDate <= end)
+                .Include(p => p.Supplier)
+                .Include(p => p.PurchaseDetails)
+                .GroupBy(p => new { p.Supplier.Name })
+                .Select(g => new TopSupplierDto
+                {
+                    SupplierName = g.Key.Name,
+                    TotalOrders = g.Count(),
+                    TotalQuantity = g.SelectMany(x => x.PurchaseDetails).Sum(x => x.Quantity),
+                    TotalAmountPaid = g.Sum(x => x.TotalAmount)
+                })
+                .OrderByDescending(x => x.TotalAmountPaid)
+                .Take(5)
+                .ToListAsync();
+        }
+
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Domain.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,5 +15,6 @@ namespace Infrastructure.Services
         Task<bool> CreateAsync(Supplier supplier);
         Task<bool> UpdateAsync(Supplier supplier);
         Task<bool> DeleteAsync(Guid id);
+        Task<List<TopSupplierDto>> GetTopSuppliersByDateAsync(DateTime start, DateTime end);
     }
 }
