@@ -7,31 +7,40 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using Shared.MultiTenancy;
 
 namespace Infrastructure.Services
 {
     public class CustomerService : ICustomerService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITenantProvider _tenantProvider;
 
-        public CustomerService(ApplicationDbContext context)
+        public CustomerService(ApplicationDbContext context, ITenantProvider tenantProvider)
         {
             _context = context;
+            _tenantProvider = tenantProvider;
         }
 
         public async Task<List<Customer>> GetCustomersAsync(string? name = null, CustomerType? type = null)
         {
             try
             {
-                var query = _context.Customer.AsQueryable();
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    var query = _context.Customer.Where(c => c.TenantId == _tenantProvider.TenantId).AsQueryable();
 
-                if (!string.IsNullOrWhiteSpace(name))
-                    query = query.Where(s => s.Name.Contains(name));
+                    if (!string.IsNullOrWhiteSpace(name))
+                        query = query.Where(s => s.Name.Contains(name));
 
-                if (type.HasValue)
-                    query = query.Where(c => c.CustomerType == type);
+                    if (type.HasValue)
+                        query = query.Where(c => c.CustomerType == type);
 
-                return await query.ToListAsync();
+                    return await query.ToListAsync();
+                }
+                else return new List<Customer>();
+
+               
             }
             catch (Exception ex)
             {
@@ -45,7 +54,11 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Customer.FirstOrDefaultAsync(c => c.Id == id);
+                if (_tenantProvider.TenantId != null)
+                {
+                    return await _context.Customer.FirstOrDefaultAsync(c => c.Id == id && _tenantProvider.TenantId == c.TenantId);
+                }
+                else return new Customer();
             }
             catch (Exception ex)
             {

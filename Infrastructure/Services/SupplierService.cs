@@ -33,7 +33,11 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Supplier.OrderBy(x => x.Name).ToListAsync();
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Supplier.Where(s => s.TenantId == _tenantProvider.TenantId).OrderBy(x => x.Name).ToListAsync();
+                }
+                return new List<Supplier>();
             }
             catch (Exception)
             {
@@ -46,7 +50,12 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Supplier.FirstOrDefaultAsync(x => x.Id == id);
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Supplier.FirstOrDefaultAsync(x => x.Id == id && x.TenantId == _tenantProvider.TenantId);
+                }
+                return new Supplier();
+               
             }
             catch (Exception)
             {
@@ -162,21 +171,34 @@ namespace Infrastructure.Services
 
         public async Task<List<TopSupplierDto>> GetTopSuppliersByDateAsync(DateTime start, DateTime end)
         {
-            return await _context.Purchase
-                .Where(p => p.PurchaseDate >= start && p.PurchaseDate <= end)
-                .Include(p => p.Supplier)
-                .Include(p => p.PurchaseDetails)
-                .GroupBy(p => new { p.Supplier.Name })
-                .Select(g => new TopSupplierDto
+            try
+            {
+                if (_tenantProvider.TenantId != Guid.Empty)
                 {
-                    SupplierName = g.Key.Name,
-                    TotalOrders = g.Count(),
-                    TotalQuantity = g.SelectMany(x => x.PurchaseDetails).Sum(x => x.Quantity),
-                    TotalAmountPaid = g.Sum(x => x.TotalAmount)
-                })
-                .OrderByDescending(x => x.TotalAmountPaid)
-                .Take(5)
-                .ToListAsync();
+                    return await _context.Purchase
+                       .Where(p => p.PurchaseDate >= start && p.PurchaseDate <= end && p.TenantId == _tenantProvider.TenantId)
+                       .Include(p => p.Supplier)
+                       .Include(p => p.PurchaseDetails)
+                       .GroupBy(p => new { p.Supplier.Name })
+                       .Select(g => new TopSupplierDto
+                       {
+                           SupplierName = g.Key.Name,
+                           TotalOrders = g.Count(),
+                           TotalQuantity = g.SelectMany(x => x.PurchaseDetails).Sum(x => x.Quantity),
+                           TotalAmountPaid = g.Sum(x => x.TotalAmount)
+                       })
+                       .OrderByDescending(x => x.TotalAmountPaid)
+                       .Take(5)
+                       .ToListAsync();
+                }
+                return new List<TopSupplierDto>();
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+          
         }
 
     }

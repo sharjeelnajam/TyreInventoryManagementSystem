@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
+using Shared.MultiTenancy;
 using System.Security.Claims;
 
 namespace Infrastructure.Services
@@ -12,29 +13,37 @@ namespace Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly AuthenticationStateProvider _authStateProvider;
+        private readonly ITenantProvider _tenantProvider;
 
-        public SaleService(ApplicationDbContext context, AuthenticationStateProvider authenticationStateProvider)
+        public SaleService(ApplicationDbContext context, AuthenticationStateProvider authenticationStateProvider, ITenantProvider tenantProvider)
         {
             _context = context;
             _authStateProvider = authenticationStateProvider;
+            _tenantProvider = tenantProvider;
         }
 
         public async Task<List<Sale>> GetAllAsync()
         {
             try
             {
-                var sales = await _context.Sale
-                    .Include(s => s.SaleDetails)
-                        .ThenInclude(sd => sd.Product)
-                    .ToListAsync();
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    var sales = await _context.Sale
+                        .Where(s => s.TenantId == _tenantProvider.TenantId)
+                   .Include(s => s.SaleDetails)
+                       .ThenInclude(sd => sd.Product)
+                   .ToListAsync();
 
-                // Manually load and attach customers
-                await HydrateSalesWithCustomers(sales);
+                    // Manually load and attach customers
+                    await HydrateSalesWithCustomers(sales);
 
-                // Manually load and attach wholesalers if needed
-                await HydrateSalesWithWholesalers(sales);
+                    // Manually load and attach wholesalers if needed
+                    await HydrateSalesWithWholesalers(sales);
 
-                return sales ?? new List<Sale>();
+                    return sales ?? new List<Sale>();
+                }
+                else return new List<Sale>();
+               
             }
             catch (Exception ex)
             {
@@ -49,21 +58,27 @@ namespace Infrastructure.Services
 
             try
             {
-                var sale = await _context.Sale
-            .Include(s => s.SaleDetails)
-                .ThenInclude(sd => sd.Product)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == id);
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    var sale = await _context.Sale
+                           .Include(s => s.SaleDetails)
+                               .ThenInclude(sd => sd.Product)
+                           .AsNoTracking()
+                           .FirstOrDefaultAsync(s => s.Id == id);
 
-                if (sale == null) return null;
+                    if (sale == null) return null;
 
-                // Manually load and attach customer
-                await HydrateSaleWithCustomer(sale);
+                    // Manually load and attach customer
+                    await HydrateSaleWithCustomer(sale);
 
-                // Manually load and attach wholesaler if needed
-                await HydrateSaleWithWholesaler(sale);
+                    // Manually load and attach wholesaler if needed
+                    await HydrateSaleWithWholesaler(sale);
 
-                return sale;
+                    return sale;
+
+                }
+                else return new Sale();
+                
             }
             catch (Exception ex)
             {
@@ -378,16 +393,22 @@ namespace Infrastructure.Services
         {
             try
             {
-                var saleDetails = await _context.SaleDetail
-                    .Include(sd => sd.Sale)
-                    .Where(sd => sd.ProductId == productId)
-                    .OrderByDescending(sd => sd.Sale.SaleDate)
-                    .ToListAsync();
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    var saleDetails = await _context.SaleDetail
+                   .Include(sd => sd.Sale)
+                   .Where(sd => sd.ProductId == productId && sd.TenantId == _tenantProvider.TenantId)
+                   .OrderByDescending(sd => sd.Sale.SaleDate)
+                   .ToListAsync();
 
-                // Manually hydrate customers for all related sales
-                await HydrateSalesWithCustomers(saleDetails.Select(sd => sd.Sale).ToList());
+                    // Manually hydrate customers for all related sales
+                    await HydrateSalesWithCustomers(saleDetails.Select(sd => sd.Sale).ToList());
 
-                return saleDetails;
+                    return saleDetails;
+                }
+                else return new List<SaleDetail>();
+
+
             }
             catch (Exception ex)
             {
@@ -577,82 +598,125 @@ namespace Infrastructure.Services
 
         public async Task<List<TopProductDto>> GetTopSellingProductsByDateAsync(DateTime start, DateTime end)
         {
-            return await _context.SaleDetail
-                .Where(x => x.CreatedAt >= start && x.CreatedAt <= end)
-                .GroupBy(x => new { x.ProductId, x.Product.ProductName })
-                .Select(g => new TopProductDto
-                {
-                    ProductName = g.Key.ProductName,
-                    Quantity = g.Sum(x => x.Quantity)
-                })
-                .OrderByDescending(x => x.Quantity)
-                .Take(5)
-                .ToListAsync();
+            if (_tenantProvider.TenantId != Guid.Empty)
+            {
+                return await _context.SaleDetail
+              .Where(x => x.CreatedAt >= start && x.CreatedAt <= end && x.TenantId == _tenantProvider.TenantId)
+              .GroupBy(x => new { x.ProductId, x.Product.ProductName })
+              .Select(g => new TopProductDto
+              {
+                  ProductName = g.Key.ProductName,
+                  Quantity = g.Sum(x => x.Quantity)
+              })
+              .OrderByDescending(x => x.Quantity)
+              .Take(5)
+              .ToListAsync();
+            }
+            else return new List<TopProductDto>();
+              
         }
 
         public async Task<List<TopCustomerDto>> GetTopCustomersByDateAsync(DateTime start, DateTime end)
         {
-            // 1. Load sales with sale details only
-            var sales = await _context.Sale
-                .Where(s => s.SaleDate >= start && s.SaleDate <= end)
-                .Include(s => s.SaleDetails)
-                .ToListAsync();
-
-            // 2. Hydrate customers manually
-            foreach (var sale in sales)
+            try
             {
-                await HydrateSaleWithCustomer(sale);
-            
-                await HydrateSaleWithWholesaler(sale);
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    // 1. Load sales with sale details only
+                    var sales = await _context.Sale
+                    .Where(s => s.SaleDate >= start && s.SaleDate <= end && s.TenantId == _tenantProvider.TenantId)
+                    .Include(s => s.SaleDetails)
+                    .ToListAsync();
+
+                    // 2. Hydrate customers manually
+                    foreach (var sale in sales)
+                    {
+                        await HydrateSaleWithCustomer(sale);
+
+                        await HydrateSaleWithWholesaler(sale);
+                    }
+
+                    // 3. Group in memory (since Customer is hydrated)
+                    var result = sales
+                       .GroupBy(s => new { Customer = s.Customer?.Name ?? "----", Wholesaler = s.Wholesaler?.Name ?? "----" })
+                       .Select(g => new TopCustomerDto
+                       {
+                           CustomerName = g.Key.Customer,
+                           WholesalerName = g.Key.Wholesaler,
+                           TotalOrders = g.Count(),
+                           TotalQuantity = g.SelectMany(x => x.SaleDetails).Sum(x => x.Quantity),
+                           TotalAmountSpent = g.Sum(x => x.NetAmount)
+                       })
+                        .OrderByDescending(x => x.TotalAmountSpent)
+                        .Take(5)
+                        .ToList();
+
+                    return result;
+                }
+                else return new List<TopCustomerDto>();
             }
+            catch (Exception)
+            {
 
-            // 3. Group in memory (since Customer is hydrated)
-            var result = sales
-               .GroupBy(s => new { Customer = s.Customer?.Name ?? "----", Wholesaler = s.Wholesaler?.Name ?? "----"})
-               .Select(g => new TopCustomerDto
-               {
-                   CustomerName = g.Key.Customer,
-                   WholesalerName = g.Key.Wholesaler,
-                   TotalOrders = g.Count(),
-                   TotalQuantity = g.SelectMany(x => x.SaleDetails).Sum(x => x.Quantity),
-                   TotalAmountSpent = g.Sum(x => x.NetAmount)
-               })
-                .OrderByDescending(x => x.TotalAmountSpent)
-                .Take(5)
-                .ToList();
-
-            return result;
+                throw;
+            }
         }
 
         public async Task<List<TopProductDetailDto>> GetTopProductsByDateAsync(DateTime start, DateTime end)
         {
-            return await _context.SaleDetail
-                .Where(i => i.Sale.SaleDate >= start && i.Sale.SaleDate <= end)
-                .Include(i => i.Sale)
-                .Include(i => i.Product)
-                .GroupBy(i => new
+            try
+            {
+                if (_tenantProvider.TenantId != Guid.Empty)
                 {
-                    i.ProductId,
-                    i.Product.ProductName,
-                    BrandName = i.Product.Brand
-                })
-                .Select(g => new TopProductDetailDto
-                {
-                    ProductName = g.Key.ProductName,
-                    BrandName = g.Key.BrandName,
-                    TotalOrders = g.Select(x => x.SaleId).Distinct().Count(),
-                    TotalQuantity = g.Sum(x => x.Quantity),
-                    TotalAmount = g.Sum(x => x.TotalPrice)
-                })
-                .OrderByDescending(x => x.TotalQuantity)
-                .Take(5)
-                .ToListAsync();
-        }
+                    return await _context.SaleDetail
+                      .Where(i => i.Sale.SaleDate >= start && i.Sale.SaleDate <= end && i.TenantId == _tenantProvider.TenantId)
+                      .Include(i => i.Sale)
+                      .Include(i => i.Product)
+                      .GroupBy(i => new
+                      {
+                          i.ProductId,
+                          i.Product.ProductName,
+                          BrandName = i.Product.Brand
+                      })
+                      .Select(g => new TopProductDetailDto
+                      {
+                          ProductName = g.Key.ProductName,
+                          BrandName = g.Key.BrandName,
+                          TotalOrders = g.Select(x => x.SaleId).Distinct().Count(),
+                          TotalQuantity = g.Sum(x => x.Quantity),
+                          TotalAmount = g.Sum(x => x.TotalPrice)
+                      })
+                      .OrderByDescending(x => x.TotalQuantity)
+                      .Take(5)
+                      .ToListAsync();
+                }
+                else return new List<TopProductDetailDto>();
 
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+           
+        }
 
         public async Task<int> GetTotalInvoicesAsync()
         {
-            return await _context.Sale.CountAsync();
+            try
+            {
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Sale.Where(s => s.TenantId == _tenantProvider.TenantId).CountAsync();
+                }
+                else return 0;
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+          
         }
 
         private async Task HydrateSalesWithCustomers(List<Sale> sales)

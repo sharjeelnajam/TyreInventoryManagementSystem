@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -11,18 +12,25 @@ namespace Infrastructure.Services
    public class ProfitReportService : IProfitReportService
     {
         private readonly ApplicationDbContext _context;
-        public ProfitReportService(ApplicationDbContext context)
+        private readonly ITenantProvider _tenantProvider;
+        public ProfitReportService(ApplicationDbContext context, ITenantProvider tenantProvider)
         {
             _context = context;
+            _tenantProvider = tenantProvider;
         }
 
         public async Task<decimal> GetProfitAsync(DateTime start, DateTime end)
         {
             try
             {
-                return await _context.ProfitHistories
-                    .Where(p => p.RecordedAt >= start && p.RecordedAt < end)
-                    .SumAsync(p => p.ProfitAmount);
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.ProfitHistories
+                          .Where(p => p.RecordedAt >= start && p.RecordedAt < end && p.TenantId == _tenantProvider.TenantId)
+                          .SumAsync(p => p.ProfitAmount);
+                }
+                else return 0m;
+               
             }
             catch (Exception)
             {
@@ -74,25 +82,30 @@ namespace Infrastructure.Services
         {
             try
             {
-                var query = await _context.ProfitHistories
-                    .Where(p => p.RecordedAt >= start && p.RecordedAt < end)
-                    .GroupBy(p => p.ProductId)
-                    .Select(g => new
-                    {
-                        ProductId = g.Key,
-                        Profit = g.Sum(x => x.ProfitAmount)
-                    })
-                    .ToListAsync();
-
-                var result = new List<(string ProductName, decimal Profit)>();
-
-                foreach (var item in query)
+                if(_tenantProvider.TenantId != Guid.Empty)
                 {
-                    var product = await _context.Products.FindAsync(item.ProductId);
-                    result.Add((product?.ProductName ?? "Unknown", item.Profit));
-                }
+                    var query = await _context.ProfitHistories
+                   .Where(p => p.RecordedAt >= start && p.RecordedAt < end && p.TenantId == _tenantProvider.TenantId)
+                   .GroupBy(p => p.ProductId)
+                   .Select(g => new
+                   {
+                       ProductId = g.Key,
+                       Profit = g.Sum(x => x.ProfitAmount)
+                   })
+                   .ToListAsync();
 
-                return result;
+                    var result = new List<(string ProductName, decimal Profit)>();
+
+                    foreach (var item in query)
+                    {
+                        var product = await _context.Products.FindAsync(item.ProductId);
+                        result.Add((product?.ProductName ?? "Unknown", item.Profit));
+                    }
+
+                    return result;
+                }
+                else return new List<(string ProductName, decimal Profit)>();
+
             }
             catch (Exception)
             {
@@ -105,11 +118,17 @@ namespace Infrastructure.Services
         {
             try
             {
-                // Include the end date in the range by adding one day and using less than
-                var adjustedEndDate = endDate.AddDays(1);
-                return await _context.ProfitHistories
-                    .Where(p => p.RecordedAt >= startDate && p.RecordedAt < adjustedEndDate)
-                    .SumAsync(p => p.ProfitAmount);
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    // Include the end date in the range by adding one day and using less than
+                    var adjustedEndDate = endDate.AddDays(1);
+
+                    return await _context.ProfitHistories
+                        .Where(p => p.RecordedAt >= startDate && p.RecordedAt < adjustedEndDate && p.TenantId == _tenantProvider.TenantId)
+                        .SumAsync(p => p.ProfitAmount);
+                }
+                else return 0m;
+               
             }
             catch (Exception)
             {

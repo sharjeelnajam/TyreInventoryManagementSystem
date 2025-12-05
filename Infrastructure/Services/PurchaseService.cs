@@ -3,12 +3,11 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Identity.Client;
+using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Infrastructure.Services
 {
@@ -16,22 +15,31 @@ namespace Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly AuthenticationStateProvider _authStateProvider;
+        private readonly ITenantProvider _tenantProvider;
 
-        public PurchaseService(ApplicationDbContext context, AuthenticationStateProvider authenticationStateProvider)
+        public PurchaseService(ApplicationDbContext context, AuthenticationStateProvider authenticationStateProvider, ITenantProvider tenantProvider)
         {
             _context = context;
             _authStateProvider = authenticationStateProvider;
+            _tenantProvider = tenantProvider;
         }
 
         public async Task<List<Purchase>> GetAllPurchasesAsync()
         {
             try
             {
-                return await _context.Purchase
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Purchase
+                        .Where(p => p.TenantId == _tenantProvider.TenantId)
                        .Include(p => p.Supplier)
                        .Include(p => p.PurchaseDetails)
                        .ThenInclude(d => d.Product)
                        .ToListAsync();
+                }
+
+                else return new List<Purchase>();
+                
             }
             catch (Exception)
             {
@@ -45,15 +53,19 @@ namespace Infrastructure.Services
         {
             try
             {
-                var purchase = await _context.Purchase
-                           .Include(p => p.Supplier)
-                           .Include(p => p.PurchaseDetails)
-                           .ThenInclude(d => d.Product)
-                           .FirstOrDefaultAsync(p => p.Id == id);
+                if (_tenantProvider.TenantId == Guid.Empty)
+                {
+                    var purchase = await _context.Purchase
+                          .Where(p => p.TenantId == _tenantProvider.TenantId)
+                          .Include(p => p.Supplier)
+                          .Include(p => p.PurchaseDetails)
+                          .ThenInclude(d => d.Product)
+                          .FirstOrDefaultAsync(p => p.Id == id);
 
-                if (purchase != null)
-                    return purchase;
-                return new Purchase();
+                        return purchase;
+                }
+                else
+                    return new Purchase();
             }
             catch (Exception)
             {
@@ -335,7 +347,6 @@ namespace Infrastructure.Services
             }
         }
 
-
         public async Task DeletePurchaseAsync(Guid id)
         {
             var purchase = await _context.Purchase.FirstOrDefaultAsync(p => p.Id == id);
@@ -350,11 +361,15 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.PurchaseDetails
-                           .Include(pd => pd.Purchase)
-                           .Where(pd => pd.ProductId == productId)
-                           .OrderByDescending(pd => pd.Purchase.PurchaseDate)
-                           .ToListAsync();
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.PurchaseDetails
+                          .Include(pd => pd.Purchase)
+                          .Where(pd => pd.ProductId == productId && pd.TenantId == _tenantProvider.TenantId)
+                          .OrderByDescending(pd => pd.Purchase.PurchaseDate)
+                          .ToListAsync();
+                }
+                return new List<PurchaseDetail>();
             }
             catch (Exception)
             {

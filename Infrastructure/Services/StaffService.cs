@@ -78,8 +78,12 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Staff
-                    .ToListAsync();
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Staff.Where(s => s.TenantId == _tenantProvider.TenantId).ToListAsync();
+                }
+                return new List<Staff>();
+              
             }
             catch (Exception)
             {
@@ -92,9 +96,13 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Staff
-                    .Where(s => s.Id == staffId)
-                    .FirstOrDefaultAsync();
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Staff
+                  .Where(s => s.Id == staffId && s.TenantId == _tenantProvider.TenantId)
+                  .FirstOrDefaultAsync();
+                }
+                return new Staff();
             }
             catch (Exception)
             {

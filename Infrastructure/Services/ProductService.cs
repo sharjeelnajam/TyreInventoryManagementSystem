@@ -1,5 +1,6 @@
 ﻿using Domain;
 using Microsoft.EntityFrameworkCore;
+using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,17 +12,24 @@ namespace Infrastructure.Services
     public class ProductService : IProductService
     {
         private readonly ApplicationDbContext _context; // 👈 Apna DbContext ka naam use karein
+        private readonly ITenantProvider _tenantProvider;
 
-        public ProductService(ApplicationDbContext context)
+        public ProductService(ApplicationDbContext context, ITenantProvider tenantProvider)
         {
             _context = context;
+            _tenantProvider = tenantProvider;
         }
 
         public async Task<List<Product>> GetAllAsync()
         {
             try
             {
-                return await _context.Products.AsNoTracking().ToListAsync();
+                if(_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Products.Where(p =>p.TenantId == _tenantProvider.TenantId).AsNoTracking().ToListAsync();
+
+                }
+                return new List<Product>();
             }
             catch (Exception ex)
             {
@@ -37,7 +45,7 @@ namespace Infrastructure.Services
                 if (id == Guid.Empty)
                     throw new ArgumentException("Invalid product id.");
 
-                return await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+                return await _context.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id && p.TenantId == _tenantProvider.TenantId);
             }
             catch (Exception ex)
             {

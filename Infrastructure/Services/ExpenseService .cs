@@ -1,5 +1,6 @@
 ﻿using Domain;
 using Microsoft.EntityFrameworkCore;
+using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,17 +12,24 @@ namespace Infrastructure.Services
    public class ExpenseService : IExpenseService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITenantProvider _tenantProvider;
 
-        public ExpenseService(ApplicationDbContext context)
+        public ExpenseService(ApplicationDbContext context, ITenantProvider tenantProvider)
         {
             _context = context;
+            _tenantProvider = tenantProvider;
         }
 
         public async Task<List<Expense>> GetAllAsync()
         {
             try
             {
-                return await _context.Expenses.OrderByDescending(e => e.Date).ToListAsync();
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+
+                    return await _context.Expenses.Where(e => e.TenantId == _tenantProvider.TenantId).OrderByDescending(e => e.Date).ToListAsync();
+                }
+                else return new List<Expense>();
             }
             catch (Exception)
             {
@@ -35,7 +43,12 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Expenses.FirstOrDefaultAsync(e =>e.Id == id);
+                if(_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Expenses.FirstOrDefaultAsync(e => e.Id == id && e.TenantId == _tenantProvider.TenantId);
+
+                }
+                return new Expense();
             }
             catch (Exception)
             {
@@ -110,9 +123,14 @@ namespace Infrastructure.Services
         {
             try
             {
-                return await _context.Expenses
-                    .Where(p => p.Date >= start && p.Date < end)
-                    .SumAsync(p => p.Amount);
+                if(_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Expenses
+                       .Where(p => p.Date >= start && p.Date < end && p.TenantId == _tenantProvider.TenantId)
+                       .SumAsync(p => p.Amount);
+                }
+                return 0m;
+
             }
             catch (Exception)
             {
@@ -140,9 +158,15 @@ namespace Infrastructure.Services
             {
                 // Include the end date in the range by adding one day and using less than
                 var adjustedEndDate = endDate.AddDays(1);
-                return await _context.Expenses
-                    .Where(p => p.Date >= startDate && p.Date < adjustedEndDate)
-                    .SumAsync(p => p.Amount);
+                if(_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Expenses
+                       .Where(p => p.Date >= startDate && p.Date < adjustedEndDate && p.TenantId == _tenantProvider.TenantId)
+                       .SumAsync(p => p.Amount);
+                }
+
+                return 0m;
+                
             }
             catch (Exception)
             {

@@ -1,5 +1,6 @@
 ﻿using Domain;
 using Microsoft.EntityFrameworkCore;
+using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,45 +13,57 @@ namespace Infrastructure.Services
         public class WholesalerService : IWholesalerService
         {
             private readonly ApplicationDbContext _context;
+        private readonly ITenantProvider _tenantProvider;
 
-            public WholesalerService(ApplicationDbContext context)
+            public WholesalerService(ApplicationDbContext context, ITenantProvider tenantProvider)
             {
                 _context = context;
+                _tenantProvider = tenantProvider;
             }
 
-            public async Task<List<Wholesaler>> GetAllAsync()
+        public async Task<List<Wholesaler>> GetAllAsync()
+        {
+            try
             {
-                try
+                if (_tenantProvider.TenantId != Guid.Empty)
                 {
-                    return await _context.Wholesalers.ToListAsync();
+                    return await _context.Wholesalers.Where(w => w.TenantId == _tenantProvider.TenantId).ToListAsync();
                 }
-                catch (Exception ex)
-                {
-                    
-                    Console.WriteLine($"GetAllAsync Error: {ex.Message}");
-                    return new List<Wholesaler>();
-                }
+                return new List<Wholesaler>();
             }
-
-            public async Task<Wholesaler?> GetByIdAsync(Guid id)
+            catch (Exception ex)
             {
-                try
-                {
-                    if (id == Guid.Empty)
-                        return null;
 
-                    return await _context.Wholesalers
-                        .FirstOrDefaultAsync(x => x.Id == id);
-                }
-                catch (Exception ex)
-                {
-                    
-                    Console.WriteLine($"GetByIdAsync Error: {ex.Message}");
+                Console.WriteLine($"GetAllAsync Error: {ex.Message}");
+                return new List<Wholesaler>();
+            }
+        }
+
+        public async Task<Wholesaler?> GetByIdAsync(Guid id)
+        {
+            try
+            {
+                if (id == Guid.Empty)
                     return null;
-                }
-            }
 
-            public async Task<bool> AddAsync(Wholesaler wholesaler)
+                if (_tenantProvider.TenantId != Guid.Empty)
+                {
+                    return await _context.Wholesalers
+                        .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == _tenantProvider.TenantId);
+                }
+
+                return null;
+
+            }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine($"GetByIdAsync Error: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<bool> AddAsync(Wholesaler wholesaler)
             {
                 try
                 {
