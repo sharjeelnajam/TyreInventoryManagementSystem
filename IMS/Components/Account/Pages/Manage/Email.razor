@@ -12,46 +12,87 @@
 @inject IdentityUserAccessor UserAccessor
 @inject NavigationManager NavigationManager
 
-<PageTitle>Manage email</PageTitle>
+<PageTitle>Manage Email</PageTitle>
 
-<h3>Manage email</h3>
+<div class="d-flex justify-content-center mt-5">
+    <div class="shadow-lg p-4"
+         style="width: 95%; max-width: 650px; border-radius:16px; background:#fff;">
 
-<StatusMessage Message="@message"/>
-<div class="row">
-    <div class="col-md-6">
-        <form @onsubmit="OnSendEmailVerificationAsync" @formname="send-verification" id="send-verification-form" method="post">
-            <AntiforgeryToken />
-        </form>
-        <EditForm Model="Input" FormName="change-email" OnValidSubmit="OnValidSubmitAsync" method="post">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
+        <h3 class="text-center mb-4"
+            style="font-weight:700; color:#333;">
+            Manage Your Email
+        </h3>
+
+        <StatusMessage Message="@message" />
+
+        <div class="mb-4 p-3 shadow-sm"
+             style="border-radius:12px; background:#f8f9fa;">
             @if (isEmailConfirmed)
             {
-                <div class="form-floating mb-3 input-group">
-                    <input type="text" value="@email" class="form-control" placeholder="Please enter your email." disabled />
-                    <div class="input-group-append">
-                        <span class="h-100 input-group-text text-success font-weight-bold">✓</span>
-                    </div>
-                    <label for="email" class="form-label">Email</label>
+                <label class="form-label fw-bold">Current Email</label>
+                <div class="input-group mb-2">
+                    <input type="email" class="form-control" value="@email" disabled />
+                    <span class="input-group-text text-success fw-bold">✓</span>
                 </div>
+                <small class="text-success fw-semibold">Email verified</small>
             }
             else
             {
-                <div class="form-floating mb-3">
-                    <input type="text" value="@email" class="form-control" placeholder="Please enter your email." disabled />
-                    <label for="email" class="form-label">Email</label>
-                    <button type="submit" class="btn btn-link" form="send-verification-form">Send verification email</button>
+                <label class="form-label fw-bold">Current Email</label>
+                <div class="input-group mb-2">
+                    <input type="email" class="form-control" value="@email" disabled />
                 </div>
+                <button type="submit" class="btn btn-sm btn-outline-primary"
+                        style="border-radius:8px;"
+                        form="send-verification-form">
+                    Send Verification Email
+                </button>
             }
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.NewEmail" class="form-control" autocomplete="email" aria-required="true" placeholder="Please enter new email." />
-                <label for="new-email" class="form-label">New email</label>
+        </div>
+
+        <!-- Hidden form for verification -->
+        <form @onsubmit="OnSendEmailVerificationAsync"
+              @formname="send-verification"
+              id="send-verification-form" method="post">
+            <AntiforgeryToken />
+        </form>
+
+        <!-- Change Email -->
+        <EditForm Model="Input"
+                  FormName="change-email"
+                  OnValidSubmit="OnValidSubmitAsync"
+                  method="post">
+
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger mb-3" />
+
+            <div class="form-floating mb-4">
+                <InputText @bind-Value="Input.NewEmail"
+                           class="form-control"
+                           autocomplete="email"
+                           aria-required="true"
+                           placeholder="Enter new email" />
+                <label for="new-email">New Email</label>
                 <ValidationMessage For="() => Input.NewEmail" class="text-danger" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Change email</button>
+
+            <button type="submit"
+                    class="btn btn-primary w-100 py-2"
+                    style="border-radius:10px; font-size:1.1rem;
+                    background: linear-gradient(135deg, #4b6cb7, #182848); border: none;">
+                Change Email
+            </button>
         </EditForm>
     </div>
 </div>
+
+<style>
+    .shadow-lg {
+        animation: fadeIn 0.35s ease-in-out;
+    }
+
+   
+</style>
 
 @code {
     private string? message;
@@ -91,15 +132,13 @@
 
         await EmailSender.SendConfirmationLinkAsync(user, Input.NewEmail, HtmlEncoder.Default.Encode(callbackUrl));
 
-        message = "Confirmation link to change email sent. Please check your email.";
+        message = "Confirmation link to change your email has been sent.";
     }
 
     private async Task OnSendEmailVerificationAsync()
     {
         if (email is null)
-        {
             return;
-        }
 
         var userId = await UserManager.GetUserIdAsync(user);
         var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
@@ -110,7 +149,7 @@
 
         await EmailSender.SendConfirmationLinkAsync(user, email, HtmlEncoder.Default.Encode(callbackUrl));
 
-        message = "Verification email sent. Please check your email.";
+        message = "Verification email sent. Please check your inbox.";
     }
 
     private sealed class InputModel
