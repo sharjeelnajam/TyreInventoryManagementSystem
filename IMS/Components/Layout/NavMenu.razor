@@ -22,10 +22,19 @@
         <div class="nav-item px-3">
             <AuthorizeView Roles="SuperAdmin">
                 <Authorized>
+
                     <NavLink class="nav-link d-flex align-items-center" href="/branches">
                         <span class="bi bi-person-fill-nav-menu"></span>
                         <span>Branches</span>
                     </NavLink>
+
+                        <NavLink class="nav-link d-flex align-items-center"
+                                 href="/adminPanal"
+                                 ActiveClass="active-dashboard">
+                            <i class="fa fa-dashboard me-3"></i>
+                            <span>AdminPanal</span>
+                        </NavLink>
+           
                 </Authorized>
             </AuthorizeView>
         </div>

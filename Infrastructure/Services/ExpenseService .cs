@@ -138,7 +138,7 @@ namespace Infrastructure.Services
             }
         }
 
-        public Task<decimal> GetMonthProfitAsync()
+        public Task<decimal> GetMonthExpenseAsync()
         {
             try
             {

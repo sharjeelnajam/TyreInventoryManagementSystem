@@ -1,6 +1,8 @@
 ﻿@page "/stock-history"
 @using Microsoft.EntityFrameworkCore
+@using Shared.MultiTenancy
 @inject ApplicationDbContext _context
+@inject ITenantProvider tenantProvider
 @rendermode InteractiveServer
 
 <PageTitle>Stock History</PageTitle>
@@ -77,6 +79,7 @@
     protected override async Task OnInitializedAsync()
     {
         stockList = await _context.StockHistories
+            .Where(s => s.TenantId == tenantProvider.TenantId)
             .Include(s => s.Product)
             .OrderByDescending(s => s.ActionDate)
             .ToListAsync();

@@ -14,7 +14,7 @@ namespace Infrastructure.Services
         Task AddAsync(Expense expense);
         Task UpdateAsync(Expense expense);
         Task DeleteAsync(Guid id);
-        Task<decimal> GetMonthProfitAsync();
+        Task<decimal> GetMonthExpenseAsync();
         Task<decimal> GetProfitByDateRangeAsync(DateTime startDate, DateTime endDate);
     }
 }

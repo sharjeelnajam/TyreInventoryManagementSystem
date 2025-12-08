@@ -409,7 +409,7 @@
         else
         {
             MonthlyProfit = await ProfitReportService.GetMonthProfitAsync();
-            MonthlyExpense = await expenseService.GetMonthProfitAsync();
+            MonthlyExpense = await expenseService.GetMonthExpenseAsync();
             filterMessage = "Showing current month profit";
 
             // Current month

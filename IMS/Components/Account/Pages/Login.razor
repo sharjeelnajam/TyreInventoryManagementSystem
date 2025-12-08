@@ -207,7 +207,7 @@
                 else if (await SignInManager.UserManager.IsInRoleAsync(user, "SuperAdmin"))
                 {
 
-                    NavigationManager.NavigateTo("/branches", forceLoad: true);
+                    NavigationManager.NavigateTo("/adminPanal", forceLoad: true);
                     return;
                 }
                 else if (await SignInManager.UserManager.IsInRoleAsync(user, "Supplier"))

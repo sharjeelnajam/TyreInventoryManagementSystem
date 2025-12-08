@@ -1,0 +1,276 @@
+﻿@page "/adminPanal"
+@attribute [Authorize(Roles = "SuperAdmin")]
+
+@using Infrastructure.Services
+@using Domain
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+
+
+@inject IAdminPanalService adminPanalService;
+@inject ApplicationDbContext _context;
+
+@rendermode InteractiveServer
+
+<PageTitle>Admin Panal</PageTitle>
+
+
+<div class="container-fluid mt-1">
+
+    <!-- Tenant Selection -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body d-flex align-items-center gap-3">
+            <label class="fw-bold me-2">Select Branch:</label>
+
+            <select class="form-select w-auto"
+                    @onchange="OnTenantChanged">
+                <option value="">All Tenants</option>
+
+                @foreach (var t in tenants)
+                {
+                    <option value="@t.Id" selected="@(selectedTenant == t.Id)">
+                        @t.Name
+                    </option>
+                }
+            </select>
+        </div>
+    </div>
+
+
+    @if (isLoading)
+    {
+        <div class="text-center mt-5 mb-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else
+    {
+
+        <!-- Summary Cards -->
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#fd7e14; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Expense</h6>
+                        <h5>RS.@TotalExpense.ToString("N0")</h5>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#32CD32; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Profit</h6>
+                        <h5>RS.@TotalProfit.ToString("N0")</h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#ae3ec9; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Purchase</h6>
+                        <h5>RS.@TotalPurchase.ToString("N0")</h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#1864ab; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Sales</h6>
+                        <h5>RS.@TotalSales.ToString("N0")</h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#20c997; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Staff</h6>
+                        <h5>@Staffs.Count</h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#6c757d; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Customers</h6>
+                        <h5>@customers.Count</h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#c99700 ; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Products</h6>
+                        <h5>@products.Count</h5>
+                    </div>
+                </div>
+            </div>  
+            
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#2f9e44; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Suppliers</h6>
+                        <h5>@Suppliers.Count</h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#dc3545; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total WholeSalers</h6>
+                        <h5>@WholeSalers.Count</h5>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card text-white" style="background:#228be6; min-height:110px;">
+                    <div class="card-body">
+                        <h6>Total Invoices</h6>
+                        <h5>@TotalInvoices</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Future Expansion Row -->
+        <div class="row g-4">
+        </div>
+    }
+</div>
+
+<style>
+    .threshold-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        z-index: 9998;
+    }
+
+    .threshold-modal {
+        position: fixed;
+        top: 8%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 10px;
+        z-index: 9999;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .disable-page {
+        filter: blur(5px);
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .top-products-chart {
+        padding: 15px;
+    }
+
+    .bar-row {
+        display: grid;
+        grid-template-columns: 150px 1fr 50px;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .bar-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .bar-track {
+        background: #e9ecef;
+        height: 14px;
+        width: 100%;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        height: 100%;
+        background: linear-gradient(to right, #2980b9, #6bb9f0);
+        border-radius: 10px;
+        transition: width 0.5s ease;
+    }
+
+    .bar-value {
+        font-weight: bold;
+        text-align: right;
+        font-size: 0.9rem;
+    }
+
+</style>
+
+
+@code {
+    private bool isLoading = true;
+
+    private List<Tenant> tenants = new();
+    private Guid? selectedTenant = null;
+
+    // Data
+    private List<Product> products = new();
+    private List<Customer> customers = new();
+    private List<Staff> Staffs = new();
+    private List<Supplier> Suppliers = new();
+    private List<Wholesaler> WholeSalers = new();
+    private decimal TotalExpense = 0;
+    private decimal TotalPurchase = 0;
+    private decimal TotalSales = 0;
+    private int TotalInvoices = 0;
+    private decimal TotalProfit = 0;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        tenants = await adminPanalService.GetAllTenants();
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+
+        customers = await adminPanalService.GetCustomers(selectedTenant);
+        products = await adminPanalService.GetProducts(selectedTenant);
+        Staffs = await adminPanalService.GetStaff(selectedTenant);
+        TotalExpense = await adminPanalService.GetTotalExpense(selectedTenant);
+        TotalInvoices = await adminPanalService.GetTotalInvoices(selectedTenant);
+        Suppliers = await adminPanalService.GetSuppliers(selectedTenant);
+        WholeSalers = await adminPanalService.GetWholeSalers(selectedTenant);
+        TotalPurchase = await adminPanalService.GetTotalPurchaseAmountAsync(selectedTenant);
+        TotalSales = await adminPanalService.GetTotalSalesAsync(selectedTenant);
+        TotalProfit = await adminPanalService.GetTotalProfit(selectedTenant);
+
+        isLoading = false;
+    }
+
+    private async Task OnTenantChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+
+        if (string.IsNullOrWhiteSpace(value))
+            selectedTenant = null;
+        else
+            selectedTenant = Guid.Parse(value);
+
+        await LoadData();
+    }
+}
