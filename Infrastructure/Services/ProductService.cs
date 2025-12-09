@@ -94,9 +94,9 @@ namespace Infrastructure.Services
                 existing.DOT = product.DOT;
                 existing.Brand = product.Brand;
                 existing.Type = product.Type;
+                existing.Min_Threshold = product.Min_Threshold;
                 existing.Thread = product.Thread;
                 existing.TyreSize = product.TyreSize;
-                existing.TreadDepth = product.TreadDepth;
                 existing.PurchasePrice = product.PurchasePrice;
                 existing.SellingPrice = product.SellingPrice;
                 existing.Quantity = product.Quantity;

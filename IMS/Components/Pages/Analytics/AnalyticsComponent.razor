@@ -97,7 +97,7 @@ else
                                         <td>@c.data.CustomerName</td>
                                         <td>@c.data.TotalOrders</td>
                                         <td>@c.data.TotalQuantity</td>
-                                        <td>@c.data.TotalAmountSpent</td>
+                                        <td>@c.data.TotalAmountSpent.ToString("C", new CultureInfo("en-GB"))</td>
                                     </tr>
                                 }
                             </tbody>
@@ -142,7 +142,7 @@ else
                                         <td>@p.BrandName</td>
                                         <td>@p.TotalOrders</td>
                                         <td>@p.TotalQuantity</td>
-                                        <td>@p.TotalAmount.ToString("C", new CultureInfo("ur-PK"))</td>
+                                        <td>@p.TotalAmount.ToString("C", new CultureInfo("en-GB"))</td>
                                     </tr>
                                     i++;
                                 }
@@ -190,7 +190,7 @@ else
                                         <td>@s.data.SupplierName</td>
                                         <td>@s.data.TotalOrders</td>
                                         <td>@s.data.TotalQuantity</td>
-                                        <td>@s.data.TotalAmountPaid</td>
+                                        <td>@s.data.TotalAmountPaid.ToString("C", new CultureInfo("en-GB"))</td>
                                     </tr>
                                 }
                             </tbody>

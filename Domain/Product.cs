@@ -16,15 +16,14 @@ namespace Domain
         public string? Description { get; set; }
 
         [Display(Name = "Date of Manufacture")]
-        public DateTime? DOT { get; set; }
+        public string DOT { get; set; }
 
         [Required(ErrorMessage = "Brand is required")]
         public string Brand { get; set; } = default!;
 
         public string? TyreSize { get; set; } = default!;
-
-        [Precision(18, 2)]
-        public decimal? TreadDepth { get; set; }  // mm
+       
+        public string Min_Threshold { get; set; }  // mm
 
         [Required(ErrorMessage = "Purchase price is required")]
         [Precision(18, 2)]

@@ -5,6 +5,7 @@
 @using Domain
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
+@using System.Globalization
 
 
 @inject IAdminPanalService adminPanalService;
@@ -52,7 +53,7 @@
                 <div class="card text-white" style="background:#fd7e14; min-height:110px;">
                     <div class="card-body">
                         <h6>Total Expense</h6>
-                        <h5>RS.@TotalExpense.ToString("N0")</h5>
+                        <h5>@TotalExpense.ToString("C", new CultureInfo("en-GB"))</h5>
                     </div>
                 </div>
             </div>
@@ -61,7 +62,7 @@
                 <div class="card text-white" style="background:#32CD32; min-height:110px;">
                     <div class="card-body">
                         <h6>Total Profit</h6>
-                        <h5>RS.@TotalProfit.ToString("N0")</h5>
+                        <h5>@TotalProfit.ToString("C", new CultureInfo("en-GB"))</h5>
                     </div>
                 </div>
             </div>
@@ -70,7 +71,7 @@
                 <div class="card text-white" style="background:#ae3ec9; min-height:110px;">
                     <div class="card-body">
                         <h6>Total Purchase</h6>
-                        <h5>RS.@TotalPurchase.ToString("N0")</h5>
+                        <h5>@TotalPurchase.ToString("C", new CultureInfo("en-GB"))</h5>
                     </div>
                 </div>
             </div>
@@ -79,7 +80,7 @@
                 <div class="card text-white" style="background:#1864ab; min-height:110px;">
                     <div class="card-body">
                         <h6>Total Sales</h6>
-                        <h5>RS.@TotalSales.ToString("N0")</h5>
+                        <h5>@TotalSales.ToString("C", new CultureInfo("en-GB"))</h5>
                     </div>
                 </div>
             </div>
