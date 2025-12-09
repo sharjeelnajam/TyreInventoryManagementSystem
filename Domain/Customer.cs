@@ -18,6 +18,7 @@ namespace Domain
         [Required(ErrorMessage = "Phone number is required.")]
         public string Phone { get; set; }
 
+        [Required(ErrorMessage = "Email address is required.")]
         [EmailAddress(ErrorMessage = "Invalid email address.")]
         public string Email { get; set; }
 
