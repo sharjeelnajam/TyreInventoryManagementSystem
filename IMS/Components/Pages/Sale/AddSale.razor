@@ -1,4 +1,5 @@
 ﻿@using Domain
+@using Domain.DTO
 @using Infrastructure.Services
 @inject ISaleService SaleService
 @inject ICustomerService CustomerService
@@ -61,17 +62,25 @@
                             {
                                 <div class="col-md-3">
                                     <label>Customer</label>
-                                    <InputSelect class="form-control" @bind-Value="Sale.CustomerId">
+
+                                    <InputSelect class="form-control"
+                                    TValue="Guid?"
+                                    Value="Sale.CustomerId"
+                                    ValueChanged="OnCustomerChanged"
+                                    ValueExpression="@(() => Sale.CustomerId)">
                                         <option value="">-- Select Customer --</option>
+
                                         @foreach (var customer in Customers)
                                         {
                                             <option value="@customer.Id">@customer.Name</option>
                                         }
                                     </InputSelect>
+
                                     <button type="button" class="btn btn-link p-0 mt-1" @onclick="OpenAddCustomer">
                                         + Add New Customer
                                     </button>
                                 </div>
+
                             }
 
                             @if (isWholesalerMode)
@@ -94,15 +103,17 @@
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Bill To</label>
                                 <div class="form-check form-switch mt-1">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           @bind="isWholesalerMode"
-                                           id="toggleSwitch" />
-                                    <label class="form-check-label" for="toggleSwitch">
+                                    <InputCheckbox class="form-check-input"
+                                    Value="isWholesalerMode"
+                                    ValueChanged="EventCallback.Factory.Create<bool>(this, OnBillToChanged)"
+                                    ValueExpression="@(() => isWholesalerMode)" />
+
+                                    <label class="form-check-label">
                                         @(isWholesalerMode ? "Wholesaler" : "Customer")
                                     </label>
                                 </div>
                             </div>
+
 
                         </div>
 
@@ -131,27 +142,27 @@
                                                 <!-- Searchable Dropdown -->
                                                 <div class="dropdown">
                                                     <input type="text"
-                                                           class="form-control"
-                                                           placeholder="Search product..."
-                                                           value="@GetSearchText(detail)"
-                                                           @oninput="(e) => OnSearchInput(e, detail)"
-                                                           @onfocus="() => ShowDropdown(detail)"
-                                                           @onblur="() => HideDropdown(detail)" />
+                                                    class="form-control"
+                                                    placeholder="Search product..."
+                                                    value="@GetSearchText(detail)"
+                                                    @oninput="(e) => OnSearchInput(e, detail)"
+                                                    @onfocus="() => ShowDropdown(detail)"
+                                                    @onblur="() => HideDropdown(detail)" />
 
                                                     @if (GetDropdownState(detail))
                                                     {
                                                         <div class="dropdown-menu show d-block position-absolute w-100"
-                                                             style="z-index: 1060; max-height: 250px; overflow-y: auto; background: white;">
+                                                        style="z-index: 1060; max-height: 250px; overflow-y: auto; background: white;">
                                                             @foreach (var product in GetFilteredProducts(detail))
                                                             {
                                                                 bool isSelected = product.Id == detail.ProductId;
                                                                 bool isAlreadyUsed = Sale.SaleDetails.Any(d => d.ProductId == product.Id && d != detail);
 
                                                                 <button type="button"
-                                                                        class="dropdown-item @(isSelected ? "active" : "") @(isAlreadyUsed && !isSelected ? "text-muted" : "")"
-                                                                        disabled="@(!isSelected && isAlreadyUsed)"
-                                                                        @onclick="() => SelectProduct(detail, product)"
-                                                                        @onkeydown="(e) => HandleKeyDown(e, detail, product)">
+                                                                class="dropdown-item @(isSelected ? "active" : "") @(isAlreadyUsed && !isSelected ? "text-muted" : "")"
+                                                                disabled="@(!isSelected && isAlreadyUsed)"
+                                                                @onclick="() => SelectProduct(detail, product)"
+                                                                @onkeydown="(e) => HandleKeyDown(e, detail, product)">
                                                                     <div class="d-flex justify-content-between align-items-center">
                                                                         <span>
                                                                             @product.ProductName - @product.Brand - @product.TyreSize
@@ -176,10 +187,10 @@
 
                                             <td>
                                                 <InputNumber TValue="int"
-                                                             Value="detail.Quantity"
-                                                             ValueChanged="@(v => OnQuantityChanged(detail, v))"
-                                                             ValueExpression="@(() => detail.Quantity)"
-                                                             class="form-control" />
+                                                Value="detail.Quantity"
+                                                ValueChanged="@(v => OnQuantityChanged(detail, v))"
+                                                ValueExpression="@(() => detail.Quantity)"
+                                                class="form-control" />
 
                                                 @if (quantityErrors.ContainsKey(detail.ProductId))
                                                 {
@@ -190,10 +201,10 @@
                                             </td>
                                             <td>
                                                 <InputNumber TValue="decimal"
-                                                             Value="detail.UnitPrice"
-                                                             ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
-                                                             ValueExpression="@(() => detail.UnitPrice)"
-                                                             class="form-control" />
+                                                Value="detail.UnitPrice"
+                                                ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
+                                                ValueExpression="@(() => detail.UnitPrice)"
+                                                class="form-control" />
                                             </td>
                                             <td>@((detail.Quantity * detail.UnitPrice).ToString("N2"))</td>
                                             <td>
@@ -206,45 +217,80 @@
                         </table>
 
                         <button type="button" class="btn btn-secondary" @onclick="AddItem" disabled="@(!isFormValid)"
-                                style="opacity:@(isFormValid ? "1" : "0.6")">
+                        style="opacity:@(isFormValid ? "1" : "0.6")">
                             + Add Item
                         </button>
 
+                        @if (CustomerCustomPrice.HasValue || CustomerPercentage.HasValue)
+                        {
+
+                        }
+
+
                         <div class="row mt-4 border-top pt-3">
-                            <div class="col-md-6"></div>
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body">
                                         <div class="row g-3 align-items-center">
-                                            <div class="col-md-4">
-                                                <label>Discount</label>
-                                                <InputNumber TValue="decimal?"
-                                                             Value="Sale.Discount"
-                                                             ValueChanged="OnDiscountChanged"
-                                                             ValueExpression="@(() => Sale.Discount)"
-                                                             class="form-control" />
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label>Tax (%)</label>
-                                                <InputNumber TValue="decimal?"
-                                                             Value="Sale.TaxAmount"
-                                                             ValueChanged="OnTaxChanged"
-                                                             ValueExpression="@(() => Sale.TaxAmount)"
-                                                             class="form-control" />
-                                            </div>
+
+                                            @if (ShowOldDiscountField)
+                                            {
+                                                <div class="col-md-4">
+                                                    <label>Discount</label>
+                                                    <InputNumber TValue="decimal?"
+                                                    Value="Sale.Discount"
+                                                    ValueChanged="OnDiscountChanged"
+                                                    ValueExpression="@(() => Sale.Discount)"
+                                                    class="form-control" />
+                                                </div>
+
+                                                <div class="col-md-4">
+                                                    <label>Tax (%)</label>
+                                                    <InputNumber TValue="decimal?"
+                                                    Value="Sale.TaxAmount"
+                                                    ValueChanged="OnTaxChanged"
+                                                    ValueExpression="@(() => Sale.TaxAmount)"
+                                                    class="form-control" />
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="col-md-3">
+                                                    <label>Customer Custom Price</label>
+                                                    <InputNumber @bind-Value="CustomerCustomPrice" class="form-control" />
+                                                </div>
+
+                                                <div class="col-md-3">
+                                                    <label>Customer Percentage (%)</label>
+                                                    <InputNumber @bind-Value="CustomerPercentage" class="form-control" />
+                                                </div>
+
+                                                <div class="col-md-2">
+                                                    <label>Tax (%)</label>
+                                                    <InputNumber TValue="decimal?"
+                                                    Value="Sale.TaxAmount"
+                                                    ValueChanged="OnTaxChanged"
+                                                    ValueExpression="@(() => Sale.TaxAmount)"
+                                                    class="form-control" />
+                                                </div>
+                                            }
+
                                             <div class="col-md-2 text-end">
                                                 <label class="form-label fw-semibold mb-0">Total</label>
                                                 <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
                                             </div>
+
                                             <div class="col-md-2 text-end">
                                                 <label class="form-label fw-semibold mb-0">Net</label>
                                                 <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
                                             </div>
+
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
 
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
@@ -272,23 +318,57 @@
                 <div class="modal-body">
                     <EditForm Model="@NewCustomer" OnValidSubmit="SaveCustomer">
                         <DataAnnotationsValidator />
-                        <div class="mb-3">
-                            <label>Name</label>
-                            <InputText class="form-control" @bind-Value="NewCustomer.Name" />
-                            <ValidationMessage For="@(()=>NewCustomer.Name)" />
-                        </div>
-                        <div class="mb-3">
-                            <label>Email</label>
-                            <InputText class="form-control" @bind-Value="NewCustomer.Email" />
-                        </div>
-                        <div class="mb-3">
-                            <label>Phone</label>
-                            <InputText class="form-control" @bind-Value="NewCustomer.Phone" />
-                            <ValidationMessage For="@(()=>NewCustomer.Phone)" />
-                        </div>
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Save</button>
-                            <button type="button" class="btn btn-secondary" @onclick="CloseCustomerModal">Cancel</button>
+                        <div class="row g-3">
+
+                            <div class="col-md-12 mt-3">
+                                <div class="form-check form-switch">
+                                    <InputCheckbox @bind-Value="EnableCustomPricing"
+                                    class="form-check-input" />
+                                    <label class="form-check-label fw-semibold ms-2">
+                                        Enable Custom Pricing
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label>Name</label>
+                                <InputText class="form-control" @bind-Value="NewCustomer.Name" />
+                                <ValidationMessage For="@(()=>NewCustomer.Name)" />
+                            </div>
+                            <div class="mb-3">
+                                <label>Email</label>
+                                <InputText class="form-control" @bind-Value="NewCustomer.Email" />
+                                <ValidationMessage For="@(()=>NewCustomer.Phone)" />
+                            </div>
+                            <div class="mb-3">
+                                <label>Phone</label>
+                                <InputText class="form-control" @bind-Value="NewCustomer.Phone" />
+                                <ValidationMessage For="@(()=>NewCustomer.Phone)" />
+                            </div>
+                            @if (EnableCustomPricing)
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Percentage (%)</label>
+                                    <InputNumber @bind-Value="NewCustomer.Percentage"
+                                    class="form-control form-control-lg shadow-sm" />
+                                    <ValidationMessage For="@(() => NewCustomer.Percentage)" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Custom Price</label>
+                                    <InputNumber @bind-Value="NewCustomer.CustomPrice"
+                                    class="form-control form-control-lg shadow-sm" />
+                                    <ValidationMessage For="@(() => NewCustomer.CustomPrice)" />
+                                </div>
+                            }
+
+                            <div class="modal-footer">
+                                <button type="submit" class="btn btn-primary">Save</button>
+                                <button type="button" class="btn btn-secondary" @onclick="CloseCustomerModal">Cancel</button>
+                            </div>
+
+
+
                         </div>
                     </EditForm>
                 </div>
@@ -364,7 +444,7 @@
     protected Sale Sale { get; set; } = new();
     protected List<Customer> Customers { get; set; } = new();
     protected List<StockHistory> Stocks = new();
-    private List<Product> products = new();
+    private List<ProductDto> products = new();
 
     // Searchable dropdown state
     private string searchText = string.Empty;
@@ -377,6 +457,12 @@
     protected List<Wholesaler> Wholesalers { get; set; } = new();
     protected bool showWholesalerModal = false;
     protected Wholesaler NewWholesaler { get; set; } = new();
+
+    private decimal? CustomerCustomPrice { get; set; }
+    private decimal? CustomerPercentage { get; set; }
+    private Customer customerForData = new Customer();
+    private bool ShowOldDiscountField = true;
+    private bool EnableCustomPricing { get; set; } = false;
 
 
     protected override async Task OnParametersSetAsync()
@@ -406,7 +492,7 @@
                 }
             }
             else
-            {
+            {   
                 Sale = new Sale
                     {
                         SaleDate = DateTime.Now,
@@ -421,22 +507,43 @@
 
     protected async Task HandleValidSubmit()
     {
-        foreach (var s in Sale.SaleDetails)
+        try
         {
-            s.SaleId = Sale.Id;
+            foreach (var s in Sale.SaleDetails)
+            {
+                s.SaleId = Sale.Id;
+               
+            }
+            if (Id == Guid.Empty)
+            {
+                await SaleService.AddAsync(Sale);
+                products = await ProductService.GetAllAsync();
+            }
+
+            else
+                await SaleService.UpdateAsync(Sale);
+
+
+            await OnClose.InvokeAsync();
+            IsVisible = false;
         }
-
-        if (Id == Guid.Empty)
-            await SaleService.AddAsync(Sale);
-        else
-            await SaleService.UpdateAsync(Sale);
-
-     
-        await OnClose.InvokeAsync();
-        IsVisible = false;
+        catch (Exception)
+        {
+            
+            throw;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
     }
 
-    protected void Close() => OnClose.InvokeAsync();
+    protected void Close()
+    {
+        OnClose.InvokeAsync();
+        ShowOldDiscountField = true;
+    }
+
 
     protected void AddItem()
     {
@@ -512,7 +619,7 @@
         }
     }
 
-    private IEnumerable<Product> GetFilteredProducts(SaleDetail currentDetail)
+    private IEnumerable<ProductDto> GetFilteredProducts(SaleDetail currentDetail)
     {
         var searchText = GetSearchText(currentDetail);
         var query = products.AsEnumerable();
@@ -529,7 +636,7 @@
         return query.OrderBy(p => p.ProductName);
     }
 
-    private void SelectProduct(SaleDetail detail, Product product)
+    private void SelectProduct(SaleDetail detail, ProductDto product)
     {
         var previousProductId = detail.ProductId;
         detail.ProductId = product.Id;
@@ -557,7 +664,7 @@
         StateHasChanged();
     }
 
-    private void HandleKeyDown(KeyboardEventArgs e, SaleDetail detail, Product product)
+    private void HandleKeyDown(KeyboardEventArgs e, SaleDetail detail, ProductDto product)
     {
         if (e.Key == "Enter" || e.Key == " ")
         {
@@ -638,11 +745,46 @@
         RecalculateTotals();
     }
 
+    private async Task OnCustomerChanged(Guid? value)
+    {
+        if (value == null || value == Guid.Empty)
+            return;
+
+        Sale.CustomerId = value;
+
+        var customer = Customers.FirstOrDefault(c => c.Id == value);
+
+        if (customer != null)
+        {
+            if (customer.CustomPrice.HasValue || customer.Percentage.HasValue)
+            {
+                CustomerCustomPrice = customer.CustomPrice;
+                CustomerPercentage = customer.Percentage;
+                ShowOldDiscountField = false;
+            }
+            else
+
+                ShowOldDiscountField = true;
+        }
+        RecalculateTotals();
+    }
+
     private void OnUnitPriceChanged(SaleDetail detail, decimal newValue)
     {
         detail.UnitPrice = newValue;
         detail.TotalPrice = detail.Quantity * detail.UnitPrice;
         RecalculateTotals();
+    }
+
+    private void OnBillToChanged(bool value)
+    {
+        isWholesalerMode = value;
+
+        // When toggle changes → always show previous discount field
+        ShowOldDiscountField = true;
+
+        // Optional: recalc bill
+        //ApplyCustomerDiscount();
     }
 
     private void RecalculateTotals()
@@ -656,7 +798,35 @@
 
         var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
         Sale.TotalAmount = total > 0 ? total - (Sale.Discount ?? 0) : 0;
-        Sale.NetAmount = total > 0 ? total - (Sale.Discount ?? 0) + (Sale.TaxAmount ?? 0) : 0;
+        if (!ShowOldDiscountField)
+        {
+
+            decimal discount = 0;
+
+            // Rule 1 – Only CustomPrice
+            if (CustomerCustomPrice.HasValue && (!CustomerPercentage.HasValue || CustomerPercentage == 0))
+            {
+                discount = CustomerCustomPrice.Value;
+            }
+            // Rule 2 – Only Percentage
+            else if (!CustomerCustomPrice.HasValue && CustomerPercentage.HasValue && CustomerPercentage > 0)
+            {
+                discount = total * (CustomerPercentage.Value / 100);
+            }
+            // Rule 3 – Both values
+            else if (CustomerCustomPrice.HasValue && CustomerPercentage.HasValue && CustomerPercentage > 0)
+            {
+                var percentageAmount = total * (CustomerPercentage.Value / 100);
+                discount = CustomerCustomPrice.Value + percentageAmount;
+            }
+
+            Sale.NetAmount = total - discount;
+
+            if (Sale.NetAmount < 0)
+                Sale.NetAmount = 0;
+        }
+        else
+            Sale.NetAmount = total > 0 ? total - (Sale.Discount ?? 0) + (Sale.TaxAmount ?? 0) : 0;
     }
 
     private bool isWholesalerMode
@@ -678,12 +848,13 @@
     }
     private bool _isWholesalerMode;
 
-
     // Customer popup methods
     protected void OpenAddCustomer()
     {
         NewCustomer = new Customer();
         showCustomerModal = true;
+        EnableCustomPricing = NewCustomer.Percentage.HasValue
+                              || NewCustomer.CustomPrice.HasValue;
     }
 
     protected async Task SaveCustomer()
@@ -691,6 +862,10 @@
         await CustomerService.AddCustomerAsync(NewCustomer);
         Customers = await CustomerService.GetCustomersAsync();
         Sale.CustomerId = NewCustomer.Id;
+        if(NewCustomer.CustomPrice.HasValue || NewCustomer.Percentage.HasValue)
+        {
+            ShowOldDiscountField = false;
+        }
         showCustomerModal = false;
     }
 

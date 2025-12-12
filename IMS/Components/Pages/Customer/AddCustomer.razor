@@ -16,6 +16,16 @@
 
         <div class="row g-3">
 
+            <div class="col-md-12 mt-3">
+                <div class="form-check form-switch">
+                    <InputCheckbox @bind-Value="EnableCustomPricing"
+                                   class="form-check-input" />
+                    <label class="form-check-label fw-semibold ms-2">
+                        Enable Custom Pricing
+                    </label>
+                </div>
+            </div>
+
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Name *</label>
                 <InputText @bind-Value="CustomerModel.Name"
@@ -42,6 +52,23 @@
                 <InputText @bind-Value="CustomerModel.City"
                            class="form-control form-control-lg shadow-sm" />
             </div>
+
+            @if (EnableCustomPricing)
+            {
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Percentage (%)</label>
+                    <InputNumber @bind-Value="CustomerModel.Percentage"
+                                 class="form-control form-control-lg shadow-sm" />
+                    <ValidationMessage For="@(() => CustomerModel.Percentage)" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Custom Price</label>
+                    <InputNumber @bind-Value="CustomerModel.CustomPrice"
+                                 class="form-control form-control-lg shadow-sm" />
+                    <ValidationMessage For="@(() => CustomerModel.CustomPrice)" />
+                </div>
+            }
 
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Customer Type *</label>
@@ -85,6 +112,13 @@
     [Parameter] public Customer CustomerModel { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
     [Parameter] public EventCallback OnCancelled { get; set; }
+    private bool EnableCustomPricing { get; set; }
+
+    protected override void OnInitialized()
+    {
+        EnableCustomPricing = CustomerModel.Percentage.HasValue
+                              || CustomerModel.CustomPrice.HasValue;
+    }
 
     private async Task HandleValidSubmit()
     {

@@ -16,7 +16,6 @@ namespace Domain
         [Required(ErrorMessage = "Purchase date is required.")]
         public DateTime PurchaseDate { get; set; }
 
-        [Required(ErrorMessage = "Supplier is required.")]
         public Guid? SupplierId { get; set; }
 
         public Supplier Supplier { get; set; }

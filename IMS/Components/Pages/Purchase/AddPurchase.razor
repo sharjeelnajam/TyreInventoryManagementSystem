@@ -1,4 +1,5 @@
 ﻿@using Domain
+@using Domain.DTO
 @using Infrastructure.Services
 @inject ISupplierService SupplierService
 @inject IProductService ProductService
@@ -372,7 +373,7 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private List<Supplier> suppliers = new();
-    private List<Product> products = new();
+    private List<ProductDto> products = new();
     private string? ErrorMessage { get; set; }
     private bool ShowErrorPopup { get; set; }
 
@@ -382,7 +383,7 @@
 
     // Product modal state
     private bool showProductModal = false;
-    private Product NewProduct = new Product();
+    private ProductDto NewProduct = new ProductDto();
     private IBrowserFile uploadedFile;
     private string uploadStatus = "";
     private bool isSavingProduct = false;
@@ -432,7 +433,7 @@
     // Product Modal Methods
     private void OpenAddProductModal()
     {
-        NewProduct = new Product();
+        NewProduct = new ProductDto();
         uploadedFile = null;
         uploadStatus = "";
         showProductModal = true;
@@ -444,7 +445,7 @@
         if (!isSavingProduct)
         {
             showProductModal = false;
-            NewProduct = new Product();
+            NewProduct = new ProductDto();
             uploadedFile = null;
             uploadStatus = "";
             StateHasChanged();
@@ -678,7 +679,7 @@
         }
     }
 
-    private IEnumerable<Product> GetFilteredProducts(PurchaseDetail currentDetail)
+    private IEnumerable<ProductDto> GetFilteredProducts(PurchaseDetail currentDetail)
     {
         var searchText = GetSearchText(currentDetail);
         var query = products.AsEnumerable();
@@ -695,7 +696,7 @@
         return query.OrderBy(p => p.ProductName);
     }
 
-    private void SelectProduct(PurchaseDetail detail, Product product)
+    private void SelectProduct(PurchaseDetail detail, ProductDto product)
     {
         var previousProductId = detail.ProductId;
         detail.ProductId = product.Id;
@@ -709,7 +710,7 @@
         StateHasChanged();
     }
 
-    private void HandleKeyDown(KeyboardEventArgs e, PurchaseDetail detail, Product product)
+    private void HandleKeyDown(KeyboardEventArgs e, PurchaseDetail detail, ProductDto product)
     {
         if (e.Key == "Enter" || e.Key == " ")
         {
@@ -790,9 +791,9 @@
         return list ?? new List<Supplier>();
     }
 
-    private async Task<List<Product>> LoadProductsAsync()
+    private async Task<List<ProductDto>> LoadProductsAsync()
     {
         var list = await ProductService.GetAllAsync();
-        return list ?? new List<Product>();
+        return list ?? new List<ProductDto>();
     }
 }

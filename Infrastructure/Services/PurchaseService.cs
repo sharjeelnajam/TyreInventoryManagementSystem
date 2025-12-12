@@ -31,11 +31,12 @@ namespace Infrastructure.Services
                 if (_tenantProvider.TenantId != Guid.Empty)
                 {
                     return await _context.Purchase
-                        .Where(p => p.TenantId == _tenantProvider.TenantId)
-                       .Include(p => p.Supplier)
-                       .Include(p => p.PurchaseDetails)
-                       .ThenInclude(d => d.Product)
-                       .ToListAsync();
+                         .Where(p => p.TenantId == _tenantProvider.TenantId
+                                     && p.SupplierId != null)   // <<< filter added
+                         .Include(p => p.Supplier)
+                         .Include(p => p.PurchaseDetails)
+                             .ThenInclude(d => d.Product)
+                         .ToListAsync();
                 }
 
                 else return new List<Purchase>();
@@ -110,10 +111,10 @@ namespace Infrastructure.Services
                             throw new Exception($"Product with ID {detail.ProductId} not found.");
 
                         // Capture old stock (before update)
-                        var oldStock = product.Quantity;
+                        var oldStock = detail.Quantity;
 
                         // Update stock quantity
-                        product.Quantity += detail.Quantity;
+                        //detail.Quantity += detail.Quantity;
 
                         // Recalculate average cost price using weighted average formula
                         var oldCost = product.AverageCostPrice;
@@ -133,7 +134,7 @@ namespace Infrastructure.Services
                         if (stockProduct != null)
                         {
                             // Update existing record if found
-                            stockProduct.NewStockLevel = product.Quantity;
+                            stockProduct.NewStockLevel = stockProduct.NewStockLevel + detail.Quantity;
                             stockProduct.QuantityChanged = detail.Quantity;
                             stockProduct.ActionDate = DateTime.UtcNow;
                             stockProduct.PerformedBy = performedBy;
@@ -148,7 +149,7 @@ namespace Infrastructure.Services
                                 ActionType = "Purchase",
                                 QuantityChanged = detail.Quantity,
                                 PreviousStockLevel = oldStock,
-                                NewStockLevel = product.Quantity,
+                                NewStockLevel = detail.Quantity,
                                 ReferenceNumber = purchase.PurchaseNumber,
                                 ReferenceId = purchase.Id,
                                 PerformedBy = performedBy,
@@ -325,7 +326,7 @@ namespace Infrastructure.Services
 
                         var purchaseQty = await _context.PurchaseDetails.Where(pd => pd.ProductId == pid).SumAsync(pd => pd.Quantity);
                         var saleQty = await _context.SaleDetail.Where(sd => sd.ProductId == pid).SumAsync(sd => sd.Quantity);
-                        product.Quantity = purchaseQty - saleQty;
+                        //product.Quantity = purchaseQty - saleQty;
                     }
                 }
 

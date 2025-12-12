@@ -1,5 +1,6 @@
 ﻿@page "/products/addedit/{Id:guid?}"
 @using Domain
+@using Domain.DTO
 @using Infrastructure.Services
 @inject IProductService ProductService
 @inject IWebHostEnvironment Env
@@ -43,7 +44,19 @@
          <div class="col-md-6 mb-3">
             <label class="form-label">Min Threshold</label>
             <InputText class="form-control" @bind-Value="product.Min_Threshold" />
-        </div> 
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Purchasing Price</label>
+            <InputNumber class="form-control" @bind-Value="product.PurchasePrice" />
+            <ValidationMessage For="@(() => product.PurchasePrice)" />
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Seiling Price</label>
+            <InputNumber class="form-control" @bind-Value="product.SellingPrice" />
+            <ValidationMessage For="@(() => product.SellingPrice)" />
+        </div>
 
          <div class="col-md-6 mb-3">
             <label class="form-label">Quantity</label>
@@ -109,10 +122,10 @@
 
 @code {
     [Parameter] public Guid? Id { get; set; }
-    private Product product = new();
-    private IBrowserFile uploadedFile;
-    private string originalImagePath;
-    private string uploadStatus;
+    private ProductDto product = new();
+    private IBrowserFile? uploadedFile;
+    private string? originalImagePath;
+    private string? uploadStatus;
 
     protected override async Task OnInitializedAsync()
     {

@@ -32,6 +32,11 @@ namespace Domain
 
         public bool IsActive { get; set; } = true;
 
+        [Precision(18, 2)]
+        public decimal? Percentage { get; set; }
+        [Precision(18, 2)]
+        public decimal? CustomPrice { get; set; }
+
         [Required(ErrorMessage = "Customer type is required.")]
         public CustomerType CustomerType { get; set; }
 

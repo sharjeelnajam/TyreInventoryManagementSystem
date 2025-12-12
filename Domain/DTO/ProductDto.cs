@@ -6,10 +6,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Domain
+namespace Domain.DTO
 {
-    public class Product : BaseEntity
+    public class ProductDto
     {
+        public Guid Id { get; set; }
+
         [Required(ErrorMessage = "Product name is required")]
         public string ProductName { get; set; } = default!;
 
@@ -22,8 +24,19 @@ namespace Domain
         public string Brand { get; set; } = default!;
 
         public string? TyreSize { get; set; } = default!;
-       
+
         public string Min_Threshold { get; set; }
+
+        [Required(ErrorMessage = "Purchase price is required")]
+        [Precision(18, 2)]
+        public decimal PurchasePrice { get; set; }
+
+        [Required(ErrorMessage = "Selling price is required")]
+        [Precision(18, 2)]
+        public decimal SellingPrice { get; set; }
+
+        [Required(ErrorMessage = "Quantity is required")]
+        public int Quantity { get; set; }
 
         [Required(ErrorMessage = "Product Type is required")]
         public string Type { get; set; }
