@@ -1,10 +1,12 @@
 ﻿@using Domain
 @using Domain.DTO
+@using Domain.Enums
 @using Infrastructure.Services
 @inject ISaleService SaleService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
 @inject IWholesalerService WholesalerService
+@inject IListManagementService ListManagementService
 @inject ApplicationDbContext _context
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -91,7 +93,7 @@
                                         <option value="">-- Select Wholesaler --</option>
                                         @foreach (var w in Wholesalers)
                                         {
-                                            <option value="@w.Id">@w.Name (@w.Type)</option>
+                                            <option value="@w.Id">@w.Name</option>
                                         }
                                     </InputSelect>
                                     <button type="button" class="btn btn-link p-0 mt-1" @onclick="OpenAddWholesaler">
@@ -411,10 +413,10 @@
                         </div>
                         <div class="mb-3 col-md-4">
                             <label>Type</label>
-                            <InputSelect class="form-select" @bind-Value="NewWholesaler.Type">
-                                @foreach (var t in Enum.GetValues<Domain.Enums.WholesalerType>())
+                            <InputSelect class="form-select" @bind-Value="NewWholesaler.ListManagementId">
+                                @foreach (var t in listManagements)
                                 {
-                                    <option value="@t">@t</option>
+                                    <option value="@t.Id">@t</option>
                                 }
                             </InputSelect>
                         </div>
@@ -463,6 +465,7 @@
     private Customer customerForData = new Customer();
     private bool ShowOldDiscountField = true;
     private bool EnableCustomPricing { get; set; } = false;
+    private List<ListManagement> listManagements = new List<ListManagement>();
 
 
     protected override async Task OnParametersSetAsync()
@@ -472,6 +475,7 @@
             Customers = await CustomerService.GetCustomersAsync();
             products = await ProductService.GetAllAsync();
             Stocks = _context.StockHistories.ToList();
+            listManagements = await ListManagementService.GetByTypeAsync(ListType.Expense);
 
             Wholesalers = await WholesalerService.GetAllAsync();
 

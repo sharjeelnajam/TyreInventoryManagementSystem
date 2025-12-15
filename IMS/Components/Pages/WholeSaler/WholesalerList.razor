@@ -1,7 +1,9 @@
 ﻿@page "/wholesalers"
 @using Domain
+@using Domain.Enums
 @using Infrastructure.Services
 @inject IWholesalerService WholesalerService
+@inject IListManagementService ListManagementService
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
@@ -56,7 +58,7 @@
                             <td>@w.Name</td>
                             <td>@w.Phone</td>
                             <td>@w.Email</td>
-                            <td>@w.Type</td>
+                            <td>@GetWholeSalerTypeName(w.ListManagementId)</td>
 
                             <td>
                                 <i class="bi bi-pencil-square text-primary fs-5 me-2 cursor-pointer"
@@ -83,6 +85,8 @@
     private List<Wholesaler> Wholesalers = new();
     private bool IsModalOpen = false;
     private Guid SelectedId;
+    private List<ListManagement>? wholesalersType;
+    private Dictionary<Guid, string> wholeSalerTypeLookUp = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -92,6 +96,17 @@
     private async Task Load()
     {
         Wholesalers = await WholesalerService.GetAllAsync();
+        // Load categories
+        wholesalersType = await ListManagementService.GetByTypeAsync(ListType.WholeSalerType);
+
+        // Create lookup dictionary
+        wholeSalerTypeLookUp = wholesalersType.ToDictionary(c => c.Id, c => c.Name);
+    }
+
+
+    private string GetWholeSalerTypeName(Guid wholeSalerTypeId)
+    {
+        return wholeSalerTypeLookUp.TryGetValue(wholeSalerTypeId, out var name) ? name : "N/A";
     }
 
     void OpenAddModal()

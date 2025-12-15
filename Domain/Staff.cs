@@ -15,8 +15,8 @@ namespace Domain
         public string Name { get; set; } = default!;
 
         public DateTime? DateOfBirth { get; set; }
-        public string? Gender { get; set; }   // Male/Female/Other
-        public string? CNIC { get; set; }     // Pakistan specific (optional)
+        public string? Gender { get; set; }
+        public string? CNIC { get; set; } 
 
         // ✅ Contact Information
         [Required(ErrorMessage = "Email is required")]

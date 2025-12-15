@@ -1,7 +1,9 @@
 ﻿@page "/expenses"
 @using Domain
+@using Domain.Enums
 @using Infrastructure.Services
 @inject IExpenseService ExpenseService
+@inject IListManagementService ListManagementService
 @inject IJSRuntime jSRuntime
 @rendermode InteractiveServer
 @inject IJSRuntime JS
@@ -49,7 +51,7 @@
                         <tr>
                             <td>@exp.Date.ToString("dd-MMM-yyyy")</td>
                             <td>@exp.Title</td>
-                            <td>@exp.Category</td>
+                            <td>@GetCategoryName(exp.ListManagementId)</td>
                             <td>@exp.Amount.ToString("N0")</td>
                             <td>@exp.Description</td>
                             <td>
@@ -79,6 +81,8 @@
 @code {
     private List<Expense>? expenses;
     private AddEditExpense? AddEditRef;
+    private List<ListManagement>? categories;
+    private Dictionary<Guid, string> categoryLookup = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -88,9 +92,17 @@
     private async Task ReloadExpenses()
     {
         expenses = await ExpenseService.GetAllAsync();
+        // Load categories
+        categories = await ListManagementService.GetByTypeAsync(ListType.Expense);
+
+        // Create lookup dictionary
+        categoryLookup = categories.ToDictionary(c => c.Id, c => c.Name);
         StateHasChanged();
     }
-
+    private string GetCategoryName(Guid categoryId)
+    {
+        return categoryLookup.TryGetValue(categoryId, out var name) ? name : "N/A";
+    }
     private async Task ConfirmDelete(Guid id)
     {
         bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this expense?");

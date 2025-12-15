@@ -36,17 +36,18 @@ namespace Infrastructure.Services
 
                 await _context.Products.AddAsync(product);
                 await _context.SaveChangesAsync();
-
-                Purchase purchase = new()
+                if(productDto.Quantity > 0)
                 {
-                    SupplierId = null,
-                    PurchaseDate = DateTime.Now,
-                    PaymentMethod = string.Empty,
-                    PaymentStatus = string.Empty,
-                    TotalAmount = productDto.PurchasePrice * productDto.Quantity,
-                    NetAmount = productDto.PurchasePrice * productDto.Quantity,
-                    PurchaseNumber = $"PO-{DateTime.Now:yyyyMMddHHmmss}",
-                    PurchaseDetails = new List<PurchaseDetail>
+                    Purchase purchase = new()
+                    {
+                        SupplierId = null,
+                        PurchaseDate = DateTime.Now,
+                        PaymentMethod = string.Empty,
+                        PaymentStatus = string.Empty,
+                        TotalAmount = productDto.PurchasePrice * productDto.Quantity,
+                        NetAmount = productDto.PurchasePrice * productDto.Quantity,
+                        PurchaseNumber = $"PO-{DateTime.Now:yyyyMMddHHmmss}",
+                        PurchaseDetails = new List<PurchaseDetail>
                     {
                         new PurchaseDetail
                         {
@@ -58,9 +59,11 @@ namespace Infrastructure.Services
                             Brand = productDto.Brand,
                         }
                     }
-                };
+                    };
 
-              await  _purchaseService.AddPurchaseAsync(purchase);
+                    await _purchaseService.AddPurchaseAsync(purchase);
+                }
+                
                 return product;
             }
             catch (Exception ex)
@@ -297,6 +300,8 @@ namespace Infrastructure.Services
                 existing.TyreSize = dto.TyreSize;
                 existing.Barcode = dto.Barcode;
                 existing.AverageCostPrice = dto.AverageCostPrice;
+                existing.Unit = dto.Unit; ;
+                existing.Size = dto.Size;
                 existing.UpdatedAt = DateTime.UtcNow;
 
                 if (!string.IsNullOrEmpty(dto.ImagePath))
@@ -383,7 +388,9 @@ namespace Infrastructure.Services
                     Thread = productDto.Thread,
                     AverageCostPrice = productDto.AverageCostPrice,
                     Barcode = productDto.Barcode,
-                    ImagePath = productDto.ImagePath
+                    ImagePath = productDto.ImagePath,
+                    Unit = productDto.Unit,
+                    Size = productDto.Size
                 };
                 return product;
             }
@@ -411,6 +418,8 @@ namespace Infrastructure.Services
                 DOT = product.DOT,
                 TyreSize = product.TyreSize,
                 Type = product.Type,
+                Unit = product.Unit,
+                Size = product.Size,
 
                 PurchasePrice = product.PurchaseDetails
                     .OrderByDescending(pd => pd.Id) 

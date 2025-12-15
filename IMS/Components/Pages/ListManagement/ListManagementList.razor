@@ -1,0 +1,242 @@
+﻿@page "/listmanagement"
+
+@using Domain
+@using Domain.Enums
+@using Infrastructure.Services
+
+@inject IListManagementService Service
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>List Management</PageTitle>
+
+<div class="container mt-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold">
+            <i class="bi bi-ui-checks-grid me-2"></i>
+            List Management
+        </h3>
+
+        @if (SelectedType != null)
+        {
+            <button class="btn btn-primary" @onclick="OpenModal">
+                <i class="bi bi-plus-circle me-1"></i> Add @SelectedType
+            </button>
+        }
+    </div>
+
+    <!-- TYPE DROPDOWN -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <select class="form-select" @onchange="OnTypeChange">
+                <option value="">-- Select Type --</option>
+                @foreach (var type in Enum.GetValues<ListType>())
+                {
+                    <option value="@type">@type</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    @if (SelectedType == null)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Please select a list type to manage.
+        </div>
+    }
+    else if (Items == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Loading...</p>
+        </div>
+    }
+    else if (!Items.Any())
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-circle me-2"></i>
+            No records found.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Name</th>
+                        <th style="width:120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Items)
+                    {
+                        <tr>
+                            <td>@item.Name</td>
+                            <td>
+                                <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
+                                   title="Edit"
+                                   @onclick="() => OpenEditModal(item)">
+                                </i>
+
+                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                   title="Delete"
+                                   @onclick="() => Delete(item)">
+                                </i>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- ADD / EDIT MODAL -->
+@if (ShowModal)
+{
+    <div class="modal fade show d-block" style="background:rgba(0,0,0,.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @(IsEdit ? "Edit" : "Add") @SelectedType
+                    </h5>
+                    <button class="btn-close" @onclick="CloseModal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input class="form-control"
+                               placeholder="Enter name"
+                               @bind="NewName" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(Error))
+                    {
+                        <div class="alert alert-danger py-2">
+                            @Error
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">
+                        Cancel
+                    </button>
+                    <button class="btn btn-success" @onclick="Save">
+                        <i class="bi bi-check-circle me-1"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    ListType? SelectedType;
+    List<ListManagement>? Items;
+
+    bool ShowModal;
+    bool IsEdit;
+
+    string NewName = string.Empty;
+    string Error = string.Empty;
+
+    ListManagement? EditItem;
+
+    async Task OnTypeChange(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<ListType>(e.Value?.ToString(), out var type))
+        {
+            SelectedType = type;
+            Items = await Service.GetByTypeAsync(type);
+        }
+        else
+        {
+            SelectedType = null;
+            Items = null;
+        }
+    }
+
+    void OpenModal()
+    {
+        IsEdit = false;
+        EditItem = null;
+        NewName = string.Empty;
+        Error = string.Empty;
+        ShowModal = true;
+    }
+
+    void OpenEditModal(ListManagement item)
+    {
+        IsEdit = true;
+        EditItem = item;
+        NewName = item.Name;
+        Error = string.Empty;
+        ShowModal = true;
+    }
+
+    void CloseModal()
+    {
+        ShowModal = false;
+        EditItem = null;
+    }
+
+    async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(NewName))
+        {
+            Error = "Name is required";
+            return;
+        }
+
+        bool exists = Items!.Any(x =>
+            x.Name.Equals(NewName.Trim(), StringComparison.OrdinalIgnoreCase)
+            && (!IsEdit || x.Id != EditItem!.Id));
+
+        if (exists)
+        {
+            Error = "Name already exists";
+            return;
+        }
+
+        if (IsEdit)
+        {
+            EditItem!.Name = NewName.Trim();
+            await Service.UpdateAsync(EditItem);
+        }
+        else
+        {
+            await Service.AddAsync(new ListManagement
+                {
+                    Name = NewName.Trim(),
+                    Type = SelectedType!.Value
+                });
+        }
+
+        Items = await Service.GetByTypeAsync(SelectedType!.Value);
+        ShowModal = false;
+    }
+
+    async Task Delete(ListManagement item)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Delete '{item.Name}'?"
+        );
+
+        if (!confirmed)
+            return;
+
+        await Service.SoftDeleteAsync(item.Id);
+        Items = await Service.GetByTypeAsync(SelectedType!.Value);
+    }
+}

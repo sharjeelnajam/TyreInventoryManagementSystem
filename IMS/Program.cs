@@ -42,6 +42,7 @@ builder.Services.AddScoped<IProfitReportService, ProfitReportService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IWholesalerService, WholesalerService>();
 builder.Services.AddScoped<IAdminPanalService, AdminPanalService>();
+builder.Services.AddScoped<IListManagementService, ListManagementService>();
 
 
 builder.Services.AddServerSideBlazor()

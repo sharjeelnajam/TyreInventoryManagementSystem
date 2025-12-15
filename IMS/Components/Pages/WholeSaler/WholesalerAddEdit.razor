@@ -2,6 +2,7 @@
 @using Domain.Enums
 @using Infrastructure.Services
 @inject IWholesalerService WholesalerService
+@inject IListManagementService ListManagementService
 
 
 <div class="modal fade show d-block" tabindex="-1" style="background-color:rgba(0,0,0,0.4)">
@@ -49,10 +50,10 @@
 
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Type</label>
-                            <InputSelect class="form-select form-select-lg shadow-sm" @bind-Value="Model.Type">
-                                @foreach (var t in Enum.GetValues<WholesalerType>())
+                            <InputSelect class="form-select form-select-lg shadow-sm" @bind-Value="Model.ListManagementId">
+                                @foreach (var t in listManagementsList)
                                 {
-                                    <option value="@t">@t</option>
+                                    <option value="@t.Id">@t.Name</option>
                                 }
                             </InputSelect>
                         </div>
@@ -82,14 +83,17 @@
 @code {
     [Parameter] public Guid Id { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+    private List<ListManagement> listManagementsList = new List<ListManagement>();
 
     Wholesaler Model = new();
 
     protected override async Task OnInitializedAsync()
     {
+        listManagementsList = await ListManagementService.GetByTypeAsync(ListType.WholeSalerType);
         if (Id != Guid.Empty)
         {
             Model = await WholesalerService.GetByIdAsync(Id);
+          
         }
     }
 

@@ -1,7 +1,9 @@
 ﻿@using Domain
 @using Domain.Enums
+
 @using Infrastructure.Services
 @inject IExpenseService ExpenseService
+@inject IListManagementService ListManagementService
 @inject IJSRuntime JS
 
 @if (IsVisible)
@@ -78,10 +80,10 @@
 
                                             <td>
                                                 <InputSelect class="form-select form-select-sm shadow-sm"
-                                                @bind-Value="expense.Category">
-                                                    @foreach (var cat in Enum.GetValues<ExpenseCategory>())
+                                                @bind-Value="expense.ListManagementId">
+                                                    @foreach (var cat in categoryList)
                                                     {
-                                                        <option value="@cat">@cat</option>
+                                                        <option value="@cat.Id">@cat.Name</option>
                                                     }
                                                 </InputSelect>
                                             </td>
@@ -182,18 +184,21 @@
 
 @code {
     private List<Expense> expenses = new();
+    private List<ListManagement> categoryList = new List<ListManagement>();
     private DateTime commonDate = DateTime.Today;
     private string? commonNote;
     private string ModalTitle = "Add Expense";
     private bool IsVisible;
+    private ListType? listType;
 
     [Parameter] public EventCallback OnSaved { get; set; }
 
     private bool isEditMode => SelectedExpense != null;
     private Expense? SelectedExpense;
 
-    public void ShowModal(Expense? exp)
+    public async Task ShowModal(Expense? exp)
     {
+        categoryList = await ListManagementService.GetByTypeAsync(ListType.Expense);
         SelectedExpense = exp;
         if (exp != null)
         {
@@ -205,7 +210,7 @@
                     Id = exp.Id,
                     Title = exp.Title,
                     Amount = exp.Amount,
-                    Category = exp.Category,
+                    ListManagementId = exp.ListManagementId,
                     Date = exp.Date,
                     Description = exp.Description,
                     UploadedFile = exp.UploadedFile,
@@ -288,8 +293,6 @@
 
         StateHasChanged();
     }
-
-
 
     private async Task SaveAll()
     {

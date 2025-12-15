@@ -1,8 +1,10 @@
 ﻿@page "/products/addedit/{Id:guid?}"
 @using Domain
 @using Domain.DTO
+@using Domain.Enums
 @using Infrastructure.Services
 @inject IProductService ProductService
+@inject IListManagementService ListManagementService
 @inject IWebHostEnvironment Env
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -23,9 +25,8 @@
         <div class="col-md-6 mb-3">
             <label class="form-label">Brand</label>
             <InputText class="form-control" @bind-Value="product.Brand" />
-            <ValidationMessage For="@(() => product.Brand)" />
         </div>
-   @*      <div class="col-md-6 mb-3">
+        @*      <div class="col-md-6 mb-3">
             <label class="form-label">Tyre Size</label>
             <InputText class="form-control" @bind-Value="product.TyreSize" />
             <ValidationMessage For="@(() => product.TyreSize)" />
@@ -34,14 +35,46 @@
         <div class="col-md-6 mb-3">
             <label class="form-label">Type</label>
             <InputText class="form-control" @bind-Value="product.Type" />
-            <ValidationMessage For="@(() => product.Type)" />
-        </div> 
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">Unit</label>
+            <InputSelect @bind-Value="product.Unit"
+            class="form-select form-select-lg shadow-sm">
+                @foreach (var unit in units)
+                {
+                    <option value="@unit.Id">@unit.Name</option>
+                }
+            </InputSelect>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">Size</label>
+            <InputSelect @bind-Value="product.Size"
+                         class="form-select form-select-lg shadow-sm">
+                @foreach (var size in sizes)
+                {
+                    <option value="@size.Id">@size.Name</option>
+                }
+            </InputSelect>
+        </div>
+        @*   <div class="col-md-6">
+            <label class="form-label fw-semibold">Customer Type *</label>
+            <InputSelect @bind-Value="CustomerModel.ListManagementId"
+                         class="form-select form-select-lg shadow-sm">
+                @foreach (var type in listManagements)
+                {
+                    <option value="@type.Id">@type.Name</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => CustomerModel.ListManagementId)" />
+        </div> *@
+
         <div class="col-md-6 mb-3">
             <label class="form-label">Thread</label>
             <InputText class="form-control" @bind-Value="product.Thread" />
-            <ValidationMessage For="@(() => product.Thread)" />
         </div>
-         <div class="col-md-6 mb-3">
+        <div class="col-md-6 mb-3">
             <label class="form-label">Min Threshold</label>
             <InputText class="form-control" @bind-Value="product.Min_Threshold" />
         </div>
@@ -49,16 +82,14 @@
         <div class="col-md-6 mb-3">
             <label class="form-label">Purchasing Price</label>
             <InputNumber class="form-control" @bind-Value="product.PurchasePrice" />
-            <ValidationMessage For="@(() => product.PurchasePrice)" />
         </div>
 
         <div class="col-md-6 mb-3">
             <label class="form-label">Seiling Price</label>
             <InputNumber class="form-control" @bind-Value="product.SellingPrice" />
-            <ValidationMessage For="@(() => product.SellingPrice)" />
         </div>
 
-         <div class="col-md-6 mb-3">
+        <div class="col-md-6 mb-3">
             <label class="form-label">Quantity</label>
             <InputNumber class="form-control" @bind-Value="product.Quantity" />
         </div>
@@ -75,7 +106,7 @@
             <label class="form-label">Description</label>
             <InputTextArea class="form-control" @bind-Value="product.Description" />
         </div>
-     
+
 
         <!-- Product Image Upload -->
         <div class="col-md-6 mb-3">
@@ -126,9 +157,14 @@
     private IBrowserFile? uploadedFile;
     private string? originalImagePath;
     private string? uploadStatus;
+    private List<ListManagement> units = new List<ListManagement>();
+    private List<ListManagement> sizes = new List<ListManagement>();
 
     protected override async Task OnInitializedAsync()
     {
+        units = await ListManagementService.GetByTypeAsync(ListType.Unit);
+        sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
+
         if (Id.HasValue)
         {
             var existing = await ProductService.GetByIdAsync(Id.Value);

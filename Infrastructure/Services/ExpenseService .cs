@@ -28,6 +28,7 @@ namespace Infrastructure.Services
                 {
 
                     return await _context.Expenses.Where(e => e.TenantId == _tenantProvider.TenantId).OrderByDescending(e => e.Date).ToListAsync();
+                    
                 }
                 else return new List<Expense>();
             }
@@ -85,7 +86,7 @@ namespace Infrastructure.Services
 
                 existing.Amount = expense.Amount;
                 existing.Description = expense.Description;
-                existing.Category = expense.Category;
+                existing.ListManagementId = expense.ListManagementId;
                 existing.UpdatedAt = DateTime.Now;
                 existing.Title = expense.Title;
                 existing.UploadedFile = expense.UploadedFile;

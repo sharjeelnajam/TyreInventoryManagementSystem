@@ -18,7 +18,7 @@ namespace Domain
         public decimal Amount { get; set; }
 
         [Required(ErrorMessage = "Category is required")]
-        public ExpenseCategory Category { get; set; }
+        public Guid ListManagementId { get; set; }
 
         [DataType(DataType.Date)]
         public DateTime Date { get; set; } = DateTime.Today;

@@ -33,8 +33,8 @@ namespace Infrastructure.Services
                     if (!string.IsNullOrWhiteSpace(name))
                         query = query.Where(s => s.Name.Contains(name));
 
-                    if (type.HasValue)
-                        query = query.Where(c => c.CustomerType == type);
+                    //if (type.HasValue)
+                    //    query = query.Where(c => c.CustomerType == type);
 
                     return await query.ToListAsync();
                 }

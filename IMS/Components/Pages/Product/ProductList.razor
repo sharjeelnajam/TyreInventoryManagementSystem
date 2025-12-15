@@ -1,8 +1,10 @@
 ﻿@page "/products"
 @using Domain
 @using Domain.DTO
+@using Domain.Enums
 @using Infrastructure.Services
 @inject IProductService ProductService
+@inject IListManagementService ListManagementService
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
@@ -61,6 +63,8 @@
                         <th>PurchasePrice</th>
                         <th>SalePrice</th>
                         <th>Type</th>
+                        <th>Unit</th>
+                        <th>Size</th>
                         <th>Thread</th>
                         <th>Brand</th>
                         <th>Min Threshold</th>
@@ -102,6 +106,8 @@
                             <td>@item.PurchasePrice</td>
                             <td>@item.SellingPrice</td>
                             <td>@item.Type</td>
+                            <td>@GetUnitName(item.Unit)</td>
+                            <td>@GetSizeName(item.Size)</td>
                             <td>@item.Thread</td>
                             <td>@item.Brand</td>
                             <td>@item.Min_Threshold</td>
@@ -227,6 +233,12 @@
     private decimal leastSellingPrice;
     private bool isSuperAdmin = false;
 
+    private List<ListManagement>? units;
+    private Dictionary<Guid, string> unitsLookup = new();
+
+    private List<ListManagement>? sizes;
+    private Dictionary<Guid, string> sizesLookup = new();
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -242,8 +254,23 @@
         {
             products = await ProductService.GetAllAsync();
             filteredProducts = products;
+
+           units = await ListManagementService.GetByTypeAsync(ListType.Unit);
+           sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
+            unitsLookup = units.ToDictionary(c => c.Id, c => c.Name);
+            sizesLookup = units.ToDictionary(c => c.Id, c => c.Name);
         }
        
+    }
+
+    private string GetUnitName(Guid unitId)
+    {
+        return unitsLookup.TryGetValue(unitId, out var name) ? name : "N/A";
+    } 
+    
+    private string GetSizeName(Guid sizeId)
+    {
+        return sizesLookup.TryGetValue(sizeId, out var name) ? name : "N/A";
     }
 
     // Improved image validation

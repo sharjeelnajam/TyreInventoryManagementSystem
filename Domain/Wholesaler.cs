@@ -19,6 +19,6 @@ namespace Domain
         public string? Email { get; set; }
         public string? Address { get; set; }
 
-        public WholesalerType Type { get; set; }
+        public Guid ListManagementId { get; set; }
     }
 }

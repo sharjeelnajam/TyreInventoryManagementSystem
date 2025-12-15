@@ -20,7 +20,6 @@ namespace Domain.DTO
         [Display(Name = "Date of Manufacture")]
         public string DOT { get; set; }
 
-        [Required(ErrorMessage = "Brand is required")]
         public string Brand { get; set; } = default!;
 
         public string? TyreSize { get; set; } = default!;
@@ -38,10 +37,8 @@ namespace Domain.DTO
         [Required(ErrorMessage = "Quantity is required")]
         public int Quantity { get; set; }
 
-        [Required(ErrorMessage = "Product Type is required")]
         public string Type { get; set; }
 
-        [Required(ErrorMessage = "Product Thread is required")]
         public string Thread { get; set; }
 
         [Precision(18, 2)]
@@ -50,6 +47,11 @@ namespace Domain.DTO
         public string? Barcode { get; set; }
 
         public string? ImagePath { get; set; }
+
+        //basically ListManagementId
+        public Guid Unit { get; set; }
+        //basically ListManagementId
+        public Guid Size { get; set; }
 
         public ICollection<PurchaseDetail> PurchaseDetails { get; set; }
     }

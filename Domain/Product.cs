@@ -15,21 +15,17 @@ namespace Domain
 
         public string? Description { get; set; }
 
-        [Display(Name = "Date of Manufacture")]
-        public string DOT { get; set; }
+        public string? DOT { get; set; }
 
-        [Required(ErrorMessage = "Brand is required")]
-        public string Brand { get; set; } = default!;
+        public string? Brand { get; set; } = default!;
 
         public string? TyreSize { get; set; } = default!;
        
-        public string Min_Threshold { get; set; }
+        public string? Min_Threshold { get; set; }
 
-        [Required(ErrorMessage = "Product Type is required")]
-        public string Type { get; set; }
+        public string? Type { get; set; }
 
-        [Required(ErrorMessage = "Product Thread is required")]
-        public string Thread { get; set; }
+        public string? Thread { get; set; }
 
         [Precision(18, 2)]
         public decimal AverageCostPrice { get; set; }
@@ -37,6 +33,11 @@ namespace Domain
         public string? Barcode { get; set; }
 
         public string? ImagePath { get; set; }
+
+        //basically ListManagementId
+        public Guid Unit { get; set; }
+        //basically ListManagementId
+        public Guid Size { get; set; }
 
         public ICollection<PurchaseDetail> PurchaseDetails { get; set; }
     }

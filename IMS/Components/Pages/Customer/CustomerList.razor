@@ -4,6 +4,7 @@
 @using Infrastructure.Services
 @rendermode InteractiveServer
 @inject ICustomerService CustomerService
+@inject IListManagementService ListManagementService
 @inject IJSRuntime JSRuntime
 
 <h3>Customers</h3>
@@ -16,24 +17,24 @@
 
     <div class="col-md-2">
         <InputText class="form-control"
-                   placeholder="Search by Name"
-                   TValue="string"
-                   Value=""
-                   ValueChanged="OnNameChanged"
-                   ValueExpression="@(() => searchName)" />
+        placeholder="Search by Name"
+        TValue="string"
+        Value=""
+        ValueChanged="OnNameChanged"
+        ValueExpression="@(() => searchName)" />
     </div>
 
     <div class="col-md-2">
         <InputSelect class="form-select"
-                     TValue="CustomerType?"
-                     Value="searchType"
-                     ValueChanged="OnTypeChanged"
-                     ValueExpression="@(() => searchType)">
+        TValue="CustomerType?"
+        Value="searchType"
+        ValueChanged="OnTypeChanged"
+        ValueExpression="@(() => searchType)">
             <option value="">-- Select Type --</option>
 
-            @foreach (var type in Enum.GetValues(typeof(CustomerType)))
+            @foreach (var type in listManagementsList)
             {
-                <option value="@type">@type</option>
+                <option value="@type">@type.Name</option>
             }
         </InputSelect>
     </div>
@@ -48,6 +49,7 @@
             <th>Name</th>
             <th>Phone</th>
             <th>Email</th>
+            <th>Registerd At</th>
             <th>City</th>
             <th>Type</th>
             <th>Percentage</th>
@@ -69,19 +71,20 @@
                     <td>@c.Name</td>
                     <td>@c.Phone</td>
                     <td>@c.Email</td>
+                    <td>@c.CreatedAt.ToShortDateString()</td>
                     <td>@c.City</td>
-                    <td>@c.CustomerType</td>
+                    <td>@GetCustomerTypeName(c.ListManagementId)</td>
                     <td>@c.Percentage</td>
                     <td>@c.CustomPrice</td>
                     <td>@(c.IsActive ? "Yes" : "No")</td>
                     <td>
                         <span role="button" title="Edit" class="text-warning me-2"
-                              @onclick="() => OpenModal(c)">
+                        @onclick="() => OpenModal(c)">
                             <i class="bi bi-pencil-square fs-5"></i>
                         </span>
 
                         <span role="button" title="Delete" class="text-danger"
-                              @onclick="() => DeleteCustomer(c.Id)">
+                        @onclick="() => DeleteCustomer(c.Id)">
                             <i class="bi bi-trash fs-5"></i>
                         </span>
                     </td>
@@ -111,15 +114,28 @@
     private CustomerType? searchType;
     private bool showModal = false;
     private Customer selectedCustomer;
+    private List<ListManagement>? customerTypes;
+    private Dictionary<Guid, string> customerTypesLookup = new();
+    private List<ListManagement> listManagementsList = new List<ListManagement>();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadCustomers();
+     
     }
 
     private async Task LoadCustomers()
     {
         customers = await CustomerService.GetCustomersAsync(searchName, searchType);
+        customerTypes = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
+
+        // Create lookup dictionary
+        customerTypesLookup = customerTypes.ToDictionary(c => c.Id, c => c.Name);
+    }
+
+    private string GetCustomerTypeName(Guid customerTypeId)
+    {
+        return customerTypesLookup.TryGetValue(customerTypeId, out var name) ? name : "N/A";
     }
 
     private async Task ApplyFilter()
@@ -152,7 +168,7 @@
             VehicleNumber = c.VehicleNumber,
             CreditLimit = c.CreditLimit,
             IsActive = c.IsActive,
-            CustomerType = c.CustomerType
+            ListManagementId = c.ListManagementId
         };
         showModal = true;
     }
