@@ -1,0 +1,139 @@
+﻿@page "/daily-report"
+
+@using Infrastructure.Services
+@using Domain.DTO
+@inject IReportService ReportService
+@rendermode InteractiveServer
+
+
+<h3>📅 Daily Report (Today)</h3>
+
+<div class="mb-3 mt-4 col-md-2">
+    <label class="form-label fw-bold">Select Report Type</label>
+    <select class="form-select" @bind="SelectedReport">
+        <option value="All">All</option>
+        <option value="Purchase">Today Purchase</option>
+        <option value="Sale">Today Sale</option>
+        <option value="Stock">Stock</option>
+    </select>
+</div>
+
+
+@if (SelectedReport == "All" || SelectedReport == "Purchase")
+{
+    <div class="mt-4 mb-5">
+        <h4>
+            🛒 Today Purchases
+            <span class="badge bg-primary">@PurchaseCount</span>
+        </h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in TodayPurchases)
+                {
+                    <tr>
+                        <td>@p.SupplierName</td>
+                        <td>@p.ProductName</td>
+                        <td>@p.Quantity</td>
+                        <td>@p.UnitPrice</td>
+                        <td>@p.TotalPrice</td>
+                        <td>@p.PurchaseDate.ToShortDateString()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+}
+
+
+@if (SelectedReport == "All" || SelectedReport == "Sale")
+{
+    <div class="mt-4 mb-5">
+        <h4>
+            💰 Today Sales
+            <span class="badge bg-success">@SaleCount</span>
+        </h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in TodaySales)
+                {
+                    <tr>
+                        <td>@s.CustomerName</td>
+                        <td>@s.ProductName</td>
+                        <td>@s.Quantity</td>
+                        <td>@s.UnitPrice</td>
+                        <td>@s.TotalPrice</td>
+                        <td>@s.SaleDate.ToShortDateString()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+    </div>
+}
+
+
+@if (SelectedReport == "All" || SelectedReport == "Stock")
+{
+    <h4>
+        📦 Available Stock
+        <span class="badge bg-dark">@StockCount</span>
+    </h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Stock</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Stock)
+            {
+                <tr>
+                    <td>@s.ProductName</td>
+                    <td>@s.CurrentStock</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+    List<TodayPurchaseReportDto> TodayPurchases = new();
+    List<TodaySaleReportDto> TodaySales = new();
+    List<AvailableStockDto> Stock = new();
+
+    string SelectedReport = "All";
+
+    int PurchaseCount => TodayPurchases?.Count ?? 0;
+    int SaleCount => TodaySales?.Count ?? 0;
+    int StockCount => Stock?.Count ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TodayPurchases = await ReportService.GetTodayPurchases();
+        TodaySales = await ReportService.GetTodaySales();
+        Stock = await ReportService.GetAvailableStock();
+    }
+}

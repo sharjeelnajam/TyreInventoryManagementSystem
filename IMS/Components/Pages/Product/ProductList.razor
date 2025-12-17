@@ -258,7 +258,7 @@
            units = await ListManagementService.GetByTypeAsync(ListType.Unit);
            sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
             unitsLookup = units.ToDictionary(c => c.Id, c => c.Name);
-            sizesLookup = units.ToDictionary(c => c.Id, c => c.Name);
+            sizesLookup = sizes.ToDictionary(c => c.Id, c => c.Name);
         }
        
     }

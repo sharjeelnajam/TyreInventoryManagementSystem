@@ -94,6 +94,8 @@ namespace Infrastructure.Services
                        DOT = product.DOT,
                        TyreSize = product.TyreSize,
                        Type = product.Type,
+                       Size = product.Size,
+                       Unit = product.Unit,
 
                        PurchasePrice = product.PurchaseDetails
                             .OrderByDescending(pd => pd.Id)

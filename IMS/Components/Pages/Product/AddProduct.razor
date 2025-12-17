@@ -51,7 +51,7 @@
         <div class="col-md-6 mb-3">
             <label class="form-label fw-semibold">Size</label>
             <InputSelect @bind-Value="product.Size"
-                         class="form-select form-select-lg shadow-sm">
+            class="form-select form-select-lg shadow-sm">
                 @foreach (var size in sizes)
                 {
                     <option value="@size.Id">@size.Name</option>
@@ -249,6 +249,7 @@
 
             if (Id.HasValue)
             {
+                product.Id = Id.Value;
                 // If no new image was uploaded and image was removed, keep original
                 if (string.IsNullOrEmpty(product.ImagePath) && !string.IsNullOrEmpty(originalImagePath))
                 {
