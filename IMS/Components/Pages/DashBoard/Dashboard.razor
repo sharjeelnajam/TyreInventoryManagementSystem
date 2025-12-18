@@ -9,6 +9,7 @@
 @using Microsoft.EntityFrameworkCore
 @using QuestPDF.Fluent
 @using QuestPDF.Infrastructure
+@using Shared.MultiTenancy
 
 @inject IStaffService staffService
 @inject ISaleService saleService
@@ -18,6 +19,7 @@
 @inject IProductService productService
 @inject ISupplierService supplierService
 @inject IJSRuntime JS
+@inject ITenantProvider TenantProvider
 @inject ApplicationDbContext _context;
 
 @rendermode InteractiveServer
@@ -56,19 +58,21 @@
                             <th>Product</th>
                             <th>Category</th>
                             <th>Stock</th>
+                            <th>status</th>
                         </tr>
                     </thead>
 
                     <tbody>
-                        @if (thresholdProducts.Any())
+                        @if (lowStockProducts.Any())
                         {
-                            @foreach (var item in thresholdProducts)
+                            @foreach (var item in lowStockProducts)
                             {
                                 <tr>
                                     <td>@(++srNo)</td>
-                                    <td>@item.Product.ProductName</td>
-                                    <td>@item.Product.Type</td>
-                                    <td class="fw-bold">@item.NewStockLevel</td>
+                                    <td>@item.ProductName</td>
+                                    <td>@item.CurrentStock</td>
+                                    <td class="fw-bold">@item.Threshold</td>
+                                    <td>@item.Status</td>
                                 </tr>
                             }
                         }
@@ -170,8 +174,8 @@
                             <h5 class="fw-bold mb-0">@MonthlyProfit.ToString("C", new CultureInfo("en-GB"))</h5>
                             <small class="opacity-75">
                                 @(startDate.HasValue && endDate.HasValue
-                                            ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
-                                            : "Current Month")
+                                                        ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
+                                                        : "Current Month")
                             </small>
                         </div>
                         <i class="bi bi-cash-coin fs-3 opacity-75"></i>
@@ -190,8 +194,8 @@
                             <h5 class="fw-bold mb-0">@MonthlyExpense.ToString("C", new CultureInfo("en-GB"))</h5>
                             <small class="opacity-75">
                                 @(startDate.HasValue && endDate.HasValue
-                                            ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
-                                            : "Current Month")
+                                                        ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
+                                                        : "Current Month")
                             </small>
                         </div>
                         <i class="bi bi-cash-coin fs-3 opacity-75"></i>
@@ -265,10 +269,10 @@
         <!-- Future Expansion Row -->
         <div class="row g-4">
 
-            
 
 
-           @*  <div class="col-lg-6">
+
+            @*  <div class="col-lg-6">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white fw-bold">
                         Profit Overview Chart (Coming Soon)
@@ -316,41 +320,41 @@
     }
 
     .top-products-chart {
-        padding: 15px;
+    padding: 15px;
     }
 
     .bar-row {
-        display: grid;
-        grid-template-columns: 150px 1fr 50px;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 12px;
+    display: grid;
+    grid-template-columns: 150px 1fr 50px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
     }
 
     .bar-label {
-        font-weight: 600;
-        font-size: 0.9rem;
+    font-weight: 600;
+    font-size: 0.9rem;
     }
 
     .bar-track {
-        background: #e9ecef;
-        height: 14px;
-        width: 100%;
-        border-radius: 10px;
-        overflow: hidden;
+    background: #e9ecef;
+    height: 14px;
+    width: 100%;
+    border-radius: 10px;
+    overflow: hidden;
     }
 
     .bar-fill {
-        height: 100%;
-        background: linear-gradient(to right, #2980b9, #6bb9f0);
-        border-radius: 10px;
-        transition: width 0.5s ease;
+    height: 100%;
+    background: linear-gradient(to right, #2980b9, #6bb9f0);
+    border-radius: 10px;
+    transition: width 0.5s ease;
     }
 
     .bar-value {
-        font-weight: bold;
-        text-align: right;
-        font-size: 0.9rem;
+    font-weight: bold;
+    text-align: right;
+    font-size: 0.9rem;
     }
 
 </style>
@@ -365,6 +369,7 @@
     private bool isLoading = true;
     private bool showThreshold = false;
     private List<StockHistory> thresholdProducts = new();
+    private List<LowStockProductDto>? lowStockProducts;
     private int srNo = 0;
     private string? DateError { get; set; }
     int TotalInvoices = 0;
@@ -422,7 +427,7 @@
         }
 
         TotalInvoices = await saleService.GetTotalInvoicesAsync();
-        
+
 
         Staffs = await staffService.GetAllStaffAsync();
         customers = await customerService.GetCustomersAsync();
@@ -441,14 +446,28 @@
 
     private void LoadThresholdProducts()
     {
-        srNo = 0;
-        thresholdProducts = _context.StockHistories
-            .Where(p => p.NewStockLevel <= 5)
-            .Include(p => p.Product)
-            .OrderBy(p => p.NewStockLevel)
-            .ToList();
-        // .OrderBy(p => p.StockQty)
-            // .ToList();
+         srNo = 0;
+
+         lowStockProducts = _context.Products
+        .Where(p => p.TenantId == TenantProvider.TenantId)
+        .Select(p => new LowStockProductDto
+            {
+                ProductName = p.ProductName,
+                Threshold = Convert.ToInt32(p.Min_Threshold),
+
+                CurrentStock = _context.StockHistories
+                    .Where(sh => sh.ProductId == p.Id &&
+                                 sh.TenantId == TenantProvider.TenantId)
+                    .OrderByDescending(sh => sh.ActionDate)
+                    .Select(sh => sh.NewStockLevel)
+                    .FirstOrDefault(),
+
+                Status = ""
+            })
+        .Where(x => x.CurrentStock <= x.Threshold)
+        .ToList();
+
+       
     }
 
     private async Task DownloadThresholdPdf()
