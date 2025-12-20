@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Domain.Identity;
 using Infrastructure.Services;
 using Infrastructure.Persistence.Data;
+using Domain;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,7 @@ builder.Services.AddScoped<IWholesalerService, WholesalerService>();
 builder.Services.AddScoped<IAdminPanalService, AdminPanalService>();
 builder.Services.AddScoped<IListManagementService, ListManagementService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IWholesalerPriceService, WholesalerPriceService>();
 
 
 builder.Services.AddServerSideBlazor()

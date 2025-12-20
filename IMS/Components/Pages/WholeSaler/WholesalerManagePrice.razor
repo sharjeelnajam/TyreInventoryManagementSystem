@@ -1,0 +1,258 @@
+﻿
+@using Domain.Enums
+@using Infrastructure.Services
+@using Domain
+@using Microsoft.AspNetCore.Components
+@inject IListManagementService ListService
+@inject IWholesalerPriceService PriceService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<div class="modal fade show d-block" tabindex="-1"
+     style="background-color:rgba(0,0,0,0.5)">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Manage Prices</h5>
+                <button class="btn-close" @onclick="Close"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="d-flex gap-3  mb-4">
+
+                    <!-- Size -->
+                    <div class="d-flex flex-column">
+                        <label class="fw-bold mb-1">Select Sizes</label>
+                        <select id="sizeSelect" class="form-select" multiple>
+                            @foreach (var s in Sizes)
+                            {
+                                <option value="@s.Id">@s.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Unit -->
+                    <div class="d-flex flex-column">
+                        <label class="fw-bold mb-1">Select Units</label>
+                        <select id="unitSelect" class="form-select" multiple>
+                            @foreach (var u in Units)
+                            {
+                                <option value="@u.Id">@u.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- Dynamic Price Grid -->
+                @if (PriceRows.Any())
+                {
+                    <table class="table table-bordered w-auto">
+                        <thead>
+                            <tr>
+                                <th style="width:150px">Size</th>
+                                <th style="width:150px">Unit</th>
+                                <th style="width:150px">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in PriceRows)
+                            {
+                                <tr>
+                                    <td>@row.SizeName</td>
+                                    <td>@row.UnitName</td>
+                                    <td>
+                                        <input type="number"
+                                               class="form-control"
+                                               style="width:130px"
+                                               @bind="row.Price" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @onclick="Close">Cancel</button>
+                <button class="btn btn-primary" @onclick="Save">Save</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter] public Guid WholesalerId { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    List<ListManagement> Sizes = new();
+    List<ListManagement> Units = new();
+
+    HashSet<Guid> SelectedSizes = new();
+    HashSet<Guid> SelectedUnits = new();
+    List<PriceRowVm> PriceRows = new();
+    List<WholeSalerPrice> ExistingPrices = new();
+    bool IsLoaded = false;
+
+    DotNetObjectReference<WholesalerManagePrice>? objRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Sizes = await ListService.GetByTypeAsync(ListType.Size);
+        Units = await ListService.GetByTypeAsync(ListType.Unit);
+
+        ExistingPrices = await PriceService
+        .GetByWholesalerIdAsync(WholesalerId);
+
+        // Pre-select
+        SelectedSizes = ExistingPrices
+            .Select(x => x.SizeId)
+            .Distinct()
+            .ToHashSet();
+
+        SelectedUnits = ExistingPrices
+            .Select(x => x.UnitId)
+            .Distinct()
+            .ToHashSet();
+
+        BuildRows(fromDb: true);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+
+            await Task.Delay(50);
+            await JS.InvokeVoidAsync("initMultiSelect",
+                "sizeSelect", objRef, nameof(OnSizeSelected));
+
+            await JS.InvokeVoidAsync("initMultiSelect",
+                "unitSelect", objRef, nameof(OnUnitSelected));
+
+            // 👇 PRE-SELECT EXISTING VALUES
+            await JS.InvokeVoidAsync("setMultiSelectValues",
+                "sizeSelect", SelectedSizes.Select(x => x.ToString()).ToArray());
+
+            await JS.InvokeVoidAsync("setMultiSelectValues",
+                "unitSelect", SelectedUnits.Select(x => x.ToString()).ToArray());
+        }
+    }
+
+    [JSInvokable]
+    public void OnSizeSelected(string[] values)
+    {
+        SelectedSizes = values
+            .Select(Guid.Parse)
+            .ToHashSet();
+
+        BuildRows();
+    }
+
+    [JSInvokable]
+    public void OnUnitSelected(string[] values)
+    {
+        SelectedUnits = values
+            .Select(Guid.Parse)
+            .ToHashSet();
+
+        BuildRows();
+    }
+    void BuildRows(bool fromDb = false)
+    {
+        var rows = new List<PriceRowVm>();
+
+        foreach (var s in SelectedSizes)
+        {
+            foreach (var u in SelectedUnits)
+            {
+                var existing = ExistingPrices
+                    .FirstOrDefault(x => x.SizeId == s && x.UnitId == u);
+
+                rows.Add(new PriceRowVm
+                    {
+                        SizeId = s,
+                        UnitId = u,
+                        SizeName = Sizes.First(x => x.Id == s).Name,
+                        UnitName = Units.First(x => x.Id == u).Name,
+                        Price = existing?.Price ?? 0
+                    });
+            }
+        }
+
+        PriceRows = rows;
+        StateHasChanged();
+    }
+
+    // void BuildRows()
+    // {
+    //     PriceRows = (
+    //         from s in SelectedSizes
+    //         from u in SelectedUnits
+    //         select new PriceRowVm
+    //             {
+    //                 SizeId = s,
+    //                 UnitId = u,
+    //                 SizeName = Sizes.First(x => x.Id == s).Name,
+    //                 UnitName = Units.First(x => x.Id == u).Name
+    //             }
+    //     ).ToList();
+    //     StateHasChanged();
+    // }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+
+    async Task Save()
+    {
+        await PriceService.SavePricesAsync(
+            WholesalerId,
+            PriceRows.Select(x => new WholeSalerPrice
+                {
+                    WholesalerId = WholesalerId,
+                    SizeId = x.SizeId,
+                    UnitId = x.UnitId,
+                    Price = x.Price
+                }).ToList());
+
+        await OnClose.InvokeAsync();
+    }
+
+    void Close() => OnClose.InvokeAsync();
+
+    HashSet<Guid> GetSelectedValues(ChangeEventArgs e)
+    {
+        var selectedValues = new HashSet<Guid>();
+
+        if (e.Value is string[] selectedOptions)
+        {
+            foreach (var option in selectedOptions)
+            {
+                if (Guid.TryParse(option, out Guid id))
+                {
+                    selectedValues.Add(id);
+                }
+            }
+        }
+
+        return selectedValues;
+    }
+
+    class PriceRowVm
+    {
+        public Guid SizeId { get; set; }
+        public Guid UnitId { get; set; }
+        public string SizeName { get; set; }
+        public string UnitName { get; set; }
+        public decimal Price { get; set; }
+    }
+}

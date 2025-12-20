@@ -59,5 +59,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Expense> Expenses { get; set; }
     public DbSet<Wholesaler> Wholesalers { get; set; }
     public DbSet<ListManagement> ListManagements { get; set; }
+    public DbSet<WholeSalerPrice> WholeSalerPrices { get; set; }
 
 }
