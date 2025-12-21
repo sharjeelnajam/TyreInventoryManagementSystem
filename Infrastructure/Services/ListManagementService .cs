@@ -21,6 +21,22 @@ namespace Infrastructure.Services
             _tenantProvider = tenantProvider;
         }
 
+        public async Task<List<ListManagement>> GetAllAsync()
+        {
+            try
+            {
+                var list = await _context.ListManagements
+                    .OrderBy(x => x.Type)
+                    .ThenBy(x => x.Name)
+                    .ToListAsync();
+                return list;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
         public async Task<List<ListManagement>> GetByTypeAsync(ListType type)
         {
             try
