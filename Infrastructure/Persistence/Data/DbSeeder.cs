@@ -1,4 +1,6 @@
-﻿using Domain.Identity;
+﻿using Domain;
+using Domain.Enums;
+using Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -49,6 +51,62 @@ namespace Infrastructure.Persistence.Data
                     await userManager.AddToRoleAsync(user, roleName);
                 }
             }
+
+            // ✅ Seed ListManagement data (Size, Unit, Expense)
+            await SeedListManagementDataAsync(context);
+        }
+
+        private static async Task SeedListManagementDataAsync(ApplicationDbContext context)
+        {
+            // Seed Size data - TenantId is null for shared reference data
+            var hasSizeData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Size && !lm.IsDeleted);
+            if (!hasSizeData)
+            {
+                var sizes = new List<ListManagement>
+                {
+                    new ListManagement { Id = Guid.NewGuid(), Name = "14'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "15'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "16'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "17'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "18'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "19'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "20'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
+                };
+                await context.ListManagements.AddRangeAsync(sizes);
+            }
+
+            // Seed Unit data - TenantId is null for shared reference data
+            var hasUnitData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Unit && !lm.IsDeleted);
+            if (!hasUnitData)
+            {
+                var units = new List<ListManagement>
+                {
+                    new ListManagement { Id = Guid.NewGuid(), Name = "5mm", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "5mm+", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "6mm", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "6mm+", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "7mm", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "7mm+", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "8mm", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "8mm+", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
+                };
+                await context.ListManagements.AddRangeAsync(units);
+            }
+
+            // Seed Expense data - TenantId is null for shared reference data
+            var hasExpenseData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Expense && !lm.IsDeleted);
+            if (!hasExpenseData)
+            {
+                var expenses = new List<ListManagement>
+                {
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Transportation", Type = ListType.Expense, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Regular expense", Type = ListType.Expense, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Furniture", Type = ListType.Expense, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
+                };
+                await context.ListManagements.AddRangeAsync(expenses);
+            }
+
+            await context.SaveChangesAsync();
         }
     }
 }
