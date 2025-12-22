@@ -30,32 +30,25 @@
     <!-- TYPE DROPDOWN -->
     <div class="row mb-3">
         <div class="col-md-3">
-            <select class="form-select" @onchange="OnTypeChange">
-                <option value="">-- Select Type --</option>
+            <select class="form-select" @onchange="OnTypeChange" value="@selectedFilterType">
+                <option value="">All Types</option>
                 @foreach (var type in Enum.GetValues<ListType>())
                 {
-                    <option value="@type">@type</option>
+                    <option value="@type" selected="@(selectedFilterType == type.ToString())">@type</option>
                 }
             </select>
         </div>
     </div>
 
     <!-- CONTENT -->
-    @if (SelectedType == null)
-    {
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            Please select a list type to manage.
-        </div>
-    }
-    else if (Items == null)
+    @if (Items == null)
     {
         <div class="text-center py-5">
             <div class="spinner-border text-primary"></div>
             <p class="mt-2">Loading...</p>
         </div>
     }
-    else if (!Items.Any())
+    else if (!FilteredItems.Any())
     {
         <div class="alert alert-warning">
             <i class="bi bi-exclamation-circle me-2"></i>
@@ -68,14 +61,18 @@
             <table class="table table-striped table-hover align-middle">
                 <thead class="table-primary">
                     <tr>
+                        <th>Type</th>
                         <th>Name</th>
                         <th style="width:120px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var item in Items)
+                    @foreach (var item in FilteredItems)
                     {
                         <tr>
+                            <td>
+                                <span class="badge bg-secondary">@item.Type</span>
+                            </td>
                             <td>@item.Name</td>
                             <td>
                                 <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
@@ -143,6 +140,8 @@
 
     ListType? SelectedType;
     List<ListManagement>? Items;
+    List<ListManagement> FilteredItems = new();
+    string selectedFilterType = string.Empty;
 
     bool ShowModal;
     bool IsEdit;
@@ -152,17 +151,38 @@
 
     ListManagement? EditItem;
 
+    protected override async Task OnInitializedAsync()
+    {
+        // Load all items by default
+        Items = await Service.GetAllAsync();
+        FilteredItems = Items;
+    }
+
     async Task OnTypeChange(ChangeEventArgs e)
     {
-        if (Enum.TryParse<ListType>(e.Value?.ToString(), out var type))
+        selectedFilterType = e.Value?.ToString() ?? string.Empty;
+        
+        if (string.IsNullOrEmpty(selectedFilterType))
         {
+            // Show all items
+            SelectedType = null;
+            if (Items == null)
+            {
+                Items = await Service.GetAllAsync();
+            }
+            FilteredItems = Items;
+        }
+        else if (Enum.TryParse<ListType>(selectedFilterType, out var type))
+        {
+            // Filter by selected type
             SelectedType = type;
             Items = await Service.GetByTypeAsync(type);
+            FilteredItems = Items;
         }
         else
         {
             SelectedType = null;
-            Items = null;
+            FilteredItems = Items ?? new List<ListManagement>();
         }
     }
 
@@ -179,6 +199,7 @@
     {
         IsEdit = true;
         EditItem = item;
+        SelectedType = item.Type; // Set the type for editing
         NewName = item.Name;
         Error = string.Empty;
         ShowModal = true;
@@ -208,6 +229,8 @@
             return;
         }
 
+        var itemType = SelectedType!.Value;
+        
         if (IsEdit)
         {
             EditItem!.Name = NewName.Trim();
@@ -218,11 +241,24 @@
             await Service.AddAsync(new ListManagement
                 {
                     Name = NewName.Trim(),
-                    Type = SelectedType!.Value
+                    Type = itemType
                 });
         }
 
-        Items = await Service.GetByTypeAsync(SelectedType!.Value);
+        // Refresh the list based on current filter selection
+        if (string.IsNullOrEmpty(selectedFilterType))
+        {
+            // Show all items
+            Items = await Service.GetAllAsync();
+            FilteredItems = Items;
+            SelectedType = null; // Reset to show all
+        }
+        else
+        {
+            // Show filtered items
+            Items = await Service.GetByTypeAsync(itemType);
+            FilteredItems = Items;
+        }
         ShowModal = false;
     }
 
@@ -237,6 +273,17 @@
             return;
 
         await Service.SoftDeleteAsync(item.Id);
-        Items = await Service.GetByTypeAsync(SelectedType!.Value);
+        
+        // Refresh the list based on current filter
+        if (SelectedType.HasValue)
+        {
+            Items = await Service.GetByTypeAsync(SelectedType.Value);
+            FilteredItems = Items;
+        }
+        else
+        {
+            Items = await Service.GetAllAsync();
+            FilteredItems = Items;
+        }
     }
 }

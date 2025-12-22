@@ -37,9 +37,21 @@ namespace Infrastructure.Persistence
                 // TenantId assign if entity is MultiTenantEntity
                 if (entry.Entity is BaseEntity multiTenantEntity)
                 {
-                    if (entry.State == EntityState.Added && multiTenantEntity.TenantId == null && _tenantProvider.TenantId != Guid.Empty)
+                    if (entry.State == EntityState.Added && multiTenantEntity.TenantId == null)
                     {
-                        multiTenantEntity.TenantId = _tenantProvider.TenantId;
+                        try
+                        {
+                            var tenantId = _tenantProvider.TenantId;
+                            if (tenantId != Guid.Empty)
+                            {
+                                multiTenantEntity.TenantId = tenantId;
+                            }
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                            // During seeding or when no user context, TenantId will remain null
+                            // This is acceptable for shared/reference data
+                        }
                     }
                 }
 

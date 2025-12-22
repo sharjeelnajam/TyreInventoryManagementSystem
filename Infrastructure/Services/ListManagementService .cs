@@ -21,19 +21,32 @@ namespace Infrastructure.Services
             _tenantProvider = tenantProvider;
         }
 
+        public async Task<List<ListManagement>> GetAllAsync()
+        {
+            try
+            {
+                var list = await _context.ListManagements
+                    .OrderBy(x => x.Type)
+                    .ThenBy(x => x.Name)
+                    .ToListAsync();
+                return list;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
         public async Task<List<ListManagement>> GetByTypeAsync(ListType type)
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    var list = await _context.ListManagements
-                    .Where(x => x.Type == type && x.TenantId == _tenantProvider.TenantId)
-                     .OrderBy(x => x.Name)
-                     .ToListAsync();
-                    return list;
-                }
-                return new List<ListManagement>();
+               var list = await _context.ListManagements
+               .Where(x => x.Type == type)
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+               return list;
+              
             }
             catch (Exception)
             {
