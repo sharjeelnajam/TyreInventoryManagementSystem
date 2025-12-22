@@ -89,13 +89,19 @@
                             {
                                 <div class="col-md-3">
                                     <label>Wholesaler</label>
-                                    <InputSelect class="form-control" @bind-Value="Sale.WholesalerId">
-                                        <option value="">-- Select Wholesaler --</option>
+                                    <InputSelect class="form-control"
+                                    TValue="Guid?"
+                                    Value="Sale.WholesalerId"
+                                    ValueChanged="OnWholeSalerChanged"
+                                    ValueExpression="@(() => Sale.WholesalerId)">
+                                        <option value="">-- Select Customer --</option>
+
                                         @foreach (var w in Wholesalers)
                                         {
                                             <option value="@w.Id">@w.Name</option>
                                         }
                                     </InputSelect>
+
                                     <button type="button" class="btn btn-link p-0 mt-1" @onclick="OpenAddWholesaler">
                                         + Add New Wholesaler
                                     </button>
@@ -466,6 +472,10 @@
     private bool ShowOldDiscountField = true;
     private bool EnableCustomPricing { get; set; } = false;
     private List<ListManagement> listManagements = new List<ListManagement>();
+    private List<WholeSalerPrice> wholeSalerPrices = new List<WholeSalerPrice>();
+    private bool isWholeSaler = false;
+
+
 
 
     protected override async Task OnParametersSetAsync()
@@ -516,7 +526,7 @@
             foreach (var s in Sale.SaleDetails)
             {
                 s.SaleId = Sale.Id;
-               
+
             }
             if (Id == Guid.Empty)
             {
@@ -533,7 +543,7 @@
         }
         catch (Exception)
         {
-            
+
             throw;
         }
         finally
@@ -547,7 +557,6 @@
         OnClose.InvokeAsync();
         ShowOldDiscountField = true;
     }
-
 
     protected void AddItem()
     {
@@ -650,7 +659,18 @@
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefault();
 
-        if (previousProductId != product.Id)
+        if (wholeSalerPrices.Any() && isWholesalerMode)
+        {
+            var wholeSalerPrice = wholeSalerPrices.FirstOrDefault(w => w.UnitId == product.Unit && w.SizeId == product.Size);
+            if (wholeSalerPrice != null)
+            {
+                detail.Quantity = 1;
+                detail.UnitPrice = wholeSalerPrice.Price;
+                detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+
+            }
+        }
+        else if (previousProductId != product.Id)
         {
             detail.Quantity = 1;
             detail.UnitPrice = stockProduct?.SellingPrice ?? 0;
@@ -693,16 +713,6 @@
     {
         Sale.TaxAmount = value ?? 0;
         RecalculateTotals();
-    }
-
-    private void OnProductChanged(SaleDetail detail, Guid newProductId)
-    {
-        // This method is kept for compatibility, but now handled by SelectProduct
-        var product = products.FirstOrDefault(p => p.Id == newProductId);
-        if (product != null)
-        {
-            SelectProduct(detail, product);
-        }
     }
 
     private void OnQuantityChanged(SaleDetail detail, int newValue)
@@ -773,6 +783,40 @@
         RecalculateTotals();
     }
 
+    private async Task OnWholeSalerChanged(Guid? value)
+    {
+        if (value == null || value == Guid.Empty)
+            return;
+
+        Sale.WholesalerId = value;
+        isWholeSaler = true;
+        wholeSalerPrices = _context.WholeSalerPrices.Where(w => w.WholesalerId == Sale.WholesalerId).ToList();
+
+        foreach (var detail in Sale.SaleDetails)
+        {
+            if (detail.ProductId == Guid.Empty)
+                continue;
+
+            var product = products.FirstOrDefault(p => p.Id == detail.ProductId);
+            if (product == null)
+                continue;
+
+            var wholesalerPrice = wholeSalerPrices.FirstOrDefault(w =>
+                w.SizeId == product.Size &&
+                w.UnitId == product.Unit
+            );
+
+            if (wholesalerPrice != null)
+            {
+                detail.UnitPrice = wholesalerPrice.Price;
+                detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+            }
+        }
+
+        RecalculateTotals();
+        StateHasChanged();
+    }
+
     private void OnUnitPriceChanged(SaleDetail detail, decimal newValue)
     {
         detail.UnitPrice = newValue;
@@ -784,12 +828,42 @@
     {
         isWholesalerMode = value;
 
-        // When toggle changes → always show previous discount field
+        // Always show old discount field initially
         ShowOldDiscountField = true;
 
-        // Optional: recalc bill
-        //ApplyCustomerDiscount();
+        // Clear customer / wholesaler
+        if (value)
+        {
+            Sale.CustomerId = Guid.Empty;
+            CustomerCustomPrice = null;
+            CustomerPercentage = null;
+        }
+        else
+        {
+            Sale.WholesalerId = Guid.Empty;
+            wholeSalerPrices.Clear();
+            isWholeSaler = false;
+        }
+
+        // 🔴 RESET SALE ITEMS COMPLETELY
+        Sale.SaleDetails = new List<SaleDetail>();
+
+        // Reset helper states
+        quantityErrors.Clear();
+        dropdownStates.Clear();
+        searchTexts.Clear();
+
+        // Reset totals
+        Sale.TotalAmount = 0;
+        Sale.NetAmount = 0;
+        Sale.Discount = 0;
+        Sale.TaxAmount = 0;
+
+        isFormValid = true;
+
+        StateHasChanged();
     }
+
 
     private void RecalculateTotals()
     {

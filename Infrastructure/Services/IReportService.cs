@@ -9,8 +9,9 @@ namespace Infrastructure.Services
 {
     public interface IReportService
     {
-        Task<List<TodayPurchaseReportDto>> GetTodayPurchases();
-        Task<List<TodaySaleReportDto>> GetTodaySales();
+        Task<List<TodayPurchaseReportDto>> GetPurchasesByDateRange(DateTime from, DateTime to);
+        Task<List<TodaySaleReportDto>> GetSalesByDateRange(DateTime from, DateTime to);
+
         Task<List<AvailableStockDto>> GetAvailableStock();
     }
 }

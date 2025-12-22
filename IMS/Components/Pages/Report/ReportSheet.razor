@@ -8,15 +8,44 @@
 
 <h3>📅 Daily Report (Today)</h3>
 
-<div class="mb-3 mt-4 col-md-2">
-    <label class="form-label fw-bold">Select Report Type</label>
-    <select class="form-select" @bind="SelectedReport">
-        <option value="All">All</option>
-        <option value="Purchase">Today Purchase</option>
-        <option value="Sale">Today Sale</option>
-        <option value="Stock">Stock</option>
-    </select>
+<div class="row mt-4">
+    <div class="col-md-2">
+        <label class="form-label fw-bold">Report Type</label>
+        <select class="form-select"
+                value="@SelectedReport"
+                @onchange="OnReportTypeChanged">
+            <option value="All">All</option>
+            <option value="Purchase">Purchase</option>
+            <option value="Sale">Sale</option>
+            <option value="Stock">Stock</option>
+        </select>
+
+
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label fw-bold">From Date</label>
+        <InputDate TValue="DateTime?"
+                   class="form-control"
+                   Value="FromDate"
+                   ValueExpression="@(() => FromDate)"
+                   ValueChanged="OnFromDateChanged" />
+
+    </div>
+
+    <div class="col-md-2">
+        <label class="form-label fw-bold">To Date</label>
+        <InputDate TValue="DateTime?"
+                   class="form-control"
+                   Value="ToDate"
+                   ValueExpression="@(() => ToDate)"
+                   ValueChanged="OnToDateChanged" />
+
+    </div>
+
+ 
 </div>
+
 
 
 @if (SelectedReport == "All" || SelectedReport == "Purchase")
@@ -95,45 +124,82 @@
 
 @if (SelectedReport == "All" || SelectedReport == "Stock")
 {
-    <h4>
-        📦 Available Stock
-        <span class="badge bg-dark">@StockCount</span>
-    </h4>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Product</th>
-                <th>Stock</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var s in Stock)
-            {
+    <div class="mt-4 mb-5">
+        <h4>
+            📦 Available Stock
+            <span class="badge bg-dark">@StockCount</span>
+        </h4>
+        <table class="table table-bordered">
+            <thead>
                 <tr>
-                    <td>@s.ProductName</td>
-                    <td>@s.CurrentStock</td>
+                    <th>Product</th>
+                    <th>Stock</th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var s in Stock)
+                {
+                    <tr>
+                        <td>@s.ProductName</td>
+                        <td>@s.CurrentStock</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 
 @code {
+
     List<TodayPurchaseReportDto> TodayPurchases = new();
     List<TodaySaleReportDto> TodaySales = new();
     List<AvailableStockDto> Stock = new();
 
     string SelectedReport = "All";
 
-    int PurchaseCount => TodayPurchases?.Count ?? 0;
-    int SaleCount => TodaySales?.Count ?? 0;
-    int StockCount => Stock?.Count ?? 0;
+    DateTime? FromDate = DateTime.Today;
+    DateTime? ToDate = DateTime.Today;
+
+    int PurchaseCount => TodayPurchases.Count;
+    int SaleCount => TodaySales.Count;
+    int StockCount => Stock.Count;
 
     protected override async Task OnInitializedAsync()
     {
-        TodayPurchases = await ReportService.GetTodayPurchases();
-        TodaySales = await ReportService.GetTodaySales();
+        await LoadReport();
+    }
+
+    async Task OnFromDateChanged(DateTime? value)
+    {
+        FromDate = value;
+        await LoadReport();
+    }
+
+    async Task OnToDateChanged(DateTime? value)
+    {
+        ToDate = value;
+        await LoadReport();
+    }
+
+    async Task OnReportTypeChanged(ChangeEventArgs e)
+    {
+        SelectedReport = e.Value?.ToString() ?? "All";
+        await LoadReport();
+    }
+
+    async Task LoadReport()
+    {
+        if (FromDate == null || ToDate == null)
+            return;
+
+        TodayPurchases = await ReportService
+            .GetPurchasesByDateRange(FromDate.Value, ToDate.Value);
+
+        TodaySales = await ReportService
+            .GetSalesByDateRange(FromDate.Value, ToDate.Value);
+
         Stock = await ReportService.GetAvailableStock();
     }
 }
+
