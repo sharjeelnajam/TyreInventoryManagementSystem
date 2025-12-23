@@ -95,6 +95,12 @@ namespace Infrastructure.Services
             {
                 if (sale == null) return false;
 
+                if (sale.CustomerId == Guid.Empty)
+                    sale.CustomerId = null;
+
+                if (sale.WholesalerId == Guid.Empty)
+                    sale.WholesalerId = null;
+
                 sale.Id = Guid.NewGuid();
                 sale.CreatedAt = DateTime.Now;
 
