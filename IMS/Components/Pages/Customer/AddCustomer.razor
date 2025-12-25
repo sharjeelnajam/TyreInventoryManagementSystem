@@ -73,15 +73,21 @@
 
             <div class="col-md-6">
                 <label class="form-label fw-semibold">Customer Type *</label>
+
                 <InputSelect @bind-Value="CustomerModel.ListManagementId"
-                class="form-select form-select-lg shadow-sm">
+                             class="form-select form-select-lg shadow-sm">
+
+                    <option value="">-- Select Type --</option>
+
                     @foreach (var type in listManagements)
                     {
                         <option value="@type.Id">@type.Name</option>
                     }
                 </InputSelect>
+
                 <ValidationMessage For="@(() => CustomerModel.ListManagementId)" />
             </div>
+
 
             <div class="col-md-6 d-flex align-items-center mt-3">
                 <InputCheckbox @bind-Value="CustomerModel.IsActive"

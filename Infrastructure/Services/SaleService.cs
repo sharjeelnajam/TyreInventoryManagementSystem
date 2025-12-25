@@ -499,7 +499,7 @@ namespace Infrastructure.Services
                             if(sale.Customer != null)
                             {
                                 customerCol.Item().Text($"{sale.Customer?.Name?.ToUpper() ?? "N/A"}").FontSize(14);
-                                customerCol.Item().Text($"{sale.Customer?.Email ?? "N/A"}").FontSize(16);
+                                //customerCol.Item().Text($"{sale.Customer?.Email ?? "N/A"}").FontSize(16);
                             }
 
                             customerCol.Item().Text($"{sale.Wholesaler?.Name?.ToUpper() ?? "N/A"}").FontSize(14);

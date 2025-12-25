@@ -48,7 +48,7 @@
         <tr>
             <th>Name</th>
             <th>Phone</th>
-            <th>Email</th>
+           @*  <th>Email</th> *@
             <th>Registerd At</th>
             <th>City</th>
             <th>Type</th>
@@ -70,7 +70,7 @@
                 <tr>
                     <td>@c.Name</td>
                     <td>@c.Phone</td>
-                    <td>@c.Email</td>
+                @*     <td>@c.Email</td> *@
                     <td>@c.CreatedAt.ToShortDateString()</td>
                     <td>@c.City</td>
                     <td>@GetCustomerTypeName(c.ListManagementId)</td>
@@ -162,7 +162,7 @@
             Id = c.Id,
             Name = c.Name,
             Phone = c.Phone,
-            Email = c.Email,
+            //Email = c.Email,
             City = c.City,
             Address = c.Address,
             VehicleNumber = c.VehicleNumber,

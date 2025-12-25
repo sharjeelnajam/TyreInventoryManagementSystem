@@ -28,7 +28,7 @@ namespace Infrastructure.Services
             {
                 if (_tenantProvider.TenantId != Guid.Empty)
                 {
-                    var query = _context.Customer.Where(c => c.TenantId == _tenantProvider.TenantId).AsQueryable();
+                    var query = _context.Customer.Where(c => c.TenantId == _tenantProvider.TenantId);
 
                     if (!string.IsNullOrWhiteSpace(name))
                         query = query.Where(s => s.Name.Contains(name));
@@ -36,7 +36,8 @@ namespace Infrastructure.Services
                     //if (type.HasValue)
                     //    query = query.Where(c => c.CustomerType == type);
 
-                    return await query.ToListAsync();
+                    var customers = await query.ToListAsync();
+                    return customers;
                 }
                 else return new List<Customer>();
 
@@ -82,19 +83,34 @@ namespace Infrastructure.Services
 
         public async Task UpdateCustomerAsync(Customer customer)
         {
-            var existingCustomer = await _context.Customer.FindAsync(customer.Id);
-
-            if (existingCustomer != null)
+            try
             {
-                // Update only the properties you want to change
-                _context.Entry(existingCustomer).CurrentValues.SetValues(customer);
+                var existingCustomer = await _context.Customer
+               .FirstOrDefaultAsync(x => x.Id == customer.Id);
+
+                if (existingCustomer == null)
+                    return;
+
+                // Update ONLY editable fields
+                existingCustomer.Name = customer.Name;
+                existingCustomer.Phone = customer.Phone;
+                existingCustomer.Address = customer.Address;
+                existingCustomer.City = customer.City;
+                existingCustomer.VehicleNumber = customer.VehicleNumber;
+                existingCustomer.CreditLimit = customer.CreditLimit;
+                existingCustomer.Percentage = customer.Percentage;
+                existingCustomer.CustomPrice = customer.CustomPrice;
+                existingCustomer.ListManagementId = customer.ListManagementId;
+                existingCustomer.IsActive = customer.IsActive;
 
                 await _context.SaveChangesAsync();
             }
-            else
+            catch (Exception)
             {
-                Console.WriteLine("Customer not found.");
+
+                throw;
             }
+           
         }
 
         public async Task DeleteCustomerAsync(Guid id)

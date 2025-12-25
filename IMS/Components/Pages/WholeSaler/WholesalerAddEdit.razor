@@ -51,6 +51,9 @@
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Type</label>
                             <InputSelect class="form-select form-select-lg shadow-sm" @bind-Value="Model.ListManagementId">
+                                <option value="@Guid.Empty" disabled selected>
+                                    Select Type
+                                </option>
                                 @foreach (var t in listManagementsList)
                                 {
                                     <option value="@t.Id">@t.Name</option>
