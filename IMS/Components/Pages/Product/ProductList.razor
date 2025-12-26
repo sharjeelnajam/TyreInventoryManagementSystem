@@ -67,9 +67,8 @@
                         <th>Size</th>
                         <th>Thread</th>
                         <th>Brand</th>
-                        <th>Min Threshold</th>
-                        <th>DOT</th>
-                        <th>Barcode</th>
+                        <th>Threshold</th>
+                      
                         <th style="width:150px;">Actions</th>
                     </tr>
                 </thead>
@@ -111,17 +110,6 @@
                             <td>@item.Thread</td>
                             <td>@item.Brand</td>
                             <td>@item.Min_Threshold</td>
-                            <td>@item.DOT</td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(item.Barcode))
-                                {
-                                    <span class="badge bg-secondary">@item.Barcode</span>
-                                }
-                                else
-                                {
-                                    <span class="text-muted">-</span>
-                                }
-                            </td>
                             <td>
                                 @if (!isSuperAdmin)
                                 {
