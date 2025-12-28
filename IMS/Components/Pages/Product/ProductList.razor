@@ -111,13 +111,19 @@
                             <td>@item.Brand</td>
                             <td>@item.Min_Threshold</td>
                             <td>
+                                <i class="bi bi-eye text-info fs-5 me-3 cursor-pointer"
+                                   title="View"
+                                   @onclick="() => ViewProduct(item.Id)"></i>
+
                                 @if (!isSuperAdmin)
                                 {
                                     <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
-                                    title="Edit" @onclick="() => EditProduct(item.Id)"></i>
+                                       title="Edit"
+                                       @onclick="() => EditProduct(item.Id)"></i>
 
                                     <i class="bi bi-trash text-danger fs-5 cursor-pointer"
-                                    title="Delete" @onclick="() => DeleteProduct(item.Id)"></i>
+                                       title="Delete"
+                                       @onclick="() => DeleteProduct(item.Id)"></i>
                                 }
                                 else
                                 {
@@ -126,6 +132,7 @@
                                     </button>
                                 }
                             </td>
+
                         </tr>
                     }
                 </tbody>
@@ -363,7 +370,6 @@
         StateHasChanged();
     }
 
-
     private void OpenPricePopup(ProductDto product)
     {
         selectedProduct = new ProductDto
@@ -376,6 +382,12 @@
         leastSellingPrice = product.SellingPrice;
         showPricePopup = true;
     }
+
+    private void ViewProduct(Guid id)
+    {
+        Navigation.NavigateTo($"/products/view/{id}");
+    }
+
 
     private void ClosePopup()
     {

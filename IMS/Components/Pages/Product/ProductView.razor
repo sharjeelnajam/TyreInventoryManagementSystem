@@ -1,0 +1,154 @@
+﻿@page "/products/view/{Id:guid}"
+@using Domain
+@using Domain.DTO
+@using Domain.Enums
+@using Infrastructure.Services
+@inject IProductService ProductService
+@inject IListManagementService ListManagementService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Product Details</PageTitle>
+
+<div class="container mt-4">
+
+    <div class="card shadow-lg rounded-4">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-eye me-2"></i> Product Details
+            </h5>
+
+            <button class="btn btn-light btn-sm" @onclick="GoBack">
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+        </div>
+
+        <div class="card-body">
+
+            @if (Product == null)
+            {
+                <div class="text-center py-4">
+                    <div class="spinner-border text-secondary"></div>
+                </div>
+            }
+            else
+            {
+                <div class="row g-4">
+
+                    <!-- Image -->
+                    <div class="col-md-3 text-center">
+                        @if (!string.IsNullOrWhiteSpace(Product.ImagePath))
+                        {
+                            <img src="@Product.ImagePath"
+                                 class="img-fluid rounded shadow"
+                                 style="max-height:200px;" />
+                        }
+                        else
+                        {
+                            <div class="border rounded p-4 text-muted">
+                                No Image
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Info -->
+                    <div class="col-md-9">
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Name:</strong>
+                                <p>@Product.ProductName</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Brand:</strong>
+                                <p>@Product.Brand</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Type:</strong>
+                                <p>@Product.Type</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Thread:</strong>
+                                <p>@Product.Thread</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Size:</strong>
+                                <p>@GetSizeName(Product.Size)</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Unit:</strong>
+                                <p>@GetUnitName(Product.Unit)</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Quantity:</strong>
+                                <p>@Product.Quantity</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Minimum Threshold:</strong>
+                                <p>@Product.Min_Threshold</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Purchase Price:</strong>
+                                <p>£ @Product.PurchasePrice.ToString("N2")</p>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <strong>Selling Price:</strong>
+                                <p>£ @Product.SellingPrice.ToString("N2")</p>
+                            </div>
+
+                            <div class="col-md-12">
+                                <strong>Description:</strong>
+                                <p>@(Product.Description ?? "N/A")</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ProductDto? Product;
+
+    private Dictionary<Guid, string> unitLookup = new();
+    private Dictionary<Guid, string> sizeLookup = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Product = await ProductService.GetByIdAsync(Id);
+
+        var units = await ListManagementService.GetByTypeAsync(ListType.Unit);
+        var sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
+
+        unitLookup = units.ToDictionary(x => x.Id, x => x.Name);
+        sizeLookup = sizes.ToDictionary(x => x.Id, x => x.Name);
+    }
+
+    string GetUnitName(Guid id)
+        => unitLookup.TryGetValue(id, out var name) ? name : "N/A";
+
+    string GetSizeName(Guid id)
+        => sizeLookup.TryGetValue(id, out var name) ? name : "N/A";
+
+    void GoBack()
+    {
+        Navigation.NavigateTo("/products");
+    }
+}
+

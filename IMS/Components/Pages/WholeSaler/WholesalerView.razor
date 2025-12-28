@@ -1,0 +1,166 @@
+﻿@page "/wholesalers/view/{Id:guid}"
+@using Domain
+@using Domain.Enums
+@using Infrastructure.Services
+@inject IWholesalerService WholesalerService
+@inject IListManagementService ListManagementService
+@inject IWholesalerPriceService WholeSalerPriceService
+@rendermode InteractiveServer
+
+@inject NavigationManager Navigation
+
+<PageTitle>Wholesaler Details</PageTitle>
+
+<div class="container mt-4">
+
+    <div class="card shadow-lg rounded-4">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-eye me-2"></i> Wholesaler Details
+            </h5>
+
+            <button type="button"
+                    class="btn btn-light btn-sm"
+                    @onclick="GoBack">
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+
+        </div>
+
+        <div class="card-body">
+            @if (Wholesaler == null)
+            {
+                <div class="text-center py-4">
+                    <div class="spinner-border text-secondary"></div>
+                </div>
+            }
+            else
+            {
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Name:</strong>
+                        <p>@Wholesaler.Name</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Phone:</strong>
+                        <p>@Wholesaler.Phone</p>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Email:</strong>
+                        <p>@(Wholesaler.Email ?? "N/A")</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Type:</strong>
+                        <p>@WholesalerType</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <strong>Address:</strong>
+                        <p>@(Wholesaler.Address ?? "N/A")</p>
+                    </div>
+                </div>
+
+                <hr />
+
+                <h5 class="mt-4">
+                    <i class="bi bi-currency-pound me-2"></i> Price List
+                </h5>
+
+                @if (Prices == null)
+                {
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-secondary"></div>
+                    </div>
+                }
+                else if (!Prices.Any())
+                {
+                    <div class="alert alert-info">
+                        No prices added for this wholesaler.
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Size</th>
+                                    <th>Unit</th>
+                                    <th class="text-end">Price</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in Prices)
+                                {
+                                    <tr>
+                                        <td>@GetSizeName(p.SizeId)</td>
+                                        <td>@GetUnitName(p.UnitId)</td>
+                                        <td class="text-end fw-bold">
+                                            £ @p.Price.ToString("N2")
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+            }
+        </div>
+    </div>
+
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Wholesaler? Wholesaler;
+    private string WholesalerType = "N/A";
+
+
+    private List<WholeSalerPrice>? Prices;
+
+    private Dictionary<Guid, string> sizeLookup = new();
+    private Dictionary<Guid, string> unitLookup = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Wholesaler = await WholesalerService.GetByIdAsync(Id);
+
+        if (Wholesaler != null)
+        {
+            // Wholesaler Type
+            var types = await ListManagementService.GetByTypeAsync(ListType.WholeSalerType);
+            WholesalerType = types
+                .FirstOrDefault(x => x.Id == Wholesaler.ListManagementId)?.Name ?? "N/A";
+
+            // Load prices
+            Prices = await WholeSalerPriceService.GetByWholesalerIdAsync(Id);
+
+            // Load Size & Unit Lookups
+            var sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
+            var units = await ListManagementService.GetByTypeAsync(ListType.Unit);
+
+            sizeLookup = sizes.ToDictionary(x => x.Id, x => x.Name);
+            unitLookup = units.ToDictionary(x => x.Id, x => x.Name);
+        }
+    }
+
+    string GetSizeName(Guid id)
+        => sizeLookup.TryGetValue(id, out var name) ? name : "N/A";
+
+    string GetUnitName(Guid id)
+        => unitLookup.TryGetValue(id, out var name) ? name : "N/A";
+
+    void GoBack()
+    {
+        Navigation.NavigateTo("/wholesalers");
+    }
+}

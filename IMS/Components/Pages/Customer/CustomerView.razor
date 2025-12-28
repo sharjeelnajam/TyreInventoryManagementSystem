@@ -1,0 +1,127 @@
+﻿@page "/customers/view/{Id:guid}"
+@using Domain
+@using Domain.Enums
+@using Infrastructure.Services
+@inject ICustomerService CustomerService
+@inject IListManagementService ListManagementService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Customer Details</PageTitle>
+
+<div class="container mt-4">
+
+    <div class="card shadow-lg rounded-4">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-eye me-2"></i> Customer Details
+            </h5>
+
+            <button class="btn btn-light btn-sm" @onclick="GoBack">
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+        </div>
+
+        <div class="card-body">
+
+            @if (Customer == null)
+            {
+                <div class="text-center py-4">
+                    <div class="spinner-border text-secondary"></div>
+                </div>
+            }
+            else
+            {
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+                        <strong>Name:</strong>
+                        <p>@Customer.Name</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Phone:</strong>
+                        <p>@Customer.Phone</p>
+                    </div>
+
+                      <div class="col-md-6">
+                        <strong>Registerd At:</strong>
+                        <p>@Customer.CreatedAt.ToShortDateString()</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>City:</strong>
+                        <p>@(Customer.City ?? "N/A")</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Vehicle Number:</strong>
+                        <p>@(Customer.VehicleNumber ?? "N/A")</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Customer Type:</strong>
+                        <p>@CustomerType</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Status:</strong>
+                        <p>
+                            <span class="badge @(Customer.IsActive ? "bg-success" : "bg-danger")">
+                                @(Customer.IsActive ? "Active" : "Inactive")
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Credit Limit:</strong>
+                        <p>£ @(Customer.CreditLimit?.ToString("N2") ?? "0.00")</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Discount %:</strong>
+                        <p>@(Customer.Percentage?.ToString("N2") ?? "0") %</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Custom Price:</strong>
+                        <p>£ @(Customer.CustomPrice?.ToString("N2") ?? "0.00")</p>
+                    </div>
+
+                    <div class="col-md-12">
+                        <strong>Address:</strong>
+                        <p>@(Customer.Address ?? "N/A")</p>
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    </div>
+
+</div>
+
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Customer? Customer;
+    private string CustomerType = "N/A";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Customer = await CustomerService.GetCustomerByIdAsync(Id);
+
+        if (Customer != null)
+        {
+            var types = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
+            CustomerType = types
+                .FirstOrDefault(x => x.Id == Customer.ListManagementId)?.Name ?? "N/A";
+        }
+    }
+
+    void GoBack()
+    {
+        Navigation.NavigateTo("/customers");
+    }
+}

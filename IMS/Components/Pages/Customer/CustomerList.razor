@@ -3,6 +3,8 @@
 @using Domain.Enums
 @using Infrastructure.Services
 @rendermode InteractiveServer
+@inject NavigationManager Navigation
+
 @inject ICustomerService CustomerService
 @inject IListManagementService ListManagementService
 @inject IJSRuntime JSRuntime
@@ -78,16 +80,25 @@
                     <td>@c.CustomPrice</td>
                     <td>@(c.IsActive ? "Yes" : "No")</td>
                     <td>
+                        <!-- View -->
+                        <span role="button" title="View" class="text-info me-2"
+                              @onclick="() => ViewCustomer(c.Id)">
+                            <i class="bi bi-eye fs-5"></i>
+                        </span>
+
+                        <!-- Edit -->
                         <span role="button" title="Edit" class="text-warning me-2"
-                        @onclick="() => OpenModal(c)">
+                              @onclick="() => OpenModal(c)">
                             <i class="bi bi-pencil-square fs-5"></i>
                         </span>
 
+                        <!-- Delete -->
                         <span role="button" title="Delete" class="text-danger"
-                        @onclick="() => DeleteCustomer(c.Id)">
+                              @onclick="() => DeleteCustomer(c.Id)">
                             <i class="bi bi-trash fs-5"></i>
                         </span>
                     </td>
+
                 </tr>
             }
         }
@@ -194,4 +205,10 @@
             await LoadCustomers();
         }
     }
+
+    private void ViewCustomer(Guid id)
+    {
+        Navigation.NavigateTo($"/customers/view/{id}");
+    }
+
 }

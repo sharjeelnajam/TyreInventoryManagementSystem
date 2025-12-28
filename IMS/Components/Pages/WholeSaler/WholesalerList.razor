@@ -5,6 +5,8 @@
 @inject IWholesalerService WholesalerService
 @inject IListManagementService ListManagementService
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
+
 @rendermode InteractiveServer
 
 <PageTitle>Wholesalers</PageTitle>
@@ -59,18 +61,24 @@
                             <td>@w.Phone</td>
                             <td>@w.Email</td>
                             <td>@GetWholeSalerTypeName(w.ListManagementId)</td>
-
                             <td>
-                                <i class="bi bi-pencil-square text-primary fs-5 me-2 cursor-pointer"
-                                   title="Edit" @onclick="() => OpenEditModal(w.Id)"></i>
+                                <i class="bi bi-eye text-info fs-5 me-1 cursor-pointer"
+                                   title="View"
+                                   @onclick="() => ViewWholesaler(w.Id)"></i>
+
+                                <i class="bi bi-pencil-square text-primary fs-5 me-1 cursor-pointer"
+                                   title="Edit"
+                                   @onclick="() => OpenEditModal(w.Id)"></i>
 
                                 <i class="bi bi-trash text-danger fs-5 cursor-pointer"
-                                   title="Delete" @onclick="() => Delete(w.Id)"></i>
+                                   title="Delete"
+                                   @onclick="() => Delete(w.Id)"></i>
 
-                                <i class="bi bi-currency-dollar text-success fs-5 me-2 cursor-pointer"
+                                <i class="bi bi-currency-dollar text-success fs-5 me-1 cursor-pointer"
                                    title="Manage Price"
                                    @onclick="() => OpenManagePriceModal(w.Id)"></i>
                             </td>
+
                         </tr>
                     }
                 </tbody>
@@ -117,7 +125,6 @@
         wholeSalerTypeLookUp = wholesalersType.ToDictionary(c => c.Id, c => c.Name);
     }
 
-
     private string GetWholeSalerTypeName(Guid wholeSalerTypeId)
     {
         return wholeSalerTypeLookUp.TryGetValue(wholeSalerTypeId, out var name) ? name : "N/A";
@@ -146,6 +153,12 @@
         SelectedId = id;
         IsModalOpen = true;
     }
+
+    void ViewWholesaler(Guid id)
+    {
+        Navigation.NavigateTo($"/wholesalers/view/{id}");
+    }
+
 
     async Task CloseModal()
     {
