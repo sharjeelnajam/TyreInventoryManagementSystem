@@ -69,9 +69,16 @@
 
                 <hr />
 
-                <h5 class="mt-4">
-                    <i class="bi bi-currency-pound me-2"></i> Price List
-                </h5>
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <h5>
+                        <i class="bi bi-currency-pound me-2"></i> Price List
+                    </h5>
+
+                    <button class="btn btn-sm btn-success"
+                            @onclick="OpenPriceModal">
+                        <i class="bi bi-plus-circle me-1"></i> Add Price
+                    </button>
+                </div>
 
                 @if (Prices == null)
                 {
@@ -87,29 +94,32 @@
                 }
                 else
                 {
-                    <div class="table-responsive mt-3">
-                        <table class="table table-bordered table-hover align-middle">
-                            <thead class="table-light">
+                    <table class="table table-bordered mt-3">
+                        <thead>
+                            <tr>
+                                <th>Size</th>
+                                <th>Unit</th>
+                                <th class="text-end">Price (£)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Prices)
+                            {
                                 <tr>
-                                    <th>Size</th>
-                                    <th>Unit</th>
-                                    <th class="text-end">Price</th>
+                                    <td>@GetSizeName(p.SizeId)</td>
+                                    <td>@GetUnitName(p.UnitId)</td>
+                                    <td class="text-end">£ @p.Price</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var p in Prices)
-                                {
-                                    <tr>
-                                        <td>@GetSizeName(p.SizeId)</td>
-                                        <td>@GetUnitName(p.UnitId)</td>
-                                        <td class="text-end fw-bold">
-                                            £ @p.Price.ToString("N2")
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                            }
+                        </tbody>
+                    </table>
+
+                }
+
+                @if (ShowPriceModal)
+                {
+                    <WholesalerManagePrice WholesalerId="@Id"
+                                           OnClose="ClosePriceModalAndRefresh" />
                 }
 
             }
@@ -124,11 +134,12 @@
     private Wholesaler? Wholesaler;
     private string WholesalerType = "N/A";
 
-
     private List<WholeSalerPrice>? Prices;
 
     private Dictionary<Guid, string> sizeLookup = new();
     private Dictionary<Guid, string> unitLookup = new();
+
+    private bool ShowPriceModal;
 
     protected override async Task OnInitializedAsync()
     {
@@ -136,15 +147,12 @@
 
         if (Wholesaler != null)
         {
-            // Wholesaler Type
             var types = await ListManagementService.GetByTypeAsync(ListType.WholeSalerType);
-            WholesalerType = types
-                .FirstOrDefault(x => x.Id == Wholesaler.ListManagementId)?.Name ?? "N/A";
+            WholesalerType =
+                types.FirstOrDefault(x => x.Id == Wholesaler.ListManagementId)?.Name ?? "N/A";
 
-            // Load prices
             Prices = await WholeSalerPriceService.GetByWholesalerIdAsync(Id);
 
-            // Load Size & Unit Lookups
             var sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
             var units = await ListManagementService.GetByTypeAsync(ListType.Unit);
 
@@ -153,14 +161,28 @@
         }
     }
 
+    void OpenPriceModal() => ShowPriceModal = true;
+
+    async Task ClosePriceModalAndRefresh()
+    {
+        ShowPriceModal = false;
+        await LoadPricesAsync();   // ✅ await it
+        StateHasChanged();         // ✅ force UI refresh
+    }
+
+
+    private async Task LoadPricesAsync()
+    {
+        Prices = await WholeSalerPriceService.GetByWholesalerIdAsync(Id);
+        StateHasChanged();
+    }
+
     string GetSizeName(Guid id)
         => sizeLookup.TryGetValue(id, out var name) ? name : "N/A";
 
     string GetUnitName(Guid id)
         => unitLookup.TryGetValue(id, out var name) ? name : "N/A";
 
-    void GoBack()
-    {
-        Navigation.NavigateTo("/wholesalers");
-    }
+    void GoBack() => Navigation.NavigateTo("/wholesalers");
 }
+

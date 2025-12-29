@@ -149,9 +149,7 @@
     [JSInvokable]
     public void OnSizeSelected(string[] values)
     {
-        SelectedSizes = values
-            .Select(Guid.Parse)
-            .ToHashSet();
+        SelectedSizes = values.Select(Guid.Parse).ToHashSet();
 
         BuildRows();
     }
@@ -165,6 +163,7 @@
 
         BuildRows();
     }
+
     void BuildRows(bool fromDb = false)
     {
         var rows = new List<PriceRowVm>();
@@ -190,22 +189,6 @@
         PriceRows = rows;
         StateHasChanged();
     }
-
-    // void BuildRows()
-    // {
-    //     PriceRows = (
-    //         from s in SelectedSizes
-    //         from u in SelectedUnits
-    //         select new PriceRowVm
-    //             {
-    //                 SizeId = s,
-    //                 UnitId = u,
-    //                 SizeName = Sizes.First(x => x.Id == s).Name,
-    //                 UnitName = Units.First(x => x.Id == u).Name
-    //             }
-    //     ).ToList();
-    //     StateHasChanged();
-    // }
 
     public void Dispose()
     {
