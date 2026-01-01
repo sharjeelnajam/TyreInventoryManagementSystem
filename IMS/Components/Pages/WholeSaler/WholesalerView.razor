@@ -108,7 +108,42 @@
                                 <tr>
                                     <td>@GetSizeName(p.SizeId)</td>
                                     <td>@GetUnitName(p.UnitId)</td>
-                                    <td class="text-end">£ @p.Price</td>
+                                    <td class="text-end">
+                                        @if (EditingPriceId == p.Id)
+                                        {
+                                            <input type="number"
+                                                   class="form-control form-control-sm text-end"
+                                                   style="width:120px; display:inline-block"
+                                                   @bind="p.Price" />
+                                        }
+                                        else
+                                        {
+                                            <span>£ @p.Price</span>
+                                        }
+                                    </td>
+
+                                    <td class="text-end">
+                                        @if (EditingPriceId == p.Id)
+                                        {
+                                            <button class="btn btn-sm btn-success me-1"
+                                                    @onclick="() => SavePrice(p)">
+                                                <i class="bi bi-check"></i>
+                                            </button>
+
+                                            <button class="btn btn-sm btn-secondary"
+                                                    @onclick="CancelEdit">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    @onclick="() => EditPrice(p.Id)">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        }
+                                    </td>
+
                                 </tr>
                             }
                         </tbody>
@@ -130,6 +165,8 @@
 
 @code {
     [Parameter] public Guid Id { get; set; }
+    Guid? EditingPriceId;
+
 
     private Wholesaler? Wholesaler;
     private string WholesalerType = "N/A";
@@ -160,6 +197,28 @@
             unitLookup = units.ToDictionary(x => x.Id, x => x.Name);
         }
     }
+
+    void EditPrice(Guid id)
+    {
+        EditingPriceId = id;
+    }
+
+    void CancelEdit()
+    {
+        EditingPriceId = null;
+    }
+
+    async Task SavePrice(WholeSalerPrice price)
+    {
+        await WholeSalerPriceService.UpdatePriceOnlyAsync(
+            price.Id,
+            price.Price
+        );
+
+        EditingPriceId = null;
+        await LoadPricesAsync();
+    }
+
 
     void OpenPriceModal() => ShowPriceModal = true;
 
