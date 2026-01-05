@@ -52,27 +52,27 @@ namespace Infrastructure.Persistence.Data
                 }
             }
 
-            // ✅ Seed ListManagement data (Size, Unit, Expense)
+            // ✅ Seed ListManagement data (Thread, Unit, Expense)
             await SeedListManagementDataAsync(context);
         }
 
         private static async Task SeedListManagementDataAsync(ApplicationDbContext context)
         {
-            // Seed Size data - TenantId is null for shared reference data
-            var hasSizeData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Size && !lm.IsDeleted);
-            if (!hasSizeData)
+            // Seed Thread data - TenantId is null for shared reference data
+            var hasThreadData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Thread && !lm.IsDeleted);
+            if (!hasThreadData)
             {
-                var sizes = new List<ListManagement>
+                var Threads = new List<ListManagement>
                 {
-                    new ListManagement { Id = Guid.NewGuid(), Name = "14'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "15'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "16'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "17'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "18'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "19'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "20'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
+                    new ListManagement { Id = Guid.NewGuid(), Name = "14'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "15'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "16'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "17'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "18'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "19'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "20'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
                 };
-                await context.ListManagements.AddRangeAsync(sizes);
+                await context.ListManagements.AddRangeAsync(Threads);
             }
 
             // Seed Unit data - TenantId is null for shared reference data

@@ -10,7 +10,7 @@ namespace Domain
     {
         public Guid WholesalerId { get; set; }
 
-        public Guid SizeId { get; set; }   // ListManagement (Size)
+        public Guid ThreadId { get; set; }   // ListManagement (Thread)
         public Guid UnitId { get; set; }   // ListManagement (Unit)
 
         public decimal Price { get; set; }

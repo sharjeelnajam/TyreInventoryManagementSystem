@@ -313,6 +313,7 @@
     </div>
 }
 
+
 <!-- Add Customer Popup -->
 @if (showCustomerModal)
 {
@@ -661,7 +662,7 @@
 
         if (wholeSalerPrices.Any() && isWholesalerMode)
         {
-            var wholeSalerPrice = wholeSalerPrices.FirstOrDefault(w => w.UnitId == product.Unit && w.SizeId == product.Size);
+            var wholeSalerPrice = wholeSalerPrices.FirstOrDefault(w => w.UnitId == product.Unit && w.ThreadId == product.ThreadId);
             if (wholeSalerPrice != null)
             {
                 detail.Quantity = 1;
@@ -802,7 +803,7 @@
                 continue;
 
             var wholesalerPrice = wholeSalerPrices.FirstOrDefault(w =>
-                w.SizeId == product.Size &&
+                w.ThreadId == product.ThreadId &&
                 w.UnitId == product.Unit
             );
 

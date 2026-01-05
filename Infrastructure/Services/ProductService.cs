@@ -87,14 +87,14 @@ namespace Infrastructure.Services
                        Brand = product.Brand,
                        ProductName = product.ProductName,
                        Min_Threshold = product.Min_Threshold,
-                       Thread = product.Thread,
+                       //Thread = product.Thread,
                        AverageCostPrice = product.AverageCostPrice,
                        ImagePath = product.ImagePath,
                        Description = product.Description,
                        DOT = product.DOT,
                        TyreSize = product.TyreSize,
                        Type = product.Type,
-                       Size = product.Size,
+                       ThreadId = product.ThreadId,
                        Unit = product.Unit,
 
                        PurchasePrice = product.PurchaseDetails
@@ -137,7 +137,7 @@ namespace Infrastructure.Services
                        Brand = product.Brand,
                        ProductName = product.ProductName,
                        Min_Threshold = product.Min_Threshold,
-                       Thread = product.Thread,
+                       //Thread = product.Thread,
                        AverageCostPrice = product.AverageCostPrice,
                        ImagePath = product.ImagePath,
                        Description = product.Description,
@@ -234,7 +234,7 @@ namespace Infrastructure.Services
         //        existing.Type = product.Type;
         //        existing.Min_Threshold = product.Min_Threshold;
         //        existing.Thread = product.Thread;
-        //        existing.TyreSize = product.TyreSize;
+        //        existing.TyreThread = product.TyreThread;
         //        existing.Barcode = product.Barcode;
         //        existing.AverageCostPrice = product.AverageCostPrice;
         //        existing.UpdatedAt = DateTime.UtcNow;
@@ -298,12 +298,11 @@ namespace Infrastructure.Services
                 existing.Brand = dto.Brand;
                 existing.Type = dto.Type;
                 existing.Min_Threshold = dto.Min_Threshold;
-                existing.Thread = dto.Thread;
+                existing.ThreadId = dto.ThreadId;
                 existing.TyreSize = dto.TyreSize;
                 existing.Barcode = dto.Barcode;
                 existing.AverageCostPrice = dto.AverageCostPrice;
                 existing.Unit = dto.Unit; ;
-                existing.Size = dto.Size;
                 existing.UpdatedAt = DateTime.UtcNow;
 
                 if (!string.IsNullOrEmpty(dto.ImagePath))
@@ -387,12 +386,12 @@ namespace Infrastructure.Services
                     TyreSize = productDto.TyreSize,
                     Min_Threshold = productDto.Min_Threshold,
                     Type = productDto.Type,
-                    Thread = productDto.Thread,
+                    //Thread = productDto.Thread,
                     AverageCostPrice = productDto.AverageCostPrice,
                     Barcode = productDto.Barcode,
                     ImagePath = productDto.ImagePath,
                     Unit = productDto.Unit,
-                    Size = productDto.Size
+                    ThreadId = productDto.ThreadId
                 };
                 return product;
             }
@@ -413,7 +412,7 @@ namespace Infrastructure.Services
                 Brand = product.Brand,
                 ProductName = product.ProductName,
                 Min_Threshold = product.Min_Threshold,
-                Thread = product.Thread,
+                //Thread = product.Thread,
                 AverageCostPrice = product.AverageCostPrice,
                 ImagePath = product.ImagePath,
                 Description = product.Description,
@@ -421,7 +420,7 @@ namespace Infrastructure.Services
                 TyreSize = product.TyreSize,
                 Type = product.Type,
                 Unit = product.Unit,
-                Size = product.Size,
+                ThreadId = product.ThreadId,
 
                 PurchasePrice = product.PurchaseDetails
                     .OrderByDescending(pd => pd.Id) 

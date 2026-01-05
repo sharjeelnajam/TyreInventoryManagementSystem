@@ -1,6 +1,4 @@
-﻿@page "/template"
-@page "/template/{Id:guid}/{IsVisible:bool}"
-@using Domain
+﻿@using Domain
 @using Domain.DTO
 @using Domain.Enums
 @using Infrastructure.Services
@@ -38,25 +36,25 @@
 
                                     <div class="col-md-3">
                                         <input class="form-control mb-3"
-                                        placeholder="Search product..."
-                                        @oninput="e => searchText = e.Value?.ToString()" />
+                                               placeholder="Search product..."
+                                               @oninput="e => searchText = e.Value?.ToString()" />
                                     </div>
 
                                     <div class="row g-1" style="max-height:50vh; overflow-y:auto">
                                         @foreach (var product in products
-                                    .Where(p =>
-                                    string.IsNullOrEmpty(searchText) ||
-                                    p.ProductName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                                    p.Brand.Contains(searchText, StringComparison.OrdinalIgnoreCase)))
+                                       .Where(p =>
+                                       string.IsNullOrEmpty(searchText) ||
+                                       p.ProductName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                                       p.Brand.Contains(searchText, StringComparison.OrdinalIgnoreCase)))
                                         {
                                             <div class="col-md-3 p-1">
                                                 <div class="product-card"
-                                                @onclick="() => AddItemFromGrid(product)">
+                                                     @onclick="() => AddItemFromGrid(product)">
 
                                                     <!-- IMAGE -->
                                                     <div class="product-image">
                                                         <img src="@(!string.IsNullOrEmpty(product.ImagePath) ? product.ImagePath : "/images/no-image.png")"
-                                                        alt="@product.ProductName" />
+                                                             alt="@product.ProductName" />
                                                     </div>
 
                                                     <!-- DETAILS -->
@@ -93,14 +91,14 @@
                                         <div class="col-md-6">
                                             <label class="form-label">Sale No</label>
                                             <InputText class="form-control"
-                                            @bind-Value="Sale.SaleNumber"
-                                            readonly />
+                                                       @bind-Value="Sale.SaleNumber"
+                                                       readonly />
                                         </div>
 
                                         <div class="col-md-6">
                                             <label class="form-label">Date</label>
                                             <InputDate class="form-control"
-                                            @bind-Value="Sale.SaleDate" />
+                                                       @bind-Value="Sale.SaleDate" />
                                         </div>
 
                                         <div class="col-md-6">
@@ -127,8 +125,8 @@
                                         <div class="col-md-12 mt-2">
                                             <div class="form-check form-switch">
                                                 <InputCheckbox class="form-check-input"
-                                                @bind-Value="isWholesalerMode"
-                                                @onchange="e => OnBillToChanged(isWholesalerMode)" />
+                                                               @bind-Value="isWholesalerMode"
+                                                               @onchange="e => OnBillToChanged(isWholesalerMode)" />
                                                 <label class="form-check-label fw-semibold ms-2">
                                                     Bill To Wholesaler
                                                 </label>
@@ -140,20 +138,23 @@
                                         {
                                             <div class="col-md-10">
                                                 <label class="form-label">Customer</label>
-                                                <InputSelect class="form-select"
-                                                @bind-Value="Sale.CustomerId"
-                                                @onchange="e => OnCustomerChanged(Guid.Parse(e.Value.ToString()))">
-                                                    <option value="">Select Customer</option>
-                                                    @foreach (var c in Customers)
+                                                <InputSelect class="form-control"
+                                                             TValue="Guid?"
+                                                             Value="Sale.CustomerId"
+                                                             ValueChanged="OnCustomerChanged"
+                                                             ValueExpression="@(() => Sale.CustomerId)">
+                                                    <option value="">-- Select Customer --</option>
+
+                                                    @foreach (var customer in Customers)
                                                     {
-                                                        <option value="@c.Id">@c.Name</option>
+                                                        <option value="@customer.Id">@customer.Name</option>
                                                     }
                                                 </InputSelect>
                                             </div>
                                             <div class="col-md-2 d-flex align-items-end">
                                                 <button type="button"
-                                                class="btn btn-outline-primary w-100"
-                                                @onclick="OpenAddCustomer">
+                                                        class="btn btn-outline-primary w-100"
+                                                        @onclick="OpenAddCustomer">
                                                     +
                                                 </button>
                                             </div>
@@ -164,10 +165,13 @@
                                         {
                                             <div class="col-md-10">
                                                 <label class="form-label">Wholesaler</label>
-                                                <InputSelect class="form-select"
-                                                @bind-Value="Sale.WholesalerId"
-                                                @onchange="e => OnWholeSalerChanged(Guid.Parse(e.Value.ToString()))">
-                                                    <option value="">Select Wholesaler</option>
+                                                <InputSelect class="form-control"
+                                                             TValue="Guid?"
+                                                             Value="Sale.WholesalerId"
+                                                             ValueChanged="OnWholeSalerChanged"
+                                                             ValueExpression="@(() => Sale.WholesalerId)">
+                                                    <option value="">-- Select Customer --</option>
+
                                                     @foreach (var w in Wholesalers)
                                                     {
                                                         <option value="@w.Id">@w.Name</option>
@@ -176,15 +180,14 @@
                                             </div>
                                             <div class="col-md-2 d-flex align-items-end">
                                                 <button type="button"
-                                                class="btn btn-outline-primary w-100"
-                                                @onclick="OpenAddWholesaler">
+                                                        class="btn btn-outline-primary w-100"
+                                                        @onclick="OpenAddWholesaler">
                                                     +
                                                 </button>
                                             </div>
                                         }
 
                                     </div>
-
 
                                     <hr />
 
@@ -210,10 +213,10 @@
                                                         <td>@GetProductName(detail.ProductId)</td>
                                                         <td>
                                                             <InputNumber TValue="int"
-                                                            Value="detail.Quantity"
-                                                            ValueChanged="@(v => OnQuantityChanged(detail, v))"
-                                                            ValueExpression="@(() => detail.Quantity)"
-                                                            class="form-control" />
+                                                                         Value="detail.Quantity"
+                                                                         ValueChanged="@(v => OnQuantityChanged(detail, v))"
+                                                                         ValueExpression="@(() => detail.Quantity)"
+                                                                         class="form-control" />
 
                                                             @if (quantityErrors.ContainsKey(detail.ProductId))
                                                             {
@@ -224,17 +227,17 @@
                                                         </td>
                                                         <td>
                                                             <InputNumber TValue="decimal"
-                                                            Value="detail.UnitPrice"
-                                                            ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
-                                                            ValueExpression="@(() => detail.UnitPrice)"
-                                                            class="form-control" />
+                                                                         Value="detail.UnitPrice"
+                                                                         ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
+                                                                         ValueExpression="@(() => detail.UnitPrice)"
+                                                                         class="form-control" />
                                                         </td>
                                                         <td class="fw-semibold">
-                                                            @(detail.Quantity * detail.UnitPrice)
+                                                            @((detail.Quantity * detail.UnitPrice).ToString("N2"))
                                                         </td>
                                                         <td>
                                                             <button class="btn btn-sm btn-danger"
-                                                            @onclick="() => RemoveItem(detail)">
+                                                                    @onclick="() => RemoveItem(detail)">
                                                                 ×
                                                             </button>
                                                         </td>
@@ -244,23 +247,100 @@
                                         </tbody>
                                     </table>
 
-                                    <hr />
+                                    <!-- Add Item Button -->
+                                    <button type="button" class="btn btn-secondary mt-2" @onclick="AddItem"
+                                            disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
+                                        + Add Item
+                                    </button>
 
-                                    <!-- TOTALS -->
-                                    <div class="d-flex justify-content-between">
-                                        <span>Total</span>
-                                        <strong>@Sale.TotalAmount:N2</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <span>Net</span>
-                                        <strong>@Sale.NetAmount:N2</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-end">
-                                        <button type="submit"
-                                        class="btn btn-success w-40 mt-3"
-                                        disabled="@(!isFormValid)">
+                                    <!-- DISCOUNT AND TAX SECTION -->
+                                    @if (CustomerCustomPrice.HasValue || CustomerPercentage.HasValue || ShowOldDiscountField)
+                                    {
+                                        <div class="row mt-4 border-top pt-3">
+                                            <div class="col-md-12">
+                                                <div class="card border-0 shadow-sm">
+                                                    <div class="card-body">
+                                                        <div class="row g-3 align-items-center">
+
+                                                            @if (ShowOldDiscountField)
+                                                            {
+                                                                <div class="col-md-4">
+                                                                    <label>Discount</label>
+                                                                    <InputNumber TValue="decimal?"
+                                                                                 Value="Sale.Discount"
+                                                                                 ValueChanged="OnDiscountChanged"
+                                                                                 ValueExpression="@(() => Sale.Discount)"
+                                                                                 class="form-control" />
+                                                                </div>
+
+                                                                <div class="col-md-4">
+                                                                    <label>Tax (%)</label>
+                                                                    <InputNumber TValue="decimal?"
+                                                                                 Value="Sale.TaxAmount"
+                                                                                 ValueChanged="OnTaxChanged"
+                                                                                 ValueExpression="@(() => Sale.TaxAmount)"
+                                                                                 class="form-control" />
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="col-md-3">
+                                                                    <label>Customer Custom Price</label>
+                                                                    <InputNumber @bind-Value="CustomerCustomPrice" class="form-control" />
+                                                                </div>
+
+                                                                <div class="col-md-3">
+                                                                    <label>Customer Percentage (%)</label>
+                                                                    <InputNumber @bind-Value="CustomerPercentage" class="form-control" />
+                                                                </div>
+
+                                                                <div class="col-md-2">
+                                                                    <label>Tax (%)</label>
+                                                                    <InputNumber TValue="decimal?"
+                                                                                 Value="Sale.TaxAmount"
+                                                                                 ValueChanged="OnTaxChanged"
+                                                                                 ValueExpression="@(() => Sale.TaxAmount)"
+                                                                                 class="form-control" />
+                                                                </div>
+                                                            }
+
+                                                            <div class="col-md-2 text-end">
+                                                                <label class="form-label fw-semibold mb-0">Total</label>
+                                                                <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
+                                                            </div>
+
+                                                            <div class="col-md-2 text-end">
+                                                                <label class="form-label fw-semibold mb-0">Net</label>
+                                                                <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
+                                                            </div>
+
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <!-- SIMPLE TOTALS DISPLAY -->
+                                        <div class="row mt-4 border-top pt-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Total</label>
+                                                <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Net</label>
+                                                <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <!-- SAVE BUTTON -->
+                                    <div class="modal-footer mt-3">
+                                        <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
                                             Save
                                         </button>
+                                        <button type="button" class="btn btn-secondary" @onclick="Close">Cancel</button>
                                     </div>
 
                                 </div>
@@ -269,13 +349,9 @@
                         </div>
                     </EditForm>
                 </div>
-
-
             </div>
         </div>
     </div>
-
-
 }
 
 <!-- Add Customer Popup -->
@@ -296,7 +372,7 @@
                             <div class="col-md-12 mt-3">
                                 <div class="form-check form-switch">
                                     <InputCheckbox @bind-Value="EnableCustomPricing"
-                                    class="form-check-input" />
+                                                   class="form-check-input" />
                                     <label class="form-check-label fw-semibold ms-2">
                                         Enable Custom Pricing
                                     </label>
@@ -308,11 +384,6 @@
                                 <InputText class="form-control" @bind-Value="NewCustomer.Name" />
                                 <ValidationMessage For="@(()=>NewCustomer.Name)" />
                             </div>
-                            @*  <div class="mb-3">
-                                <label>Email</label>
-                                <InputText class="form-control" @bind-Value="NewCustomer.Email" />
-                                <ValidationMessage For="@(()=>NewCustomer.Phone)" />
-                            </div> *@
                             <div class="mb-3">
                                 <label>Phone</label>
                                 <InputText class="form-control" @bind-Value="NewCustomer.Phone" />
@@ -323,14 +394,14 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Percentage (%)</label>
                                     <InputNumber @bind-Value="NewCustomer.Percentage"
-                                    class="form-control form-control-lg shadow-sm" />
+                                                 class="form-control form-control-lg shadow-sm" />
                                     <ValidationMessage For="@(() => NewCustomer.Percentage)" />
                                 </div>
 
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold">Custom Price</label>
                                     <InputNumber @bind-Value="NewCustomer.CustomPrice"
-                                    class="form-control form-control-lg shadow-sm" />
+                                                 class="form-control form-control-lg shadow-sm" />
                                     <ValidationMessage For="@(() => NewCustomer.CustomPrice)" />
                                 </div>
                             }
@@ -339,9 +410,6 @@
                                 <button type="submit" class="btn btn-primary">Save</button>
                                 <button type="button" class="btn btn-secondary" @onclick="CloseCustomerModal">Cancel</button>
                             </div>
-
-
-
                         </div>
                     </EditForm>
                 </div>
@@ -349,7 +417,6 @@
         </div>
     </div>
 }
-
 
 <!-- Add Wholesaler Popup -->
 @if (showWholesalerModal)
@@ -403,11 +470,9 @@
     </div>
 }
 
-
-
 @code {
-    [Parameter] public Guid Id { get; set; } = Guid.Empty;
-    [Parameter] public bool IsVisible { get; set; } = true;
+    [Parameter] public Guid Id { get; set; }
+    [Parameter] public bool IsVisible { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
 
@@ -434,154 +499,19 @@
 
     private decimal? CustomerCustomPrice { get; set; }
     private decimal? CustomerPercentage { get; set; }
-    private Customer customerForData = new Customer();
     private bool ShowOldDiscountField = true;
     private bool EnableCustomPricing { get; set; } = false;
     private List<ListManagement> listManagements = new List<ListManagement>();
     private List<WholeSalerPrice> wholeSalerPrices = new List<WholeSalerPrice>();
-    private bool isWholeSaler = false;
-
-
-
 
     protected override async Task OnParametersSetAsync()
     {
-        IsVisible = true;
         if (IsVisible)
         {
             Customers = await CustomerService.GetCustomersAsync();
-            products = new List<ProductDto>
-{
-    new ProductDto
-    {
-        Id = Guid.Parse("8fa41370-ad6e-4ecb-f5e9-08de3c181748"),
-        ProductName = "Test Product With Size and Unit",
-        AverageCostPrice = 150.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Barcode = null,
-        DOT = null,
-        Brand = null,
-        Description = null,
-        Min_Threshold = null,
-        Thread = null,
-        Type = null,
-        TyreSize = null,
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf"),
-        PurchaseDetails = null
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Michelin Tyre 195/65 R15",
-        AverageCostPrice = 180.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Michelin",
-        TyreSize = "195/65 R15",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Bridgestone Tyre 205/55 R16",
-        AverageCostPrice = 200.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Bridgestone",
-        TyreSize = "205/55 R16",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Yokohama Tyre 215/60 R16",
-        AverageCostPrice = 210.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Yokohama",
-        TyreSize = "215/60 R16",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Dunlop Tyre 185/70 R14",
-        AverageCostPrice = 160.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Dunlop",
-        TyreSize = "185/70 R14",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Pirelli Tyre 225/45 R17",
-        AverageCostPrice = 240.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Pirelli",
-        TyreSize = "225/45 R17",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Goodyear Tyre 195/60 R15",
-        AverageCostPrice = 175.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Goodyear",
-        TyreSize = "195/60 R15",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Continental Tyre 205/60 R16",
-        AverageCostPrice = 220.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Continental",
-        TyreSize = "205/60 R16",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Hankook Tyre 215/55 R17",
-        AverageCostPrice = 195.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Hankook",
-        TyreSize = "215/55 R17",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "General Tyre 175/65 R14",
-        AverageCostPrice = 140.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "General",
-        TyreSize = "175/65 R14",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    }
-};
+            products = await ProductService.GetAllAsync();
             Stocks = _context.StockHistories.ToList();
             listManagements = await ListManagementService.GetByTypeAsync(ListType.Expense);
-
             Wholesalers = await WholesalerService.GetAllAsync();
 
             if (Id != Guid.Empty)
@@ -621,152 +551,23 @@
             foreach (var s in Sale.SaleDetails)
             {
                 s.SaleId = Sale.Id;
-
             }
+
             if (Id == Guid.Empty)
             {
                 await SaleService.AddAsync(Sale);
-                products = new List<ProductDto>
-{
-    new ProductDto
-    {
-        Id = Guid.Parse("8fa41370-ad6e-4ecb-f5e9-08de3c181748"),
-        ProductName = "Test Product With Size and Unit",
-        AverageCostPrice = 150.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Barcode = null,
-        DOT = null,
-        Brand = null,
-        Description = null,
-        Min_Threshold = null,
-        Thread = null,
-        Type = null,
-        TyreSize = null,
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf"),
-        PurchaseDetails = null
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Michelin Tyre 195/65 R15",
-        AverageCostPrice = 180.00m,
-        ImagePath = "/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Michelin",
-        TyreSize = "195/65 R15",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Bridgestone Tyre 205/55 R16",
-        AverageCostPrice = 200.00m,
-        ImagePath ="/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Bridgestone",
-        TyreSize = "205/55 R16",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Yokohama Tyre 215/60 R16",
-        AverageCostPrice = 210.00m,
-        ImagePath ="/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Yokohama",
-        TyreSize = "215/60 R16",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Dunlop Tyre 185/70 R14",
-        AverageCostPrice = 160.00m,
-          ImagePath ="/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Dunlop",
-        TyreSize = "185/70 R14",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Pirelli Tyre 225/45 R17",
-        AverageCostPrice = 240.00m,
-          ImagePath ="/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Pirelli",
-        TyreSize = "225/45 R17",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Goodyear Tyre 195/60 R15",
-        AverageCostPrice = 175.00m,
-         ImagePath ="/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Goodyear",
-        TyreSize = "195/60 R15",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Continental Tyre 205/60 R16",
-        AverageCostPrice = 220.00m,
-         ImagePath ="/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Continental",
-        TyreSize = "205/60 R16",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "Hankook Tyre 215/55 R17",
-        AverageCostPrice = 195.00m,
-          ImagePath ="/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "Hankook",
-        TyreSize = "215/55 R17",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    },
-
-    new ProductDto
-    {
-        Id = Guid.NewGuid(),
-        ProductName = "General Tyre 175/65 R14",
-        AverageCostPrice = 140.00m,
-          ImagePath ="/uploads/products/0a29af6d-5556-4acf-9e29-8d49ee1fcf31.jpg",
-        Brand = "General",
-        TyreSize = "175/65 R14",
-        Unit = Guid.Parse("c34a8401-b8c5-4b5a-828c-a7dc5889d359"),
-        Size = Guid.Parse("21446c0b-a2f1-4147-84e3-580620ffa3cf")
-    }
-};
+                products = await ProductService.GetAllAsync();
             }
-
             else
+            {
                 await SaleService.UpdateAsync(Sale);
-
+            }
 
             await OnClose.InvokeAsync();
             IsVisible = false;
         }
         catch (Exception)
         {
-
             throw;
         }
         finally
@@ -786,11 +587,8 @@
         SelectProduct(detail, product);
     }
 
-
-
     protected void Close()
     {
-        IsVisible = false;
         OnClose.InvokeAsync();
         ShowOldDiscountField = true;
     }
@@ -823,69 +621,6 @@
         RecalculateTotals();
     }
 
-    // Searchable Dropdown Methods
-    private string GetSearchText(SaleDetail detail)
-    {
-        return searchTexts.ContainsKey(detail.Id) ? searchTexts[detail.Id] : "";
-    }
-
-    private bool GetDropdownState(SaleDetail detail)
-    {
-        return dropdownStates.ContainsKey(detail.Id) && dropdownStates[detail.Id];
-    }
-
-    private void OnSearchInput(ChangeEventArgs e, SaleDetail detail)
-    {
-        var text = e.Value?.ToString() ?? "";
-        searchTexts[detail.Id] = text;
-
-        // Auto-show dropdown when typing
-        if (!string.IsNullOrWhiteSpace(text) && !GetDropdownState(detail))
-        {
-            ShowDropdown(detail);
-        }
-    }
-
-    private void ShowDropdown(SaleDetail detail)
-    {
-        // Close all other dropdowns
-        foreach (var key in dropdownStates.Keys.ToList())
-        {
-            dropdownStates[key] = false;
-        }
-
-        dropdownStates[detail.Id] = true;
-        StateHasChanged();
-    }
-
-    private async void HideDropdown(SaleDetail detail)
-    {
-        // Small delay to allow click event to fire
-        await Task.Delay(200);
-        if (dropdownStates.ContainsKey(detail.Id))
-        {
-            dropdownStates[detail.Id] = false;
-            StateHasChanged();
-        }
-    }
-
-    private IEnumerable<ProductDto> GetFilteredProducts(SaleDetail currentDetail)
-    {
-        var searchText = GetSearchText(currentDetail);
-        var query = products.AsEnumerable();
-
-        if (!string.IsNullOrWhiteSpace(searchText))
-        {
-            query = query.Where(p =>
-                (p.ProductName?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true) ||
-                (p.Brand?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true) ||
-                (p.TyreSize?.Contains(searchText, StringComparison.OrdinalIgnoreCase) == true)
-            );
-        }
-
-        return query.OrderBy(p => p.ProductName);
-    }
-
     private void SelectProduct(SaleDetail detail, ProductDto product)
     {
         var previousProductId = detail.ProductId;
@@ -898,13 +633,12 @@
 
         if (wholeSalerPrices.Any() && isWholesalerMode)
         {
-            var wholeSalerPrice = wholeSalerPrices.FirstOrDefault(w => w.UnitId == product.Unit && w.SizeId == product.Size);
+            var wholeSalerPrice = wholeSalerPrices.FirstOrDefault(w => w.UnitId == product.Unit && w.ThreadId == product.ThreadId);
             if (wholeSalerPrice != null)
             {
                 detail.Quantity = 1;
                 detail.UnitPrice = wholeSalerPrice.Price;
                 detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-
             }
         }
         else if (previousProductId != product.Id)
@@ -917,20 +651,11 @@
                 quantityErrors.Remove(previousProductId);
         }
 
-        // Update search text to show selected product
         searchTexts[detail.Id] = $"{product.ProductName} {product.Brand} {product.TyreSize}";
         dropdownStates[detail.Id] = false;
 
         RecalculateTotals();
         StateHasChanged();
-    }
-
-    private void HandleKeyDown(KeyboardEventArgs e, SaleDetail detail, ProductDto product)
-    {
-        if (e.Key == "Enter" || e.Key == " ")
-        {
-            SelectProduct(detail, product);
-        }
     }
 
     private string GetProductName(Guid productId)
@@ -939,7 +664,6 @@
         return product != null ? $"{product.ProductName} - {product.Brand} - {product.TyreSize}" : "Unknown";
     }
 
-    // Existing methods
     private void OnDiscountChanged(decimal? newValue)
     {
         Sale.Discount = newValue ?? 0;
@@ -1002,7 +726,6 @@
             return;
 
         Sale.CustomerId = value;
-
         var customer = Customers.FirstOrDefault(c => c.Id == value);
 
         if (customer != null)
@@ -1014,8 +737,9 @@
                 ShowOldDiscountField = false;
             }
             else
-
+            {
                 ShowOldDiscountField = true;
+            }
         }
         RecalculateTotals();
     }
@@ -1026,7 +750,6 @@
             return;
 
         Sale.WholesalerId = value;
-        isWholeSaler = true;
         wholeSalerPrices = _context.WholeSalerPrices.Where(w => w.WholesalerId == Sale.WholesalerId).ToList();
 
         foreach (var detail in Sale.SaleDetails)
@@ -1039,7 +762,7 @@
                 continue;
 
             var wholesalerPrice = wholeSalerPrices.FirstOrDefault(w =>
-                w.SizeId == product.Size &&
+                w.ThreadId == product.ThreadId &&
                 w.UnitId == product.Unit
             );
 
@@ -1064,11 +787,8 @@
     private void OnBillToChanged(bool value)
     {
         isWholesalerMode = value;
-
-        // Always show old discount field initially
         ShowOldDiscountField = true;
 
-        // Clear customer / wholesaler
         if (value)
         {
             Sale.CustomerId = Guid.Empty;
@@ -1079,13 +799,10 @@
         {
             Sale.WholesalerId = Guid.Empty;
             wholeSalerPrices.Clear();
-            isWholeSaler = false;
         }
 
-        // 🔴 RESET SALE ITEMS COMPLETELY
+        // Reset sale items completely
         Sale.SaleDetails = new List<SaleDetail>();
-
-        // Reset helper states
         quantityErrors.Clear();
         dropdownStates.Clear();
         searchTexts.Clear();
@@ -1097,10 +814,8 @@
         Sale.TaxAmount = 0;
 
         isFormValid = true;
-
         StateHasChanged();
     }
-
 
     private void RecalculateTotals()
     {
@@ -1113,9 +828,9 @@
 
         var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
         Sale.TotalAmount = total > 0 ? total - (Sale.Discount ?? 0) : 0;
+
         if (!ShowOldDiscountField)
         {
-
             decimal discount = 0;
 
             // Rule 1 – Only CustomPrice
@@ -1141,7 +856,9 @@
                 Sale.NetAmount = 0;
         }
         else
+        {
             Sale.NetAmount = total > 0 ? total - (Sale.Discount ?? 0) + (Sale.TaxAmount ?? 0) : 0;
+        }
     }
 
     private bool isWholesalerMode
@@ -1153,11 +870,11 @@
 
             if (value)
             {
-                Sale.CustomerId = Guid.Empty;   // Clear customer
+                Sale.CustomerId = Guid.Empty;
             }
             else
             {
-                Sale.WholesalerId = Guid.Empty; // Clear wholesaler
+                Sale.WholesalerId = Guid.Empty;
             }
         }
     }
@@ -1168,8 +885,7 @@
     {
         NewCustomer = new Customer();
         showCustomerModal = true;
-        EnableCustomPricing = NewCustomer.Percentage.HasValue
-                              || NewCustomer.CustomPrice.HasValue;
+        EnableCustomPricing = NewCustomer.Percentage.HasValue || NewCustomer.CustomPrice.HasValue;
     }
 
     protected async Task SaveCustomer()
@@ -1189,7 +905,7 @@
         showCustomerModal = false;
     }
 
-    // WholeSaler popup methods
+    // Wholesaler popup methods
     protected void OpenAddWholesaler()
     {
         NewWholesaler = new Wholesaler();
@@ -1198,17 +914,12 @@
 
     protected async Task SaveWholesaler()
     {
-        // ensure Id is set (if your service expects auto-generated, Wholesaler constructor may set it)
         if (NewWholesaler.Id == Guid.Empty)
             NewWholesaler.Id = Guid.NewGuid();
 
         await WholesalerService.AddAsync(NewWholesaler);
-
-        // reload lists
         Wholesalers = await WholesalerService.GetAllAsync();
-        // pre-select the newly added wholesaler for this sale
         Sale.WholesalerId = NewWholesaler.Id;
-
         showWholesalerModal = false;
         StateHasChanged();
     }
@@ -1217,5 +928,4 @@
     {
         showWholesalerModal = false;
     }
-
 }

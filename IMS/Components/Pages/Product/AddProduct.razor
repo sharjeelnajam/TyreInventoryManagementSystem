@@ -52,15 +52,15 @@
         </div>
 
         <div class="col-md-6 mb-3">
-            <label class="form-label fw-semibold">Size</label>
-            <InputSelect @bind-Value="product.Size"
+            <label class="form-label fw-semibold">Thread</label>
+            <InputSelect @bind-Value="product.ThreadId"
             class="form-select form-select-lg shadow-sm">
                 <option value="@Guid.Empty" disabled selected>
-                    Select Size
+                    Select Thread
                 </option>
-                @foreach (var size in sizes)
+                @foreach (var Thread in Threads)
                 {
-                    <option value="@size.Id">@size.Name</option>
+                    <option value="@Thread.Id">@Thread.Name</option>
                 }
             </InputSelect>
         </div>
@@ -76,10 +76,11 @@
             <ValidationMessage For="@(() => CustomerModel.ListManagementId)" />
         </div> *@
 
-        <div class="col-md-6 mb-3">
+      @*   <div class="col-md-6 mb-3">
             <label class="form-label">Thread</label>
             <InputText class="form-control" @bind-Value="product.Thread" />
-        </div>
+        </div> *@
+
         <div class="col-md-6 mb-3">
             <label class="form-label">Min Threshold</label>
             <InputText class="form-control" @bind-Value="product.Min_Threshold" />
@@ -164,12 +165,12 @@
     private string? originalImagePath;
     private string? uploadStatus;
     private List<ListManagement> units = new List<ListManagement>();
-    private List<ListManagement> sizes = new List<ListManagement>();
+    private List<ListManagement> Threads = new List<ListManagement>();
 
     protected override async Task OnInitializedAsync()
     {
         units = await ListManagementService.GetByTypeAsync(ListType.Unit);
-        sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
+        Threads = await ListManagementService.GetByTypeAsync(ListType.Thread);
 
         if (Id.HasValue)
         {

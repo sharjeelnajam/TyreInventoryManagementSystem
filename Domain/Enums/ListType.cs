@@ -11,7 +11,7 @@ namespace Domain.Enums
         CustomerType = 1,
         Expense = 2,
         WholeSalerType = 3,
-        Size = 4,
+        Thread = 4,
         Unit = 5
     }
 }

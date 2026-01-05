@@ -67,12 +67,12 @@ namespace Infrastructure.Services
         {
             // 1️⃣ Prevent duplicates inside same request (PriceRows duplicates)
             var duplicateInRequest = prices
-                .GroupBy(x => new { x.WholesalerId, x.SizeId, x.UnitId })
+                .GroupBy(x => new { x.WholesalerId, x.ThreadId, x.UnitId })
                 .Any(g => g.Count() > 1);
 
             if (duplicateInRequest)
                 throw new InvalidOperationException(
-                    "Duplicate Size and Unit found in the selected prices."
+                    "Duplicate Thread and Unit found in the selected prices."
                 );
 
             // 2️⃣ Prevent duplicates against database
@@ -81,13 +81,13 @@ namespace Infrastructure.Services
             {
                 bool exists = await _context.WholeSalerPrices.AnyAsync(x =>
                     x.WholesalerId == price.WholesalerId &&
-                    x.SizeId == price.SizeId &&
+                    x.ThreadId == price.ThreadId &&
                     x.UnitId == price.UnitId
                 );
 
                 if (exists)
                     throw new InvalidOperationException(
-                        $"Price already exists Against this size and unit'."
+                        $"Price already exists Against this Thread and unit'."
                     );
             }
 

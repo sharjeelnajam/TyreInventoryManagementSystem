@@ -97,7 +97,7 @@
                     <table class="table table-bordered mt-3">
                         <thead>
                             <tr>
-                                <th>Size</th>
+                                <th>Thread</th>
                                 <th>Unit</th>
                                 <th class="text-end">Price (£)</th>
                             </tr>
@@ -106,7 +106,7 @@
                             @foreach (var p in Prices)
                             {
                                 <tr>
-                                    <td>@GetSizeName(p.SizeId)</td>
+                                    <td>@GetThreadName(p.ThreadId)</td>
                                     <td>@GetUnitName(p.UnitId)</td>
                                     <td class="text-end">
                                         @if (EditingPriceId == p.Id)
@@ -173,7 +173,7 @@
 
     private List<WholeSalerPrice>? Prices;
 
-    private Dictionary<Guid, string> sizeLookup = new();
+    private Dictionary<Guid, string> ThreadLookup = new();
     private Dictionary<Guid, string> unitLookup = new();
 
     private bool ShowPriceModal;
@@ -190,10 +190,10 @@
 
             Prices = await WholeSalerPriceService.GetByWholesalerIdAsync(Id);
 
-            var sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
+            var Threads = await ListManagementService.GetByTypeAsync(ListType.Thread);
             var units = await ListManagementService.GetByTypeAsync(ListType.Unit);
 
-            sizeLookup = sizes.ToDictionary(x => x.Id, x => x.Name);
+            ThreadLookup = Threads.ToDictionary(x => x.Id, x => x.Name);
             unitLookup = units.ToDictionary(x => x.Id, x => x.Name);
         }
     }
@@ -236,8 +236,8 @@
         StateHasChanged();
     }
 
-    string GetSizeName(Guid id)
-        => sizeLookup.TryGetValue(id, out var name) ? name : "N/A";
+    string GetThreadName(Guid id)
+        => ThreadLookup.TryGetValue(id, out var name) ? name : "N/A";
 
     string GetUnitName(Guid id)
         => unitLookup.TryGetValue(id, out var name) ? name : "N/A";

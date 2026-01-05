@@ -28,10 +28,10 @@
     </div>
 
     <div class="row mb-3 g-2">
-        <div class="col-md-3">
+        <div class="col-md-2">
 
             <InputText class="form-control"
-            placeholder="Search by Name,Type,Thread"
+            placeholder="Search by Name,Type"
             @bind-Value="search_By_Name_Type_Thread"
             @oninput="@(e => OnSearchInput(e))" />
         </div>
@@ -64,8 +64,8 @@
                         <th>SalePrice</th>
                         <th>Type</th>
                         <th>Unit</th>
-                        <th>Size</th>
                         <th>Thread</th>
+                       @*  <th>Thread</th> *@
                         <th>Brand</th>
                         <th>Threshold</th>
                       
@@ -106,8 +106,8 @@
                             <td>@item.SellingPrice</td>
                             <td>@item.Type</td>
                             <td>@GetUnitName(item.Unit)</td>
-                            <td>@GetSizeName(item.Size)</td>
-                            <td>@item.Thread</td>
+                            <td>@GetThreadName(item.ThreadId)</td>
+                           @*  <td>@item.Thread</td> *@
                             <td>@item.Brand</td>
                             <td>@item.Min_Threshold</td>
                             <td>
@@ -231,8 +231,8 @@
     private List<ListManagement>? units;
     private Dictionary<Guid, string> unitsLookup = new();
 
-    private List<ListManagement>? sizes;
-    private Dictionary<Guid, string> sizesLookup = new();
+    private List<ListManagement>? Threads;
+    private Dictionary<Guid, string> ThreadsLookup = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -251,9 +251,9 @@
             filteredProducts = products;
 
            units = await ListManagementService.GetByTypeAsync(ListType.Unit);
-           sizes = await ListManagementService.GetByTypeAsync(ListType.Size);
+           Threads = await ListManagementService.GetByTypeAsync(ListType.Thread);
             unitsLookup = units.ToDictionary(c => c.Id, c => c.Name);
-            sizesLookup = sizes.ToDictionary(c => c.Id, c => c.Name);
+            ThreadsLookup = Threads.ToDictionary(c => c.Id, c => c.Name);
         }
        
     }
@@ -263,9 +263,9 @@
         return unitsLookup.TryGetValue(unitId, out var name) ? name : "N/A";
     } 
     
-    private string GetSizeName(Guid sizeId)
+    private string GetThreadName(Guid ThreadId)
     {
-        return sizesLookup.TryGetValue(sizeId, out var name) ? name : "N/A";
+        return ThreadsLookup.TryGetValue(ThreadId, out var name) ? name : "N/A";
     }
 
     // Improved image validation
@@ -362,8 +362,8 @@
                 (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread) ||
                  p.Type.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase)) ||
 
-                (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread) ||
-                 p.Thread.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase))
+                 (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread))
+                //  p.Thread.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase))
             )
             .ToList();
 

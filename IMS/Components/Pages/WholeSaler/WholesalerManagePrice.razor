@@ -32,11 +32,11 @@
 
                 <div class="d-flex gap-3  mb-4">
 
-                    <!-- Size -->
+                    <!-- Thread -->
                     <div class="d-flex flex-column">
-                        <label class="fw-bold mb-1">Select Sizes</label>
-                        <select id="sizeSelect" class="form-select" multiple>
-                            @foreach (var s in Sizes)
+                        <label class="fw-bold mb-1">Select Threads</label>
+                        <select id="ThreadSelect" class="form-select" multiple>
+                            @foreach (var s in Threads)
                             {
                                 <option value="@s.Id">@s.Name</option>
                             }
@@ -62,7 +62,7 @@
                     <table class="table table-bordered w-auto">
                         <thead>
                             <tr>
-                                <th style="width:150px">Size</th>
+                                <th style="width:150px">Thread</th>
                                 <th style="width:150px">Unit</th>
                                 <th style="width:150px">Price</th>
                             </tr>
@@ -71,7 +71,7 @@
                             @foreach (var row in PriceRows)
                             {
                                 <tr>
-                                    <td>@row.SizeName</td>
+                                    <td>@row.ThreadName</td>
                                     <td>@row.UnitName</td>
                                     <td>
                                         <input type="number"
@@ -101,10 +101,10 @@
     [Parameter] public Guid WholesalerId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
-    List<ListManagement> Sizes = new();
+    List<ListManagement> Threads = new();
     List<ListManagement> Units = new();
 
-    HashSet<Guid> SelectedSizes = new();
+    HashSet<Guid> SelectedThreads = new();
     HashSet<Guid> SelectedUnits = new();
     List<PriceRowVm> PriceRows = new();
     string? ErrorMessage;
@@ -115,15 +115,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Sizes = await ListService.GetByTypeAsync(ListType.Size);
+        Threads = await ListService.GetByTypeAsync(ListType.Thread);
         Units = await ListService.GetByTypeAsync(ListType.Unit);
 
         // ExistingPrices = await PriceService
         // .GetByWholesalerIdAsync(WholesalerId);
 
         
-        // SelectedSizes = ExistingPrices
-        //     .Select(x => x.SizeId)
+        // SelectedThreads = ExistingPrices
+        //     .Select(x => x.ThreadId)
         //     .Distinct()
         //     .ToHashSet();
 
@@ -143,7 +143,7 @@
 
             await Task.Delay(50);
             await JS.InvokeVoidAsync("initMultiSelect",
-                "sizeSelect", objRef, nameof(OnSizeSelected));
+                "ThreadSelect", objRef, nameof(OnThreadSelected));
 
             await JS.InvokeVoidAsync("initMultiSelect",
                 "unitSelect", objRef, nameof(OnUnitSelected));
@@ -152,9 +152,9 @@
     }
 
     [JSInvokable]
-    public void OnSizeSelected(string[] values)
+    public void OnThreadSelected(string[] values)
     {
-        SelectedSizes = values.Select(Guid.Parse).ToHashSet();
+        SelectedThreads = values.Select(Guid.Parse).ToHashSet();
 
         BuildRows();
     }
@@ -172,13 +172,13 @@
     void BuildRows()
     {
         PriceRows = (
-            from s in SelectedSizes
+            from s in SelectedThreads
             from u in SelectedUnits
             select new PriceRowVm
                 {
-                    SizeId = s,
+                    ThreadId = s,
                     UnitId = u,
-                    SizeName = Sizes.First(x => x.Id == s).Name,
+                    ThreadName = Threads.First(x => x.Id == s).Name,
                     UnitName = Units.First(x => x.Id == u).Name,
                     Price = 0
                 }
@@ -200,7 +200,7 @@
             var newPrices = PriceRows.Select(x => new WholeSalerPrice
                 {
                     WholesalerId = WholesalerId,
-                    SizeId = x.SizeId,
+                    ThreadId = x.ThreadId,
                     UnitId = x.UnitId,
                     Price = x.Price
                 }).ToList();
@@ -240,9 +240,9 @@
 
     class PriceRowVm
     {
-        public Guid SizeId { get; set; }
+        public Guid ThreadId { get; set; }
         public Guid UnitId { get; set; }
-        public string SizeName { get; set; }
+        public string ThreadName { get; set; }
         public string UnitName { get; set; }
         public decimal Price { get; set; }
     }

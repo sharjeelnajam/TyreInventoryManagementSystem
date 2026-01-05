@@ -39,8 +39,6 @@ namespace Domain.DTO
 
         public string Type { get; set; }
 
-        public string Thread { get; set; }
-
         [Precision(18, 2)]
         public decimal AverageCostPrice { get; set; }
 
@@ -51,7 +49,7 @@ namespace Domain.DTO
         //basically ListManagementId
         public Guid Unit { get; set; }
         //basically ListManagementId
-        public Guid Size { get; set; }
+        public Guid ThreadId { get; set; }
 
         public ICollection<PurchaseDetail> PurchaseDetails { get; set; }
     }
