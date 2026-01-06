@@ -248,10 +248,10 @@
                                     </table>
 
                                     <!-- Add Item Button -->
-                                    <button type="button" class="btn btn-secondary mt-2" @onclick="AddItem"
+                                 @*    <button type="button" class="btn btn-secondary mt-2" @onclick="AddItem"
                                             disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
                                         + Add Item
-                                    </button>
+                                    </button> *@
 
                                     <!-- DISCOUNT AND TAX SECTION -->
                                     @if (CustomerCustomPrice.HasValue || CustomerPercentage.HasValue || ShowOldDiscountField)

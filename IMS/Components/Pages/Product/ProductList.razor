@@ -65,7 +65,6 @@
                         <th>Type</th>
                         <th>Unit</th>
                         <th>Thread</th>
-                       @*  <th>Thread</th> *@
                         <th>Brand</th>
                         <th>Threshold</th>
                       
@@ -107,7 +106,6 @@
                             <td>@item.Type</td>
                             <td>@GetUnitName(item.Unit)</td>
                             <td>@GetThreadName(item.ThreadId)</td>
-                           @*  <td>@item.Thread</td> *@
                             <td>@item.Brand</td>
                             <td>@item.Min_Threshold</td>
                             <td>
@@ -115,7 +113,7 @@
                                    title="View"
                                    @onclick="() => ViewProduct(item.Id)"></i>
 
-                                @if (!isSuperAdmin)
+                                @if (!isSuperAdmin && !isStaff && !isSupplier)
                                 {
                                     <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
                                        title="Edit"
@@ -125,7 +123,7 @@
                                        title="Delete"
                                        @onclick="() => DeleteProduct(item.Id)"></i>
                                 }
-                                else
+                                else if (isSuperAdmin)
                                 {
                                     <button class="btn btn-sm btn-success" @onclick="() => OpenPricePopup(item)">
                                         Manage Selling Price
@@ -227,6 +225,8 @@
     private ProductDto selectedProduct = new();
     private decimal leastSellingPrice;
     private bool isSuperAdmin = false;
+    private bool isStaff = false;
+    private bool isSupplier = false;
 
     private List<ListManagement>? units;
     private Dictionary<Guid, string> unitsLookup = new();
@@ -240,6 +240,9 @@
         var user = authState.User;
 
         isSuperAdmin = user.IsInRole("SuperAdmin");
+        isStaff = user.IsInRole("Staff");
+        isSupplier = user.IsInRole("Supplier");
+
         if (isSuperAdmin)
         {
             products = await ProductService.GetAllBranchesProducts();

@@ -4,6 +4,7 @@
 @inject ISaleService SaleService
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Sales</PageTitle>
 
@@ -41,21 +42,23 @@
                     <td>@sale.PaymentMethod</td>
                     <td>@sale.SaleDate.ToShortDateString()</td>
                     <td>
-
-                        <span role="button" title="Edit" class="text-warning me-2"
-                              @onclick="() => EditSale(sale.Id)">
-                            <i class="bi bi-pencil-square fs-5"></i>
-                        </span>
+                        @if (!isStaff)
+                        {
+                            <span role="button" title="Edit" class="text-warning me-2"
+                                  @onclick="() => EditSale(sale.Id)">
+                                <i class="bi bi-pencil-square fs-5"></i>
+                            </span>
+                        }
                         <span role="button" title="Download Receipt" class="text-success me-2"
-                              @onclick="() => DownloadReceipt(sale.Id)">
+                        @onclick="() => DownloadReceipt(sale.Id)">
                             <i class="bi bi-download fs-5"></i>
                         </span>
 
                         <i class="bi bi-eye text-success fs-5 ms-2 cursor-pointer"
-                           title="Preview Receipt"
-                           @onclick="() => PreviewFile(sale.Id)"></i>
-                        
-                    @*     <span role="button" title="Delete" class="text-danger"
+                        title="Preview Receipt"
+                        @onclick="() => PreviewFile(sale.Id)"></i>
+
+                        @*     <span role="button" title="Delete" class="text-danger"
                               @onclick="() => DeleteSale(sale.Id)">
                             <i class="bi bi-trash fs-5"></i>
                         </span> *@
@@ -69,17 +72,22 @@
 <!-- Modal Component -->
 
 <PosSalePage Id="selectedSaleId"
-         IsVisible="isModalOpen"
-         OnClose="CloseModal"
-         OnSaved="ReloadSales" />
+IsVisible="isModalOpen"
+OnClose="CloseModal"
+OnSaved="ReloadSales" />
 
 @code {
     private List<Sale> sales = new();
     private Guid selectedSaleId = Guid.Empty;
     private bool isModalOpen = false;
+    private bool isStaff = false;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isStaff = user.IsInRole("Staff");
+
         sales = await SaleService.GetAllAsync();
     }
 
@@ -106,16 +114,17 @@
         isModalOpen = true;
     }
 
-    private void CloseModal()
+    private async Task CloseModal()
     {
         isModalOpen = false;
-        _ = ReloadSales();
+        await Task.Delay(500); // Give time for the save to complete
+        await ReloadSales();
     }
 
     private async Task ReloadSales()
     {
-        isModalOpen = false;
         sales = await SaleService.GetAllAsync();
+        StateHasChanged();
     }
 
     private async Task DownloadReceipt(Guid saleId)

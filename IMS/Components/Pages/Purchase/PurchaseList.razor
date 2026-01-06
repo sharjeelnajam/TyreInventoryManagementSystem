@@ -4,6 +4,7 @@
 @inject IPurchaseService PurchaseService
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h3>Purchases</h3>
 
@@ -20,7 +21,10 @@
             <th>Total</th>
             <th>Net Amount</th>
             <th>Status</th>
-            <th>Actions</th>
+            @if (!isStaff)
+            {
+                <th>Actions</th>
+            }
         </tr>
     </thead>
     <tbody>
@@ -36,14 +40,18 @@
                     <td>@purchase.NetAmount</td>
                     <td>@purchase.PaymentStatus</td>
                     <td>
-                        <span role="button" title="Edit" class="text-warning me-2"
-                              @onclick="() => EditPurchase(purchase.Id)">
-                            <i class="bi bi-pencil-square fs-5"></i>
-                        </span>
-                        <span role="button" title="Delete" class="text-danger"
-                              @onclick="() => DeletePurchase(purchase.Id)">
-                            <i class="bi bi-trash fs-5"></i>
-                        </span>
+                        @if (!isStaff)
+                        {
+                            <span role="button" title="Edit" class="text-warning me-2"
+                                  @onclick="() => EditPurchase(purchase.Id)">
+                                <i class="bi bi-pencil-square fs-5"></i>
+                            </span>
+                            <span role="button" title="Delete" class="text-danger"
+                                  @onclick="() => DeletePurchase(purchase.Id)">
+                                <i class="bi bi-trash fs-5"></i>
+                            </span>
+                        }
+                      
                     </td>
                 </tr>
             }
@@ -68,9 +76,14 @@
     private List<Purchase> purchases;
     private bool showForm = false;
     private Guid? selectedPurchaseId;
+    private bool isStaff = false;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isStaff = user.IsInRole("Staff");
+
         purchases = await PurchaseService.GetAllPurchasesAsync();
     }
 

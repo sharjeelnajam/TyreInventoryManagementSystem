@@ -8,6 +8,7 @@
 @inject ICustomerService CustomerService
 @inject IListManagementService ListManagementService
 @inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h3>Customers</h3>
 
@@ -50,7 +51,7 @@
         <tr>
             <th>Name</th>
             <th>Phone</th>
-           @*  <th>Email</th> *@
+            @*  <th>Email</th> *@
             <th>Registerd At</th>
             <th>City</th>
             <th>Type</th>
@@ -72,7 +73,7 @@
                 <tr>
                     <td>@c.Name</td>
                     <td>@c.Phone</td>
-                @*     <td>@c.Email</td> *@
+                    @*     <td>@c.Email</td> *@
                     <td>@c.CreatedAt.ToShortDateString()</td>
                     <td>@c.City</td>
                     <td>@GetCustomerTypeName(c.ListManagementId)</td>
@@ -82,21 +83,25 @@
                     <td>
                         <!-- View -->
                         <span role="button" title="View" class="text-info me-2"
-                              @onclick="() => ViewCustomer(c.Id)">
+                        @onclick="() => ViewCustomer(c.Id)">
                             <i class="bi bi-eye fs-5"></i>
                         </span>
+                        @if (!isStaff)
+                        {
+                            <!-- Edit -->
+                            <span role="button" title="Edit" class="text-warning me-2"
+                                  @onclick="() => OpenModal(c)">
+                                <i class="bi bi-pencil-square fs-5"></i>
+                            </span>
 
-                        <!-- Edit -->
-                        <span role="button" title="Edit" class="text-warning me-2"
-                              @onclick="() => OpenModal(c)">
-                            <i class="bi bi-pencil-square fs-5"></i>
-                        </span>
-
-                        <!-- Delete -->
-                        <span role="button" title="Delete" class="text-danger"
-                              @onclick="() => DeleteCustomer(c.Id)">
-                            <i class="bi bi-trash fs-5"></i>
-                        </span>
+                            <!-- Delete -->
+                            <span role="button" title="Delete" class="text-danger"
+                                  @onclick="() => DeleteCustomer(c.Id)">
+                                <i class="bi bi-trash fs-5"></i>
+                            </span>
+                        }
+                     
+                       
                     </td>
 
                 </tr>
@@ -128,9 +133,14 @@
     private List<ListManagement>? customerTypes;
     private Dictionary<Guid, string> customerTypesLookup = new();
     private List<ListManagement> listManagementsList = new List<ListManagement>();
+    private bool isStaff = false;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isStaff = user.IsInRole("Staff");
+
         await LoadCustomers();
      
     }

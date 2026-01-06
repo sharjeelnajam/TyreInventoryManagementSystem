@@ -5,7 +5,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
-
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Suppliers</PageTitle>
 
@@ -43,7 +43,10 @@
                         <th>Company</th>
                         <th>Payment Terms</th>
                         <th>Active</th>
-                        <th style="width:150px;">Actions</th>
+                        @if (!isStaff)
+                        {
+                            <th style="width:150px;">Actions</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
@@ -66,12 +69,16 @@
                                     <span class="badge bg-secondary">No</span>
                                 }
                             </td>
-                            <td>
-                                <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
-                                   title="Edit" @onclick="() => EditSupplier(item.Id)"></i>
-                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
-                                   title="Delete" @onclick="() => DeleteSupplier(item.Id)"></i>
-                            </td>
+                            @if (!isStaff)
+                            {
+                                <td>
+                                    <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
+                                       title="Edit" @onclick="() => EditSupplier(item.Id)"></i>
+                                    <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                       title="Delete" @onclick="() => DeleteSupplier(item.Id)"></i>
+                                </td>
+                            }
+                           
                         </tr>
                     }
                 </tbody>
@@ -83,9 +90,9 @@
 @if (isModalVisible)
 {
     <AddSupplier Supplier="supplier"
-                  ModalTitle="@modalTitle"
-                  OnSaved="ReloadSuppliers"
-                  OnCancel="CloseModal" />
+    ModalTitle="@modalTitle"
+    OnSaved="ReloadSuppliers"
+    OnCancel="CloseModal" />
 }
 
 @code {
@@ -93,9 +100,14 @@
     private bool isModalVisible = false;
     private string modalTitle = "Add Supplier";
     private Supplier supplier = new();
+    private bool isStaff = false;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isStaff = user.IsInRole("Staff");
+
         await LoadSuppliers();
     }
 

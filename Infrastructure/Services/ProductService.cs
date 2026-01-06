@@ -379,6 +379,7 @@ namespace Infrastructure.Services
             {
                 Product product = new()
                 {
+                    Id = Guid.NewGuid(),
                     ProductName = productDto.ProductName,
                     Description = productDto.Description,
                     Brand = productDto.Brand,
@@ -388,10 +389,10 @@ namespace Infrastructure.Services
                     Type = productDto.Type,
                     //Thread = productDto.Thread,
                     AverageCostPrice = productDto.AverageCostPrice,
-                    Barcode = productDto.Barcode,
                     ImagePath = productDto.ImagePath,
                     Unit = productDto.Unit,
-                    ThreadId = productDto.ThreadId
+                    ThreadId = productDto.ThreadId,
+                    Barcode = Generate()
                 };
                 return product;
             }
@@ -439,6 +440,12 @@ namespace Infrastructure.Services
                 .FirstOrDefaultAsync();
 
             return productDto;
+        }
+
+        public  string Generate()
+        {
+            var barcode = $"PRD-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(1000, 9999)}";
+            return barcode;
         }
     }
 }
