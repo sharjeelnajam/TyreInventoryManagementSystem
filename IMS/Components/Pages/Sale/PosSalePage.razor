@@ -1,4 +1,7 @@
-﻿@using Domain
+﻿@page "/sales/add"
+@page "/sales/edit/{Id:guid}"
+
+@using Domain
 @using Domain.DTO
 @using Domain.Enums
 @using Infrastructure.Services
@@ -9,351 +12,347 @@
 @inject IListManagementService ListManagementService
 @inject ApplicationDbContext _context
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
 @rendermode InteractiveServer
 
-@if (IsVisible)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color:rgba(0,0,0,0.5)">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@((Id == Guid.Empty ? "Add Sale" : "Edit Sale"))</h5>
-                    <button type="button" class="btn-close" @onclick="Close"></button>
-                </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold">
+        @(Id == Guid.Empty ? "POS" : "Edit POS")
+    </h3>
+    
+</div>
 
-                <div class="modal-body p-0">
-                    <EditForm Model="@Sale" OnValidSubmit="HandleValidSubmit">
-                        <DataAnnotationsValidator />
-                        <ValidationSummary />
 
-                        <div class="row g-0" style="min-height:70vh">
+<div class="container-fluid mt-4">
+    <EditForm Model="@Sale" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
 
-                            <!-- LEFT PANEL : PRODUCTS -->
-                            <div class="col-md-7 border-end">
-                                <div class="p-3">
+        <div class="row g-0" style="min-height:70vh">
 
-                                    <h5 class="fw-bold mb-3">Products</h5>
+            <!-- LEFT PANEL : PRODUCTS -->
+            <div class="col-md-7 border-end">
+                <div class="p-3">
 
-                                    <div class="col-md-3">
-                                        <input class="form-control mb-3"
-                                               placeholder="Search product..."
-                                               @oninput="e => searchText = e.Value?.ToString()" />
+                    <h5 class="fw-bold mb-3">Products</h5>
+
+                    <div class="col-md-3">
+                        <input class="form-control mb-3"
+                               placeholder="Search product..."
+                               @oninput="e => searchText = e.Value?.ToString()" />
+                    </div>
+
+                    <div class="row g-1" style="max-height:50vh; overflow-y:auto">
+                        @foreach (var product in products
+                        .Where(p =>
+                        string.IsNullOrEmpty(searchText) ||
+                        p.ProductName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                        p.Brand.Contains(searchText, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            <div class="col-md-3 p-1">
+                                <div class="product-card"
+                                     @onclick="() => AddItemFromGrid(product)">
+
+                                    <!-- IMAGE -->
+                                    <div class="product-image">
+                                        <img src="@(!string.IsNullOrEmpty(product.ImagePath) ? product.ImagePath : "/images/no-image.png")"
+                                             alt="@product.ProductName" />
                                     </div>
 
-                                    <div class="row g-1" style="max-height:50vh; overflow-y:auto">
-                                        @foreach (var product in products
-                                       .Where(p =>
-                                       string.IsNullOrEmpty(searchText) ||
-                                       p.ProductName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                                       p.Brand.Contains(searchText, StringComparison.OrdinalIgnoreCase)))
-                                        {
-                                            <div class="col-md-3 p-1">
-                                                <div class="product-card"
-                                                     @onclick="() => AddItemFromGrid(product)">
+                                    <!-- DETAILS -->
+                                    <div class="product-details">
+                                        <div class="product-name">
+                                            @product.ProductName
+                                        </div>
 
-                                                    <!-- IMAGE -->
-                                                    <div class="product-image">
-                                                        <img src="@(!string.IsNullOrEmpty(product.ImagePath) ? product.ImagePath : "/images/no-image.png")"
-                                                             alt="@product.ProductName" />
-                                                    </div>
+                                        <div class="product-meta">
+                                            @product.Brand • @product.TyreSize
+                                        </div>
 
-                                                    <!-- DETAILS -->
-                                                    <div class="product-details">
-                                                        <div class="product-name">
-                                                            @product.ProductName
-                                                        </div>
-
-                                                        <div class="product-meta">
-                                                            @product.Brand • @product.TyreSize
-                                                        </div>
-
-                                                        <div class="product-price">
-                                                            Rs @product.SellingPrice
-                                                        </div>
-                                                    </div>
-
-                                                </div>
-                                            </div>
-
-                                        }
+                                        <div class="product-price">
+                                            Rs @product.SellingPrice
+                                        </div>
                                     </div>
 
                                 </div>
                             </div>
 
-                            <!-- RIGHT PANEL : SALE -->
-                            <div class="col-md-5">
-                                <div class="p-3">
+                        }
+                    </div>
 
-                                    <!-- SALE META INFO -->
-                                    <div class="row g-2">
+                </div>
+            </div>
 
-                                        <div class="col-md-6">
-                                            <label class="form-label">Sale No</label>
-                                            <InputText class="form-control"
-                                                       @bind-Value="Sale.SaleNumber"
-                                                       readonly />
-                                        </div>
+            <!-- RIGHT PANEL : SALE -->
+            <div class="col-md-5">
+                <div class="p-3">
 
-                                        <div class="col-md-6">
-                                            <label class="form-label">Date</label>
-                                            <InputDate class="form-control"
-                                                       @bind-Value="Sale.SaleDate" />
-                                        </div>
+                    <!-- SALE META INFO -->
+                    <div class="row g-2">
 
-                                        <div class="col-md-6">
-                                            <label>Payment Method</label>
-                                            <InputSelect class="form-control" @bind-Value="Sale.PaymentMethod">
-                                                <option value="">-- Select Method --</option>
-                                                <option value="Cash">Cash</option>
-                                                <option value="Card">Card</option>
-                                                <option value="BankTransfer">Bank Transfer</option>
-                                            </InputSelect>
-                                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sale No</label>
+                            <InputText class="form-control"
+                                       @bind-Value="Sale.SaleNumber"
+                                       readonly />
+                        </div>
 
-                                        <div class="col-md-6">
-                                            <label>Payment Status</label>
-                                            <InputSelect @bind-Value="Sale.PaymentStatus" class="form-control">
-                                                <option value="">-- Select Payment Status --</option>
-                                                <option value="Paid">Paid</option>
-                                                <option value="Unpaid">Unpaid</option>
-                                                <option value="Partial">Partial</option>
-                                            </InputSelect>
-                                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Date</label>
+                            <InputDate class="form-control"
+                                       @bind-Value="Sale.SaleDate" />
+                        </div>
 
-                                        <!-- BILL TO SWITCH -->
-                                        <div class="col-md-12 mt-2">
-                                            <div class="form-check form-switch">
-                                                <InputCheckbox class="form-check-input"
-                                                               @bind-Value="isWholesalerMode"
-                                                               @onchange="e => OnBillToChanged(isWholesalerMode)" />
-                                                <label class="form-check-label fw-semibold ms-2">
-                                                    Bill To Wholesaler
-                                                </label>
-                                            </div>
-                                        </div>
+                        <div class="col-md-6">
+                            <label>Payment Method</label>
+                            <InputSelect class="form-control" @bind-Value="Sale.PaymentMethod">
+                                <option value="">-- Select Method --</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Card">Card</option>
+                                <option value="BankTransfer">Bank Transfer</option>
+                            </InputSelect>
+                        </div>
 
-                                        <!-- CUSTOMER -->
-                                        @if (!isWholesalerMode)
-                                        {
-                                            <div class="col-md-10">
-                                                <label class="form-label">Customer</label>
-                                                <InputSelect class="form-control"
-                                                             TValue="Guid?"
-                                                             Value="Sale.CustomerId"
-                                                             ValueChanged="OnCustomerChanged"
-                                                             ValueExpression="@(() => Sale.CustomerId)">
-                                                    <option value="">-- Select Customer --</option>
+                        <div class="col-md-6">
+                            <label>Payment Status</label>
+                            <InputSelect @bind-Value="Sale.PaymentStatus" class="form-control">
+                                <option value="">-- Select Payment Status --</option>
+                                <option value="Paid">Paid</option>
+                                <option value="Unpaid">Unpaid</option>
+                                <option value="Partial">Partial</option>
+                            </InputSelect>
+                        </div>
 
-                                                    @foreach (var customer in Customers)
-                                                    {
-                                                        <option value="@customer.Id">@customer.Name</option>
-                                                    }
-                                                </InputSelect>
-                                            </div>
-                                            <div class="col-md-2 d-flex align-items-end">
-                                                <button type="button"
-                                                        class="btn btn-outline-primary w-100"
-                                                        @onclick="OpenAddCustomer">
-                                                    +
-                                                </button>
-                                            </div>
-                                        }
+                        <!-- BILL TO SWITCH -->
+                        <div class="col-md-12 mt-2">
+                            <div class="form-check form-switch">
+                                <InputCheckbox class="form-check-input"
+                                               @bind-Value="isWholesalerMode"
+                                               @onchange="e => OnBillToChanged(isWholesalerMode)" />
+                                <label class="form-check-label fw-semibold ms-2">
+                                    Bill To Wholesaler
+                                </label>
+                            </div>
+                        </div>
 
-                                        <!-- WHOLESALER -->
-                                        @if (isWholesalerMode)
-                                        {
-                                            <div class="col-md-10">
-                                                <label class="form-label">Wholesaler</label>
-                                                <InputSelect class="form-control"
-                                                             TValue="Guid?"
-                                                             Value="Sale.WholesalerId"
-                                                             ValueChanged="OnWholeSalerChanged"
-                                                             ValueExpression="@(() => Sale.WholesalerId)">
-                                                    <option value="">-- Select Customer --</option>
+                        <!-- CUSTOMER -->
+                        @if (!isWholesalerMode)
+                        {
+                            <div class="col-md-6">
+                                <label class="form-label">Customer</label>
+                                <InputSelect class="form-control"
+                                             TValue="Guid?"
+                                             Value="Sale.CustomerId"
+                                             ValueChanged="OnCustomerChanged"
+                                             ValueExpression="@(() => Sale.CustomerId)">
+                                    <option value="">-- Select Customer --</option>
 
-                                                    @foreach (var w in Wholesalers)
-                                                    {
-                                                        <option value="@w.Id">@w.Name</option>
-                                                    }
-                                                </InputSelect>
-                                            </div>
-                                            <div class="col-md-2 d-flex align-items-end">
-                                                <button type="button"
-                                                        class="btn btn-outline-primary w-100"
-                                                        @onclick="OpenAddWholesaler">
-                                                    +
-                                                </button>
-                                            </div>
-                                        }
+                                    @foreach (var customer in Customers)
+                                    {
+                                        <option value="@customer.Id">@customer.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="button"
+                                        class="btn btn-outline-primary w-100"
+                                        @onclick="OpenAddCustomer">
+                                    +
+                                </button>
+                            </div>
+                        }
 
-                                    </div>
+                        <!-- WHOLESALER -->
+                        @if (isWholesalerMode)
+                        {
+                            <div class="col-md-6">
+                                <label class="form-label">Wholesaler</label>
+                                <InputSelect class="form-control"
+                                             TValue="Guid?"
+                                             Value="Sale.WholesalerId"
+                                             ValueChanged="OnWholeSalerChanged"
+                                             ValueExpression="@(() => Sale.WholesalerId)">
+                                    <option value="">-- Select Wholesaler --</option>
 
-                                    <hr />
+                                    @foreach (var w in Wholesalers)
+                                    {
+                                        <option value="@w.Id">@w.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="button"
+                                        class="btn btn-outline-primary w-100"
+                                        @onclick="OpenAddWholesaler">
+                                    +
+                                </button>
+                            </div>
+                        }
 
-                                    <!-- SELECTED ITEMS -->
-                                    <h6 class="fw-bold">Sale Items</h6>
+                    </div>
 
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th>Product</th>
-                                                <th>Qty</th>
-                                                <th>Price</th>
-                                                <th>Total</th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @if (Sale.SaleDetails != null && Sale.SaleDetails.Any())
+                    <hr />
+
+                    <!-- SELECTED ITEMS -->
+                    <h6 class="fw-bold">Sale Items</h6>
+
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Sale.SaleDetails != null && Sale.SaleDetails.Any())
+                            {
+                                @foreach (var detail in Sale.SaleDetails)
+                                {
+                                    <tr>
+                                        <td>@GetProductName(detail.ProductId)</td>
+                                        <td>
+                                            <InputNumber TValue="int"
+                                                         Value="detail.Quantity"
+                                                         ValueChanged="@(v => OnQuantityChanged(detail, v))"
+                                                         ValueExpression="@(() => detail.Quantity)"
+                                                         class="form-control" />
+
+                                            @if (quantityErrors.ContainsKey(detail.ProductId))
                                             {
-                                                @foreach (var detail in Sale.SaleDetails)
-                                                {
-                                                    <tr>
-                                                        <td>@GetProductName(detail.ProductId)</td>
-                                                        <td>
-                                                            <InputNumber TValue="int"
-                                                                         Value="detail.Quantity"
-                                                                         ValueChanged="@(v => OnQuantityChanged(detail, v))"
-                                                                         ValueExpression="@(() => detail.Quantity)"
-                                                                         class="form-control" />
-
-                                                            @if (quantityErrors.ContainsKey(detail.ProductId))
-                                                            {
-                                                                <div class="text-danger small mt-1">
-                                                                    @quantityErrors[detail.ProductId]
-                                                                </div>
-                                                            }
-                                                        </td>
-                                                        <td>
-                                                            <InputNumber TValue="decimal"
-                                                                         Value="detail.UnitPrice"
-                                                                         ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
-                                                                         ValueExpression="@(() => detail.UnitPrice)"
-                                                                         class="form-control" />
-                                                        </td>
-                                                        <td class="fw-semibold">
-                                                            @((detail.Quantity * detail.UnitPrice).ToString("N2"))
-                                                        </td>
-                                                        <td>
-                                                            <button class="btn btn-sm btn-danger"
-                                                                    @onclick="() => RemoveItem(detail)">
-                                                                ×
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                }
+                                                <div class="text-danger small mt-1">
+                                                    @quantityErrors[detail.ProductId]
+                                                </div>
                                             }
-                                        </tbody>
-                                    </table>
+                                        </td>
+                                        <td>
+                                            <InputNumber TValue="decimal"
+                                                         Value="detail.UnitPrice"
+                                                         ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
+                                                         ValueExpression="@(() => detail.UnitPrice)"
+                                                         class="form-control" />
+                                        </td>
+                                        <td class="fw-semibold">
+                                            @((detail.Quantity * detail.UnitPrice).ToString("N2"))
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger"
+                                                    @onclick="() => RemoveItem(detail)">
+                                                ×
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
 
-                                    <!-- Add Item Button -->
-                                 @*    <button type="button" class="btn btn-secondary mt-2" @onclick="AddItem"
+                    <!-- Add Item Button -->
+                    @*    <button type="button" class="btn btn-secondary mt-2" @onclick="AddItem"
                                             disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
                                         + Add Item
                                     </button> *@
 
-                                    <!-- DISCOUNT AND TAX SECTION -->
-                                    @if (CustomerCustomPrice.HasValue || CustomerPercentage.HasValue || ShowOldDiscountField)
-                                    {
-                                        <div class="row mt-4 border-top pt-3">
-                                            <div class="col-md-12">
-                                                <div class="card border-0 shadow-sm">
-                                                    <div class="card-body">
-                                                        <div class="row g-3 align-items-center">
+                    <!-- DISCOUNT AND TAX SECTION -->
+                    @if (CustomerCustomPrice.HasValue || CustomerPercentage.HasValue || ShowOldDiscountField)
+                    {
+                        <div class="row mt-4 border-top pt-3">
+                            <div class="col-md-12">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <div class="row g-3 align-items-center">
 
-                                                            @if (ShowOldDiscountField)
-                                                            {
-                                                                <div class="col-md-4">
-                                                                    <label>Discount</label>
-                                                                    <InputNumber TValue="decimal?"
-                                                                                 Value="Sale.Discount"
-                                                                                 ValueChanged="OnDiscountChanged"
-                                                                                 ValueExpression="@(() => Sale.Discount)"
-                                                                                 class="form-control" />
-                                                                </div>
-
-                                                                <div class="col-md-4">
-                                                                    <label>Tax (%)</label>
-                                                                    <InputNumber TValue="decimal?"
-                                                                                 Value="Sale.TaxAmount"
-                                                                                 ValueChanged="OnTaxChanged"
-                                                                                 ValueExpression="@(() => Sale.TaxAmount)"
-                                                                                 class="form-control" />
-                                                                </div>
-                                                            }
-                                                            else
-                                                            {
-                                                                <div class="col-md-3">
-                                                                    <label>Customer Custom Price</label>
-                                                                    <InputNumber @bind-Value="CustomerCustomPrice" class="form-control" />
-                                                                </div>
-
-                                                                <div class="col-md-3">
-                                                                    <label>Customer Percentage (%)</label>
-                                                                    <InputNumber @bind-Value="CustomerPercentage" class="form-control" />
-                                                                </div>
-
-                                                                <div class="col-md-2">
-                                                                    <label>Tax (%)</label>
-                                                                    <InputNumber TValue="decimal?"
-                                                                                 Value="Sale.TaxAmount"
-                                                                                 ValueChanged="OnTaxChanged"
-                                                                                 ValueExpression="@(() => Sale.TaxAmount)"
-                                                                                 class="form-control" />
-                                                                </div>
-                                                            }
-
-                                                            <div class="col-md-2 text-end">
-                                                                <label class="form-label fw-semibold mb-0">Total</label>
-                                                                <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
-                                                            </div>
-
-                                                            <div class="col-md-2 text-end">
-                                                                <label class="form-label fw-semibold mb-0">Net</label>
-                                                                <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
-                                                            </div>
-
-                                                        </div>
-                                                    </div>
+                                            @if (ShowOldDiscountField)
+                                            {
+                                                <div class="col-md-4">
+                                                    <label>Discount</label>
+                                                    <InputNumber TValue="decimal?"
+                                                                 Value="Sale.Discount"
+                                                                 ValueChanged="OnDiscountChanged"
+                                                                 ValueExpression="@(() => Sale.Discount)"
+                                                                 class="form-control" />
                                                 </div>
-                                            </div>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <!-- SIMPLE TOTALS DISPLAY -->
-                                        <div class="row mt-4 border-top pt-3">
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Total</label>
+
+                                                <div class="col-md-4">
+                                                    <label>Tax (%)</label>
+                                                    <InputNumber TValue="decimal?"
+                                                                 Value="Sale.TaxAmount"
+                                                                 ValueChanged="OnTaxChanged"
+                                                                 ValueExpression="@(() => Sale.TaxAmount)"
+                                                                 class="form-control" />
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="col-md-3">
+                                                    <label>Customer Custom Price</label>
+                                                    <InputNumber @bind-Value="CustomerCustomPrice" class="form-control" />
+                                                </div>
+
+                                                <div class="col-md-3">
+                                                    <label>Customer Percentage (%)</label>
+                                                    <InputNumber @bind-Value="CustomerPercentage" class="form-control" />
+                                                </div>
+
+                                                <div class="col-md-2">
+                                                    <label>Tax (%)</label>
+                                                    <InputNumber TValue="decimal?"
+                                                                 Value="Sale.TaxAmount"
+                                                                 ValueChanged="OnTaxChanged"
+                                                                 ValueExpression="@(() => Sale.TaxAmount)"
+                                                                 class="form-control" />
+                                                </div>
+                                            }
+
+                                            <div class="col-md-2 text-end">
+                                                <label class="form-label fw-semibold mb-0">Total</label>
                                                 <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
                                             </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-semibold">Net</label>
+
+                                            <div class="col-md-2 text-end">
+                                                <label class="form-label fw-semibold mb-0">Net</label>
                                                 <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
                                             </div>
+
                                         </div>
-                                    }
-
-                                    <!-- SAVE BUTTON -->
-                                    <div class="modal-footer mt-3">
-                                        <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
-                                            Save
-                                        </button>
-                                        <button type="button" class="btn btn-secondary" @onclick="Close">Cancel</button>
                                     </div>
-
                                 </div>
                             </div>
-
                         </div>
-                    </EditForm>
+                    }
+                    else
+                    {
+                        <!-- SIMPLE TOTALS DISPLAY -->
+                        <div class="row mt-4 border-top pt-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Total</label>
+                                <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Net</label>
+                                <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- SAVE BUTTON -->
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
+                            Save
+                        </button>
+                        <button class="btn btn-secondary" @onclick="GoBack">
+                            Back
+                        </button>
+                    </div>
+
                 </div>
             </div>
-        </div>
-    </div>
-}
 
+        </div>
+    </EditForm>
+</div>
 <!-- Add Customer Popup -->
 @if (showCustomerModal)
 {
@@ -409,6 +408,7 @@
                             <div class="modal-footer">
                                 <button type="submit" class="btn btn-primary">Save</button>
                                 <button type="button" class="btn btn-secondary" @onclick="CloseCustomerModal">Cancel</button>
+                             
                             </div>
                         </div>
                     </EditForm>
@@ -431,24 +431,35 @@
                 <div class="modal-body">
                     <EditForm Model="@NewWholesaler" OnValidSubmit="SaveWholesaler">
                         <DataAnnotationsValidator />
-                        <div class="mb-3">
-                            <label>Name</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Name" />
-                            <ValidationMessage For="@(()=>NewWholesaler.Name)" />
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label>Name</label>
+                                <InputText class="form-control" @bind-Value="NewWholesaler.Name" />
+                                <ValidationMessage For="@(() => NewWholesaler.Name)" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label>Email</label>
+                                <InputText class="form-control" @bind-Value="NewWholesaler.Email" />
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label>Email</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Email" />
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label>Phone</label>
+                                <InputText class="form-control" @bind-Value="NewWholesaler.Phone" />
+                                <ValidationMessage For="@(()=>NewWholesaler.Phone)" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label>Address</label>
+                                <InputText class="form-control" @bind-Value="NewWholesaler.Address" />
+                            </div>
+
                         </div>
-                        <div class="mb-3">
-                            <label>Phone</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Phone" />
-                            <ValidationMessage For="@(()=>NewWholesaler.Phone)" />
-                        </div>
-                        <div class="mb-3">
-                            <label>Address</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Address" />
-                        </div>
+
+
+
                         <div class="mb-3 col-md-4">
                             <label>Type</label>
                             <InputSelect class="form-select" @bind-Value="NewWholesaler.ListManagementId">
@@ -472,9 +483,6 @@
 
 @code {
     [Parameter] public Guid Id { get; set; }
-    [Parameter] public bool IsVisible { get; set; }
-    [Parameter] public EventCallback OnClose { get; set; }
-    [Parameter] public EventCallback OnSaved { get; set; }
 
     int availableStock;
     bool showError;
@@ -506,8 +514,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsVisible)
-        {
+      
             Customers = await CustomerService.GetCustomersAsync();
             products = await ProductService.GetAllAsync();
             Stocks = _context.StockHistories.ToList();
@@ -541,40 +548,51 @@
                         TaxAmount = 0
                     };
             }
-        }
+        
     }
 
     protected async Task HandleValidSubmit()
     {
-        try
-        {
-            foreach (var s in Sale.SaleDetails)
-            {
-                s.SaleId = Sale.Id;
-            }
+        if (Id == Guid.Empty)
+            await SaleService.AddAsync(Sale);
+        else
+            await SaleService.UpdateAsync(Sale);
 
-            if (Id == Guid.Empty)
-            {
-                await SaleService.AddAsync(Sale);
-                products = await ProductService.GetAllAsync();
-            }
-            else
-            {
-                await SaleService.UpdateAsync(Sale);
-            }
-
-            await OnClose.InvokeAsync();
-            IsVisible = false;
-        }
-        catch (Exception)
-        {
-            throw;
-        }
-        finally
-        {
-            StateHasChanged();
-        }
+        Nav.NavigateTo("/sales");
     }
+
+
+    // protected async Task HandleValidSubmit()
+    // {
+    //     try
+    //     {
+    //         foreach (var s in Sale.SaleDetails)
+    //         {
+    //             s.SaleId = Sale.Id;
+    //         }
+
+    //         if (Id == Guid.Empty)
+    //         {
+    //             await SaleService.AddAsync(Sale);
+    //             products = await ProductService.GetAllAsync();
+    //         }
+    //         else
+    //         {
+    //             await SaleService.UpdateAsync(Sale);
+    //         }
+
+    //         await OnClose.InvokeAsync();
+    //         IsVisible = false;
+    //     }
+    //     catch (Exception)
+    //     {
+    //         throw;
+    //     }
+    //     finally
+    //     {
+    //         StateHasChanged();
+    //     }
+    // }
 
     private void AddItemFromGrid(ProductDto product)
     {
@@ -589,7 +607,7 @@
 
     protected void Close()
     {
-        OnClose.InvokeAsync();
+        //OnClose.InvokeAsync();
         ShowOldDiscountField = true;
     }
 
@@ -927,5 +945,9 @@
     protected void CloseWholesalerModal()
     {
         showWholesalerModal = false;
+    }
+    void GoBack()
+    {
+        Nav.NavigateTo("/sales");
     }
 }

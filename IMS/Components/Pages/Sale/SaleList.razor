@@ -3,6 +3,7 @@
 @using Infrastructure.Services
 @inject ISaleService SaleService
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
 @rendermode InteractiveServer
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
@@ -11,7 +12,7 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="fw-bold">Sales</h3>
-        <button class="btn btn-primary" @onclick="OpenAddSale">
+        <button class="btn btn-primary" @onclick="GoToAddSale">
             <i class="bi bi-plus-circle"></i>  Sale
         </button>
     </div>
@@ -45,7 +46,7 @@
                         @if (!isStaff)
                         {
                             <span role="button" title="Edit" class="text-warning me-2"
-                                  @onclick="() => EditSale(sale.Id)">
+                                  @onclick="() => GoToEditSale(sale.Id)">
                                 <i class="bi bi-pencil-square fs-5"></i>
                             </span>
                         }
@@ -71,15 +72,10 @@
 
 <!-- Modal Component -->
 
-<PosSalePage Id="selectedSaleId"
-IsVisible="isModalOpen"
-OnClose="CloseModal"
-OnSaved="ReloadSales" />
+
 
 @code {
     private List<Sale> sales = new();
-    private Guid selectedSaleId = Guid.Empty;
-    private bool isModalOpen = false;
     private bool isStaff = false;
 
     protected override async Task OnInitializedAsync()
@@ -91,11 +87,11 @@ OnSaved="ReloadSales" />
         sales = await SaleService.GetAllAsync();
     }
 
-    private void OpenAddSale()
-    {
-        selectedSaleId = Guid.Empty;
-        isModalOpen = true;
-    }
+    // private void OpenAddSale()
+    // {
+    //     selectedSaleId = Guid.Empty;
+    //     isModalOpen = true;
+    // }
 
     private async Task DeleteSale(Guid id)
     {
@@ -108,18 +104,18 @@ OnSaved="ReloadSales" />
         }
     }
 
-    private void EditSale(Guid saleId)
-    {
-        selectedSaleId = saleId;
-        isModalOpen = true;
-    }
+    // private void EditSale(Guid saleId)
+    // {
+    //     selectedSaleId = saleId;
+    //     isModalOpen = true;
+    // }
 
-    private async Task CloseModal()
-    {
-        isModalOpen = false;
-        await Task.Delay(500); // Give time for the save to complete
-        await ReloadSales();
-    }
+    // private async Task CloseModal()
+    // {
+    //     isModalOpen = false;
+    //     await Task.Delay(500); // Give time for the save to complete
+    //     await ReloadSales();
+    // }
 
     private async Task ReloadSales()
     {
@@ -140,6 +136,17 @@ OnSaved="ReloadSales" />
         string base64 = Convert.ToBase64String(pdfBytes);
         await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber}.pdf", base64);
     }
+
+    private void GoToAddSale()
+    {
+        Nav.NavigateTo("/sales/add");
+    }
+
+    private void GoToEditSale(Guid id)
+    {
+        Nav.NavigateTo($"/sales/edit/{id}");
+    }
+
 
     private async Task PreviewFile(Guid saleId)
     {
