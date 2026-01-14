@@ -23,26 +23,27 @@
 </div>
 
 
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-4" style="height: calc(100vh - 120px); overflow: auto;">
     <EditForm Model="@Sale" OnValidSubmit="HandleValidSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />
 
-        <div class="row g-0" style="min-height:70vh">
+        <div class="row g-0" style="height: 100%;">
 
             <!-- LEFT PANEL : PRODUCTS -->
-            <div class="col-md-7 border-end">
-                <div class="p-3">
-
-                    <h5 class="fw-bold mb-3">Products</h5>
-
-                    <div class="col-md-3">
-                        <input class="form-control mb-3"
+            <div class="col-md-7 border-end d-flex flex-column" style="height: 100%;">
+                <div class="p-3 flex-shrink-0">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="fw-bold mb-0">Products</h5>
+                        <input class="form-control form-control-sm"
                                placeholder="Search product..."
+                               style="width: 200px;"
                                @oninput="e => searchText = e.Value?.ToString()" />
                     </div>
+                </div>
 
-                    <div class="row g-1" style="max-height:50vh; overflow-y:auto">
+                <div class="flex-grow-1 p-3 pt-0">
+                    <div class="row g-1" style="font-size: 0.85rem;">
                         @foreach (var product in products
                         .Where(p =>
                         string.IsNullOrEmpty(searchText) ||
@@ -79,33 +80,31 @@
 
                         }
                     </div>
-
                 </div>
             </div>
 
             <!-- RIGHT PANEL : SALE -->
-            <div class="col-md-5">
+            <div class="col-md-5 d-flex flex-column" style="height: 100%; overflow-y: auto;">
                 <div class="p-3">
 
                     <!-- SALE META INFO -->
                     <div class="row g-2">
 
                         <div class="col-md-6">
-                            <label class="form-label">Sale No</label>
-                            <InputText class="form-control"
+                            <InputText class="form-control form-control-sm"
                                        @bind-Value="Sale.SaleNumber"
+                                       placeholder="Sale No"
                                        readonly />
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Date</label>
-                            <InputDate class="form-control"
+                            <InputDate class="form-control form-control-sm"
                                        @bind-Value="Sale.SaleDate" />
                         </div>
 
                         <div class="col-md-6">
-                            <label>Payment Method</label>
-                            <InputSelect class="form-control" @bind-Value="Sale.PaymentMethod">
+                            <label class="form-label small fw-semibold mb-1">Payment Method</label>
+                            <InputSelect class="form-control form-control-sm" @bind-Value="Sale.PaymentMethod">
                                 <option value="">-- Select Method --</option>
                                 <option value="Cash">Cash</option>
                                 <option value="Card">Card</option>
@@ -114,8 +113,8 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label>Payment Status</label>
-                            <InputSelect @bind-Value="Sale.PaymentStatus" class="form-control">
+                            <label class="form-label small fw-semibold mb-1">Payment Status</label>
+                            <InputSelect @bind-Value="Sale.PaymentStatus" class="form-control form-control-sm">
                                 <option value="">-- Select Payment Status --</option>
                                 <option value="Paid">Paid</option>
                                 <option value="Unpaid">Unpaid</option>
@@ -124,12 +123,12 @@
                         </div>
 
                         <!-- BILL TO SWITCH -->
-                        <div class="col-md-12 mt-2">
+                        <div class="col-md-12 mt-1">
                             <div class="form-check form-switch">
                                 <InputCheckbox class="form-check-input"
                                                @bind-Value="isWholesalerMode"
                                                @onchange="e => OnBillToChanged(isWholesalerMode)" />
-                                <label class="form-check-label fw-semibold ms-2">
+                                <label class="form-check-label small fw-semibold ms-2">
                                     Bill To Wholesaler
                                 </label>
                             </div>
@@ -138,9 +137,9 @@
                         <!-- CUSTOMER -->
                         @if (!isWholesalerMode)
                         {
-                            <div class="col-md-6">
-                                <label class="form-label">Customer</label>
-                                <InputSelect class="form-control"
+                            <div class="col-md-10">
+                                <label class="form-label small fw-semibold mb-1">Customer</label>
+                                <InputSelect class="form-control form-control-sm"
                                              TValue="Guid?"
                                              Value="Sale.CustomerId"
                                              ValueChanged="OnCustomerChanged"
@@ -155,7 +154,8 @@
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
                                 <button type="button"
-                                        class="btn btn-outline-primary w-100"
+                                        class="btn btn-outline-primary btn-sm px-2 py-1"
+                                        style="font-size: 0.75rem; min-width: auto;"
                                         @onclick="OpenAddCustomer">
                                     +
                                 </button>
@@ -165,9 +165,9 @@
                         <!-- WHOLESALER -->
                         @if (isWholesalerMode)
                         {
-                            <div class="col-md-6">
-                                <label class="form-label">Wholesaler</label>
-                                <InputSelect class="form-control"
+                            <div class="col-md-10">
+                                <label class="form-label small fw-semibold mb-1">Wholesaler</label>
+                                <InputSelect class="form-control form-control-sm"
                                              TValue="Guid?"
                                              Value="Sale.WholesalerId"
                                              ValueChanged="OnWholeSalerChanged"
@@ -182,7 +182,8 @@
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
                                 <button type="button"
-                                        class="btn btn-outline-primary w-100"
+                                        class="btn btn-outline-primary btn-sm px-2 py-1"
+                                        style="font-size: 0.75rem; min-width: auto;"
                                         @onclick="OpenAddWholesaler">
                                     +
                                 </button>
@@ -194,16 +195,16 @@
                     <hr />
 
                     <!-- SELECTED ITEMS -->
-                    <h6 class="fw-bold">Sale Items</h6>
+                    <h6 class="fw-bold small mb-2">Sale Items</h6>
 
-                    <table class="table table-sm">
+                    <table class="table table-sm" style="font-size: 0.875rem;">
                         <thead>
                             <tr>
-                                <th>Product</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Total</th>
-                                <th></th>
+                                <th class="small">Product</th>
+                                <th class="small">Qty</th>
+                                <th class="small">Price</th>
+                                <th class="small">Total</th>
+                                <th class="small"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -212,13 +213,13 @@
                                 @foreach (var detail in Sale.SaleDetails)
                                 {
                                     <tr>
-                                        <td>@GetProductName(detail.ProductId)</td>
+                                        <td class="small">@GetProductName(detail.ProductId)</td>
                                         <td>
                                             <InputNumber TValue="int"
                                                          Value="detail.Quantity"
                                                          ValueChanged="@(v => OnQuantityChanged(detail, v))"
                                                          ValueExpression="@(() => detail.Quantity)"
-                                                         class="form-control" />
+                                                         class="form-control form-control-sm" />
 
                                             @if (quantityErrors.ContainsKey(detail.ProductId))
                                             {
@@ -232,13 +233,14 @@
                                                          Value="detail.UnitPrice"
                                                          ValueChanged="@(v => OnUnitPriceChanged(detail, v))"
                                                          ValueExpression="@(() => detail.UnitPrice)"
-                                                         class="form-control" />
+                                                         class="form-control form-control-sm" />
                                         </td>
-                                        <td class="fw-semibold">
+                                        <td class="fw-semibold small">
                                             @((detail.Quantity * detail.UnitPrice).ToString("N2"))
                                         </td>
                                         <td>
-                                            <button class="btn btn-sm btn-danger"
+                                            <button class="btn btn-sm btn-danger py-0 px-2"
+                                                    style="font-size: 0.75rem;"
                                                     @onclick="() => RemoveItem(detail)">
                                                 ×
                                             </button>
@@ -258,7 +260,7 @@
                     <!-- DISCOUNT AND TAX SECTION -->
                     @if (CustomerCustomPrice.HasValue || CustomerPercentage.HasValue || ShowOldDiscountField)
                     {
-                        <div class="row mt-4 border-top pt-3">
+                        <div class="row mt-3 border-top pt-2">
                             <div class="col-md-12">
                                 <div class="card border-0 shadow-sm">
                                     <div class="card-body">
@@ -267,53 +269,53 @@
                                             @if (ShowOldDiscountField)
                                             {
                                                 <div class="col-md-4">
-                                                    <label>Discount</label>
+                                                    <label class="small fw-semibold mb-1">Discount</label>
                                                     <InputNumber TValue="decimal?"
                                                                  Value="Sale.Discount"
                                                                  ValueChanged="OnDiscountChanged"
                                                                  ValueExpression="@(() => Sale.Discount)"
-                                                                 class="form-control" />
+                                                                 class="form-control form-control-sm" />
                                                 </div>
 
                                                 <div class="col-md-4">
-                                                    <label>Tax (%)</label>
+                                                    <label class="small fw-semibold mb-1">Tax (%)</label>
                                                     <InputNumber TValue="decimal?"
                                                                  Value="Sale.TaxAmount"
                                                                  ValueChanged="OnTaxChanged"
                                                                  ValueExpression="@(() => Sale.TaxAmount)"
-                                                                 class="form-control" />
+                                                                 class="form-control form-control-sm" />
                                                 </div>
                                             }
                                             else
                                             {
                                                 <div class="col-md-3">
-                                                    <label>Customer Custom Price</label>
-                                                    <InputNumber @bind-Value="CustomerCustomPrice" class="form-control" />
+                                                    <label class="small fw-semibold mb-1">Customer Custom Price</label>
+                                                    <InputNumber @bind-Value="CustomerCustomPrice" class="form-control form-control-sm" />
                                                 </div>
 
                                                 <div class="col-md-3">
-                                                    <label>Customer Percentage (%)</label>
-                                                    <InputNumber @bind-Value="CustomerPercentage" class="form-control" />
+                                                    <label class="small fw-semibold mb-1">Customer Percentage (%)</label>
+                                                    <InputNumber @bind-Value="CustomerPercentage" class="form-control form-control-sm" />
                                                 </div>
 
                                                 <div class="col-md-2">
-                                                    <label>Tax (%)</label>
+                                                    <label class="small fw-semibold mb-1">Tax (%)</label>
                                                     <InputNumber TValue="decimal?"
                                                                  Value="Sale.TaxAmount"
                                                                  ValueChanged="OnTaxChanged"
                                                                  ValueExpression="@(() => Sale.TaxAmount)"
-                                                                 class="form-control" />
+                                                                 class="form-control form-control-sm" />
                                                 </div>
                                             }
 
                                             <div class="col-md-2 text-end">
-                                                <label class="form-label fw-semibold mb-0">Total</label>
-                                                <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
+                                                <label class="form-label small fw-semibold mb-0">Total</label>
+                                                <div class="fw-bold fs-6">@Sale.TotalAmount.ToString("N2")</div>
                                             </div>
 
                                             <div class="col-md-2 text-end">
-                                                <label class="form-label fw-semibold mb-0">Net</label>
-                                                <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
+                                                <label class="form-label small fw-semibold mb-0">Net</label>
+                                                <div class="fw-bold fs-6">@Sale.NetAmount.ToString("N2")</div>
                                             </div>
 
                                         </div>
@@ -325,24 +327,24 @@
                     else
                     {
                         <!-- SIMPLE TOTALS DISPLAY -->
-                        <div class="row mt-4 border-top pt-3">
+                        <div class="row mt-3 border-top pt-2">
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Total</label>
-                                <div class="fw-bold fs-5">@Sale.TotalAmount.ToString("N2")</div>
+                                <label class="form-label small fw-semibold">Total</label>
+                                <div class="fw-bold fs-6">@Sale.TotalAmount.ToString("N2")</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Net</label>
-                                <div class="fw-bold fs-5">@Sale.NetAmount.ToString("N2")</div>
+                                <label class="form-label small fw-semibold">Net</label>
+                                <div class="fw-bold fs-6">@Sale.NetAmount.ToString("N2")</div>
                             </div>
                         </div>
                     }
 
                     <!-- SAVE BUTTON -->
-                    <div class="d-flex justify-content-end gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="submit" class="btn btn-primary btn-sm" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
                             Save
                         </button>
-                        <button class="btn btn-secondary" @onclick="GoBack">
+                        <button class="btn btn-secondary btn-sm" @onclick="GoBack">
                             Back
                         </button>
                     </div>
