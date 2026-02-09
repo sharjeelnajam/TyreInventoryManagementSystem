@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Domain.Identity;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -60,5 +60,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Wholesaler> Wholesalers { get; set; }
     public DbSet<ListManagement> ListManagements { get; set; }
     public DbSet<WholeSalerPrice> WholeSalerPrices { get; set; }
+    public DbSet<ShopServiceBill> ShopServiceBills { get; set; }
+    public DbSet<ShopServiceBillItem> ShopServiceBillItems { get; set; }
 
 }

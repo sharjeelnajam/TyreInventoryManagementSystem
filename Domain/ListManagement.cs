@@ -1,4 +1,5 @@
-﻿using Domain.Enums;
+using Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,5 +15,9 @@ namespace Domain
         public ListType Type { get; set; }
 
         public bool IsActive { get; set; } = true;
+
+        /// <summary>Default price for shop services (used when Type = ShopService).</summary>
+        [Precision(18, 2)]
+        public decimal? DefaultPrice { get; set; }
     }
 }

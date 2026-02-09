@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +12,7 @@ namespace Domain.Enums
         Expense = 2,
         WholeSalerType = 3,
         Thread = 4,
-        Unit = 5
+        Unit = 5,
+        ShopService = 6
     }
 }

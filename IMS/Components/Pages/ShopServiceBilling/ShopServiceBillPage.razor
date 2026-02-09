@@ -1,0 +1,813 @@
+@page "/shop-billing/bill/{BillId:guid}"
+@using Domain
+@using Domain.Enums
+@using Domain.DTO
+@using Infrastructure.Services
+@inject IShopServiceBillingService BillingService
+@inject IListManagementService ListManagementService
+@inject ICustomerService CustomerService
+@inject IWholesalerService WholesalerService
+@inject IProductService ProductService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Bill @(Bill?.BillNumber ?? "…")</PageTitle>
+
+<div class="container-fluid mt-4">
+    @if (Bill == null && string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Loading bill...</p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+        <a class="btn btn-outline-secondary" href="/shop-billing">Back to billing</a>
+    }
+    else
+    {
+        <div class="mb-3">
+            <h3 class="fw-bold">
+                <i class="bi bi-receipt me-2"></i> @Bill!.BillNumber
+                <span class="badge @(Bill.Status == ShopServiceBillStatus.Open ? "bg-warning" : "bg-success") ms-2">@Bill.Status</span>
+            </h3>
+        </div>
+
+        <!-- Bill to: Customer or Wholesaler toggle -->
+        <div class="card mb-3">
+            <div class="card-body">
+                @if (Bill.Status == ShopServiceBillStatus.Open)
+                {
+                    <div class="form-check form-switch mb-3">
+                        <input type="checkbox" class="form-check-input" id="billToWholesaler" @bind="isWholesalerMode" @bind:after="OnBillToChanged" />
+                        <label class="form-check-label fw-semibold" for="billToWholesaler">Bill to Wholesaler</label>
+                    </div>
+                    @if (!isWholesalerMode)
+                    {
+                        <label class="form-label small fw-semibold">Customer</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <select class="form-select" style="max-width: 300px;" @bind="selectedCustomerId" @bind:after="OnCustomerSelectedThenSave">
+                                <option value="">Walk-in (no customer)</option>
+                                @foreach (var c in Customers)
+                                {
+                                    <option value="@c.Id">@c.Name</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => OpenAddCustomerModal()" title="Add new customer">
+                                <i class="bi bi-person-plus"></i> New
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <label class="form-label small fw-semibold">Wholesaler</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <select class="form-select" style="max-width: 300px;" @bind="selectedWholesalerId" @bind:after="OnWholesalerSelectedThenSave">
+                                <option value="">-- Select Wholesaler --</option>
+                                @foreach (var w in Wholesalers)
+                                {
+                                    <option value="@w.Id">@w.Name</option>
+                                }
+                            </select>
+                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenAddWholesalerModal" title="Add new wholesaler">
+                                <i class="bi bi-person-plus"></i> New
+                            </button>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="mb-0">@(isWholesalerMode ? (Bill.WholesalerName ?? "—") : (Bill.CustomerName ?? "Walk-in"))</p>
+                }
+            </div>
+        </div>
+
+        @if (Bill.Status == ShopServiceBillStatus.Open)
+        {
+            <div class="row">
+                <!-- LEFT: Product list -->
+                <div class="col-lg-5 mb-3">
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <strong>Products</strong>
+                        </div>
+                        <div class="card-body p-2">
+                            <input class="form-control form-control-sm mb-2"
+                                   placeholder="Search by name, size, brand..."
+                                   @bind="productSearchText"
+                                   @bind:event="oninput" />
+                            <div class="border rounded p-2" style="max-height: 280px; overflow-y: auto;">
+                                @{
+                                    var filteredProducts = products
+                                        .Where(p => string.IsNullOrWhiteSpace(productSearchText) ||
+                                            (p.ProductName != null && p.ProductName.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                                            (p.Brand != null && p.Brand.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                                            (p.TyreSize != null && p.TyreSize.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)))
+                                        .ToList();
+                                    var toShow = string.IsNullOrWhiteSpace(productSearchText) ? filteredProducts.Take(20) : filteredProducts.Take(50);
+                                }
+                                @foreach (var p in toShow)
+                                {
+                                    var stockLevel = p.Quantity;
+                                    var inStock = stockLevel > 0;
+                                    <div class="d-flex justify-content-between align-items-center border-bottom py-2 @(inStock ? "" : "opacity-50")"
+                                         style="cursor: @(inStock ? "pointer" : "not-allowed")"
+                                         @onclick="() => TryAddProduct(p, stockLevel)">
+                                        <div class="small">
+                                            <div class="fw-semibold">@p.ProductName</div>
+                                            <div class="text-muted">
+                                                @if (!string.IsNullOrEmpty(p.TyreSize)) { <span>@p.TyreSize</span> }
+                                                @if (!string.IsNullOrEmpty(p.Brand)) { <span> • @p.Brand</span> }
+                                            </div>
+                                            <div class="@(inStock ? "text-success fw-semibold" : "text-danger fw-semibold")">@(inStock ? $"{stockLevel} in stock" : "Out of stock")</div>
+                                        </div>
+                                        <div class="fw-semibold">£@p.SellingPrice.ToString("N2")</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Service: separate box -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <strong>Service</strong>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="d-flex gap-2 align-items-end">
+                                <select class="form-select form-select-sm flex-grow-1" @bind="selectedServiceId" @bind:after="OnServiceSelected">
+                                    <option value="">-- Select service --</option>
+                                    @foreach (var s in ShopServices)
+                                    {
+                                        <option value="@s.Id">@s.Name (@(s.DefaultPrice?.ToString("N2") ?? "0") £)</option>
+                                    }
+                                </select>
+                                <input type="number" class="form-control form-control-sm" style="width: 90px;" step="0.01" min="0" @bind="addUnitPrice" placeholder="Price" />
+                                <button type="button" class="btn btn-primary btn-sm" @onclick="AddService" disabled="@(!selectedServiceId.HasValue || selectedServiceId.Value == Guid.Empty)">
+                                    <i class="bi bi-plus-lg"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Line items + totals -->
+                <div class="col-lg-7 mb-3">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <strong>Items on bill</strong>
+                        </div>
+                        <div class="card-body p-0">
+                            @if (Bill.Items == null || !Bill.Items.Any())
+                            {
+                                <p class="text-muted p-3 mb-0">No items yet. Add products or services from the left.</p>
+                                @if (Bill.Status == ShopServiceBillStatus.Open)
+                                {
+                                    <div class="p-3 border-top border-secondary bg-white">
+                                        <div class="small fw-bold text-dark mb-2">Add custom item</div>
+
+
+                                        <div class="d-flex flex-wrap gap-2 align-items-end">
+                                            <div class="flex-grow-1" style="min-width: 180px;">
+                                                <input type="text" class="form-control form-control-sm" placeholder="e.g. Labour, Extra work..." @bind="customItemComment" />
+                                            </div>
+                                            <div style="width: 100px;">
+                                                <label class="form-label small mb-0">Price (£)</label>
+                                                <input type="number" class="form-control form-control-sm" step="0.01" min="0" @bind="customItemPrice" placeholder="0.00" @onblur="OnCustomItemBlur" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Item</th>
+                                                <th style="width:90px;">Qty</th>
+                                                <th style="width:110px;">Unit price</th>
+                                                <th style="width:110px;">Total</th>
+                                                @if (Bill.Status == ShopServiceBillStatus.Open)
+                                                {
+                                                    <th style="width:70px;"></th>
+                                                }
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in Bill.Items)
+                                            {
+                                                <tr>
+                                                    <td>@item.ServiceName</td>
+                                                    @if (Bill.Status == ShopServiceBillStatus.Open)
+                                                    {
+                                                        <td>
+                                                            <input type="number" class="form-control form-control-sm" min="1" value="@item.Quantity"
+                                                                   @onchange="e => UpdateItemQty(item, e)" />
+                                                        </td>
+                                                        <td>
+                                                            <input type="number" class="form-control form-control-sm" step="0.01" min="0" value="@item.UnitPrice.ToString("F2")"
+                                                                   @onchange="e => UpdateItemPrice(item, e)" />
+                                                        </td>
+                                                    }
+                                                    else
+                                                    {
+                                                        <td>@item.Quantity</td>
+                                                        <td>£@item.UnitPrice.ToString("N2")</td>
+                                                    }
+                                                    <td>£@item.TotalPrice.ToString("N2")</td>
+                                                    @if (Bill.Status == ShopServiceBillStatus.Open)
+                                                    {
+                                                        <td>
+                                                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick:preventDefault="true" @onclick="() => RemoveItem(item.Id)">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </td>
+                                                    }
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                                @if (Bill.Status == ShopServiceBillStatus.Open)
+                                {
+                                    <div class="p-3 border-top border-secondary bg-white">
+                                        <div class="small fw-semibold text-secondary mb-2">Add custom item</div>
+                                        <div class="d-flex flex-wrap gap-2 align-items-end">
+                                            <div class="flex-grow-1" style="min-width: 180px;">
+                                                <input type="text" class="form-control form-control-sm" placeholder="e.g. Labour, Extra work..." @bind="customItemComment" />
+                                            </div>
+                                            <div style="width: 100px;">
+                                                <label class="form-label small mb-0">Price (£)</label>
+                                                <input type="number" class="form-control form-control-sm" step="0.01" min="0" @bind="customItemPrice" placeholder="0.00" @onblur="OnCustomItemBlur" />
+                                            </div>
+                                        </div>
+                                         </div>
+                                }
+                                <!-- Billing summary in right section -->
+                                <div class="p-3 border-top bg-light">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Subtotal:</span>
+                                        <span>£@(Bill.Items.Sum(i => i.TotalPrice).ToString("N2"))</span>
+                                    </div>
+                                    @if (Bill.Status == ShopServiceBillStatus.Open)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span>Discount (£):</span>
+                                            <input type="number" class="form-control form-control-sm" style="width: 100px;" step="0.01" min="0" @bind="billDiscount" @bind:after="SaveDiscount" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @if (Bill.Discount > 0)
+                                        {
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Discount:</span>
+                                                <span>-£@Bill.Discount.ToString("N2")</span>
+                                            </div>
+                                        }
+                                    }
+                                    <div class="d-flex justify-content-between fw-bold fs-5 mt-2">
+                                        <span>Total:</span>
+                                        <span>£@(Math.Max(0, Bill.Items.Sum(i => i.TotalPrice) - Bill.Discount).ToString("N2"))</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @if (Bill.Items?.Any() == true)
+            {
+                <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-2">
+                    <a class="btn btn-sm btn-outline-secondary" href="/shop-billing"><i class="bi bi-arrow-left me-1"></i> Back</a>
+                    <button type="button" class="btn btn-sm btn-warning" @onclick="SaveBillAndRedirect">
+                        <i class="bi bi-save me-1"></i> Save (Hold)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success" @onclick="ShowCheckoutModal">
+                        <i class="bi bi-credit-card me-1"></i> Checkout (Paid)
+                    </button>
+                </div>
+            }
+        }
+        else
+        {
+            <!-- Closed bill: read-only items -->
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <strong>Items on bill</strong>
+                </div>
+                <div class="card-body p-0">
+                    @if (Bill.Items == null || !Bill.Items.Any())
+                    {
+                        <p class="text-muted p-3 mb-0">No items.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Unit price</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Bill.Items)
+                                {
+                                    <tr>
+                                        <td>@item.ServiceName</td>
+                                        <td>@item.Quantity</td>
+                                        <td>£@item.UnitPrice.ToString("N2")</td>
+                                        <td>£@item.TotalPrice.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                        var cSubtotal = Bill.Items.Sum(i => i.TotalPrice);
+                        var cDiscount = Bill.Discount;
+                        var cTotal = Math.Max(0, cSubtotal - cDiscount);
+                        <div class="p-3 border-top bg-light">
+                            <div class="d-flex justify-content-between mb-1"><span>Subtotal:</span><span>£@cSubtotal.ToString("N2")</span></div>
+                            @if (cDiscount > 0)
+                            {
+                                <div class="d-flex justify-content-between mb-1"><span>Discount:</span><span>-£@cDiscount.ToString("N2")</span></div>
+                            }
+                            <div class="d-flex justify-content-between fw-bold"><span>Total:</span><span>£@cTotal.ToString("N2")</span></div>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="mt-2">
+                <a class="btn btn-sm btn-outline-secondary" href="/shop-billing"><i class="bi bi-arrow-left me-1"></i> Back</a>
+            </div>
+        }
+    }
+</div>
+
+<!-- Add Customer modal: use existing AddCustomer component -->
+@if (showAddCustomerModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add new customer</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddCustomerModal"></button>
+                </div>
+                <div class="modal-body">
+                    <AddCustomer CustomerModel="selectedCustomerForModal" OnSaved="OnAddCustomerSaved" OnCancelled="CloseAddCustomerModal" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Add Wholesaler modal -->
+@if (showAddWholesalerModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add new wholesaler</h5>
+                    <button type="button" class="btn-close" @onclick="CloseAddWholesalerModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@NewWholesaler" OnValidSubmit="SaveWholesaler">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">Name *</label>
+                            <InputText class="form-control" @bind-Value="NewWholesaler.Name" />
+                            <ValidationMessage For="@(() => NewWholesaler.Name)" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone *</label>
+                            <InputText class="form-control" @bind-Value="NewWholesaler.Phone" />
+                            <ValidationMessage For="@(() => NewWholesaler.Phone)" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control" @bind-Value="NewWholesaler.Email" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <InputText class="form-control" @bind-Value="NewWholesaler.Address" />
+                        </div>
+                        @if (WholesalerTypes.Any())
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" @bind="NewWholesaler.ListManagementId">
+                                    @foreach (var t in WholesalerTypes)
+                                    {
+                                        <option value="@t.Id">@t.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        <div class="modal-footer px-0">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseAddWholesalerModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Checkout modal -->
+@if (showCheckoutModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Complete checkout (Paid)</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCheckoutModal"></button>
+                </div>
+                <div class="modal-body">
+                    @{
+                        var checkoutSubtotal = Bill?.Items?.Sum(i => i.TotalPrice) ?? 0;
+                        var checkoutTotal = Math.Max(0, checkoutSubtotal - billDiscount);
+                    }
+                    <p class="mb-2">Total amount: <strong>£@checkoutTotal.ToString("N2")</strong></p>
+                    <div class="mb-3">
+                        <label class="form-label">Payment method</label>
+                        <select class="form-select" @bind="checkoutPaymentMethod">
+                            <option value="Cash">Cash</option>
+                            <option value="Card">Card</option>
+                            <option value="BankTransfer">Bank Transfer</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (optional)</label>
+                        <textarea class="form-control" rows="2" @bind="checkoutNotes"></textarea>
+                    </div>
+                    @if (!string.IsNullOrEmpty(checkoutError))
+                    {
+                        <div class="alert alert-danger py-2">@checkoutError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseCheckoutModal">Cancel</button>
+                    <button type="button" class="btn btn-success" @onclick="ConfirmCheckout">Confirm &amp; close bill (Paid)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid BillId { get; set; }
+
+    private ShopServiceBill? Bill;
+    private List<ListManagement> ShopServices = new();
+    private List<Customer> Customers = new();
+    private List<Wholesaler> Wholesalers = new();
+    private List<ListManagement> WholesalerTypes = new();
+    private List<ProductDto> products = new();
+    private string productSearchText = string.Empty;
+    private string? errorMessage;
+    private bool isWholesalerMode;
+    private Guid? selectedCustomerId;
+    private Guid? selectedWholesalerId;
+    private Guid? selectedServiceId;
+    private decimal addUnitPrice;
+    private decimal billDiscount;
+    private string customItemComment = string.Empty;
+    private decimal customItemPrice;
+    private bool showCheckoutModal;
+    private string checkoutPaymentMethod = "Cash";
+    private string? checkoutNotes;
+    private string? checkoutError;
+    private bool showAddCustomerModal;
+    private Customer selectedCustomerForModal = new();
+    private bool showAddWholesalerModal;
+    private Wholesaler NewWholesaler = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ShopServices = await ListManagementService.GetByTypeAsync(ListType.ShopService);
+        WholesalerTypes = await ListManagementService.GetByTypeAsync(ListType.WholeSalerType);
+        Customers = await CustomerService.GetCustomersAsync();
+        Wholesalers = await WholesalerService.GetAllAsync();
+        products = await ProductService.GetAllAsync();
+        await LoadBill();
+    }
+
+    private async Task LoadBill()
+    {
+        Bill = await BillingService.GetBillByIdAsync(BillId);
+        if (Bill == null)
+        {
+            errorMessage = "Bill not found.";
+            return;
+        }
+        isWholesalerMode = Bill.WholesalerId.HasValue && Bill.WholesalerId.Value != Guid.Empty;
+        selectedCustomerId = Bill.CustomerId;
+        selectedWholesalerId = Bill.WholesalerId;
+        billDiscount = Bill.Discount;
+        if (Bill.Status == ShopServiceBillStatus.Open && ShopServices.Any() && !selectedServiceId.HasValue)
+        {
+            var first = ShopServices.First();
+            selectedServiceId = first.Id;
+            addUnitPrice = first.DefaultPrice ?? 0;
+        }
+    }
+
+    private void OnCustomerSelected()
+    {
+        // Name is set from dropdown selection when saving
+    }
+
+    private async Task OnCustomerSelectedThenSave()
+    {
+        var name = selectedCustomerId.HasValue && selectedCustomerId.Value != Guid.Empty
+            ? Customers.FirstOrDefault(x => x.Id == selectedCustomerId.Value)?.Name
+            : null;
+        await SaveCustomer(name);
+    }
+
+    private async Task SaveCustomer(string? customerName)
+    {
+        if (Bill == null) return;
+        try
+        {
+            await BillingService.UpdateBillCustomerAsync(BillId, selectedCustomerId, customerName);
+        }
+        catch { /* ignore */ }
+    }
+
+    private async Task OnWholesalerSelectedThenSave()
+    {
+        var name = selectedWholesalerId.HasValue && selectedWholesalerId.Value != Guid.Empty
+            ? Wholesalers.FirstOrDefault(x => x.Id == selectedWholesalerId.Value)?.Name
+            : null;
+        await SaveWholesalerSelection(name);
+    }
+
+    private async Task SaveWholesalerSelection(string? wholesalerName)
+    {
+        if (Bill == null) return;
+        try
+        {
+            await BillingService.UpdateBillWholesalerAsync(BillId, selectedWholesalerId, wholesalerName);
+        }
+        catch { /* ignore */ }
+    }
+
+    private void OnBillToChanged()
+    {
+        if (isWholesalerMode)
+        {
+            selectedCustomerId = null;
+            selectedWholesalerId = Bill?.WholesalerId;
+            _ = SaveWholesalerSelection(Wholesalers.FirstOrDefault(x => x.Id == selectedWholesalerId)?.Name);
+        }
+        else
+        {
+            selectedWholesalerId = null;
+            selectedCustomerId = Bill?.CustomerId;
+            _ = SaveCustomer(Customers.FirstOrDefault(x => x.Id == selectedCustomerId)?.Name);
+        }
+    }
+
+    private async Task OpenAddCustomerModal()
+    {
+        var customerTypes = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
+        selectedCustomerForModal = new Customer
+        {
+            ListManagementId = customerTypes.Any() ? customerTypes.First().Id : Guid.Empty
+        };
+        showAddCustomerModal = true;
+    }
+
+    private async Task OnAddCustomerSaved()
+    {
+        Customers = await CustomerService.GetCustomersAsync();
+        selectedCustomerId = selectedCustomerForModal.Id != Guid.Empty ? selectedCustomerForModal.Id : Customers.FirstOrDefault(c => c.Name == selectedCustomerForModal.Name)?.Id;
+        if (selectedCustomerId.HasValue)
+            await BillingService.UpdateBillCustomerAsync(BillId, selectedCustomerId, selectedCustomerForModal.Name);
+        showAddCustomerModal = false;
+    }
+
+    private void CloseAddCustomerModal()
+    {
+        showAddCustomerModal = false;
+    }
+
+    private void OpenAddWholesalerModal()
+    {
+        NewWholesaler = new Wholesaler();
+        if (WholesalerTypes.Any())
+            NewWholesaler.ListManagementId = WholesalerTypes.First().Id;
+        showAddWholesalerModal = true;
+    }
+
+    private void CloseAddWholesalerModal()
+    {
+        showAddWholesalerModal = false;
+    }
+
+    private async Task SaveWholesaler()
+    {
+        if (NewWholesaler.Id == Guid.Empty)
+            NewWholesaler.Id = Guid.NewGuid();
+        await WholesalerService.AddAsync(NewWholesaler);
+        Wholesalers = await WholesalerService.GetAllAsync();
+        selectedWholesalerId = NewWholesaler.Id;
+        await BillingService.UpdateBillWholesalerAsync(BillId, NewWholesaler.Id, NewWholesaler.Name);
+        showAddWholesalerModal = false;
+    }
+
+    private async Task SaveDiscount()
+    {
+        if (Bill == null) return;
+        try
+        {
+            await BillingService.UpdateBillDiscountAsync(BillId, billDiscount);
+        }
+        catch { /* ignore */ }
+    }
+
+    private void OnServiceSelected()
+    {
+        if (selectedServiceId.HasValue && selectedServiceId.Value != Guid.Empty)
+        {
+            var s = ShopServices.FirstOrDefault(x => x.Id == selectedServiceId.Value);
+            addUnitPrice = s?.DefaultPrice ?? 0;
+        }
+    }
+
+    private async Task TryAddProduct(ProductDto product, int stockLevel)
+    {
+        if (stockLevel <= 0 || Bill == null || Bill.Status != ShopServiceBillStatus.Open) return;
+        try
+        {
+            await BillingService.AddItemAsync(BillId, null, product.ProductName ?? "Product", 1, product.SellingPrice);
+            await LoadBill();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task AddService()
+    {
+        if (Bill == null || Bill.Status != ShopServiceBillStatus.Open || !selectedServiceId.HasValue || selectedServiceId.Value == Guid.Empty)
+            return;
+        var service = ShopServices.FirstOrDefault(x => x.Id == selectedServiceId.Value);
+        var name = service?.Name ?? "Service";
+        var price = addUnitPrice > 0 ? addUnitPrice : (service?.DefaultPrice ?? 0);
+        try
+        {
+            await BillingService.AddItemAsync(BillId, selectedServiceId.Value, name, 1, price);
+            await LoadBill();
+            addUnitPrice = service?.DefaultPrice ?? 0;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private bool isAddingCustomItem;
+
+    private async Task OnCustomItemBlur()
+    {
+        if (Bill == null || Bill.Status != ShopServiceBillStatus.Open || string.IsNullOrWhiteSpace(customItemComment))
+            return;
+        if (isAddingCustomItem)
+            return;
+        isAddingCustomItem = true;
+        try
+        {
+            await AddCustomItem();
+        }
+        finally
+        {
+            isAddingCustomItem = false;
+        }
+    }
+
+    private async Task AddCustomItem()
+    {
+        if (Bill == null || Bill.Status != ShopServiceBillStatus.Open || string.IsNullOrWhiteSpace(customItemComment))
+            return;
+        var comment = customItemComment.Trim();
+        var price = customItemPrice;
+        customItemComment = string.Empty;
+        customItemPrice = 0;
+        errorMessage = null;
+        StateHasChanged();
+        try
+        {
+            await BillingService.AddItemAsync(BillId, null, comment, 1, price);
+            await LoadBill();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            customItemComment = comment;
+            customItemPrice = price;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateItemQty(ShopServiceBillItem item, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var qty) && qty > 0)
+        {
+            try
+            {
+                await BillingService.UpdateItemAsync(item.Id, qty, item.UnitPrice);
+                await LoadBill();
+            }
+            catch { /* ignore */ }
+        }
+    }
+
+    private async Task UpdateItemPrice(ShopServiceBillItem item, ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out var price) && price >= 0)
+        {
+            try
+            {
+                await BillingService.UpdateItemAsync(item.Id, item.Quantity, price);
+                await LoadBill();
+            }
+            catch { /* ignore */ }
+        }
+    }
+
+    private async Task RemoveItem(Guid itemId)
+    {
+        errorMessage = null;
+        try
+        {
+            await BillingService.RemoveItemAsync(itemId);
+            var toRemove = Bill?.Items?.FirstOrDefault(i => i.Id == itemId);
+            if (toRemove != null && Bill?.Items != null)
+            {
+                Bill.Items.Remove(toRemove);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task SaveBillAndRedirect()
+    {
+        if (Bill == null) return;
+        try
+        {
+            await BillingService.UpdateBillDiscountAsync(BillId, billDiscount);
+            await BillingService.SaveBillAsync(BillId);
+            Nav.NavigateTo("/shop-billing", forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void ShowCheckoutModal()
+    {
+        checkoutError = null;
+        showCheckoutModal = true;
+    }
+
+    private void CloseCheckoutModal()
+    {
+        showCheckoutModal = false;
+        checkoutError = null;
+    }
+
+    private async Task ConfirmCheckout()
+    {
+        if (Bill == null) return;
+        try
+        {
+            await BillingService.UpdateBillDiscountAsync(BillId, billDiscount);
+            await BillingService.CheckoutAsync(BillId, checkoutPaymentMethod, "Paid", checkoutNotes);
+            CloseCheckoutModal();
+            await LoadBill();
+        }
+        catch (Exception ex)
+        {
+            checkoutError = ex.Message;
+        }
+    }
+}

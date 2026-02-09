@@ -1,0 +1,164 @@
+@page "/shop-billing"
+@using Domain
+@using Domain.Enums
+@using Infrastructure.Services
+@inject IShopServiceBillingService BillingService
+@inject ICustomerService CustomerService
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<PageTitle>Shop Service Billing</PageTitle>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold">
+            <i class="bi bi-receipt-cutoff me-2"></i> Shop Service Billing
+        </h3>
+        <button class="btn btn-primary" @onclick="StartNewBill">
+            <i class="bi bi-plus-circle me-1"></i> Start new bill
+        </button>
+    </div>
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <button class="nav-link @(showOpen ? "active" : "")" @onclick='() => { showOpen = true; _ = LoadBills(); }'>
+                Open bills
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(!showOpen ? "active" : "")" @onclick='() => { showOpen = false; _ = LoadBills(); }'>
+                Closed bills
+            </button>
+        </li>
+    </ul>
+
+    @if (loading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Loading...</p>
+        </div>
+    }
+    else if (showOpen && (!openBills?.Any() ?? true))
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i> No open bills. Click <strong>Start new bill</strong> when a customer arrives.
+        </div>
+    }
+    else if (!showOpen && (!closedBills?.Any() ?? true))
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i> No closed bills yet.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-primary">
+                    <tr>
+                        <th>Bill #</th>
+                        <th>Bill to</th>
+                        <th>Opened</th>
+                        <th>Status</th>
+                        @if (!showOpen)
+                        {
+                            <th>Closed</th>
+                            <th>Total (£)</th>
+                            <th>Payment</th>
+                        }
+                        <th style="width:120px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (showOpen && openBills != null)
+                    {
+                        @foreach (var bill in openBills)
+                        {
+                            <tr>
+                                <td><strong>@bill.BillNumber</strong></td>
+                                <td>@(bill.WholesalerId.HasValue ? bill.WholesalerName : (bill.CustomerName ?? "Walk-in"))</td>
+                                <td>@bill.OpenedAt.ToString("dd MMM yyyy HH:mm")</td>
+                                <td>
+                                    @if (string.Equals(bill.PaymentStatus, "Hold", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="badge bg-danger">Hold</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Open</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary" href="/shop-billing/bill/@bill.Id">Open bill</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    @if (!showOpen && closedBills != null)
+                    {
+                        @foreach (var bill in closedBills)
+                        {
+                            <tr>
+                                <td><strong>@bill.BillNumber</strong></td>
+                                <td>@(bill.WholesalerId.HasValue ? bill.WholesalerName : (bill.CustomerName ?? "Walk-in"))</td>
+                                <td>@bill.OpenedAt.ToString("dd MMM yyyy HH:mm")</td>
+                                <td>
+                                    <span class="badge bg-success">Paid</span>
+                                </td>
+                                <td>@(bill.ClosedAt?.ToString("dd MMM yyyy HH:mm") ?? "-")</td>
+                                <td>@bill.TotalAmount.ToString("N2")</td>
+                                <td>@bill.PaymentMethod</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-secondary" href="/shop-billing/bill/@bill.Id">View</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private bool loading = true;
+    private bool showOpen = true;
+    private List<ShopServiceBill>? openBills;
+    private List<ShopServiceBill>? closedBills;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBills();
+    }
+
+    private async Task LoadBills()
+    {
+        loading = true;
+        StateHasChanged();
+        try
+        {
+            openBills = await BillingService.GetOpenBillsAsync();
+            closedBills = await BillingService.GetClosedBillsAsync();
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task StartNewBill()
+    {
+        try
+        {
+            var bill = await BillingService.StartBillAsync(null, null);
+            Nav.NavigateTo($"/shop-billing/bill/{bill.Id}");
+        }
+        catch (Exception ex)
+        {
+            // Could use ILogger or JS alert
+            await Task.CompletedTask;
+        }
+    }
+}

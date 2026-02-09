@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Domain.Enums;
 using Domain.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -104,6 +104,24 @@ namespace Infrastructure.Persistence.Data
                     new ListManagement { Id = Guid.NewGuid(), Name = "Furniture", Type = ListType.Expense, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
                 };
                 await context.ListManagements.AddRangeAsync(expenses);
+            }
+
+            // Seed Shop Service data - common services staff can select when billing
+            var hasShopServiceData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.ShopService && !lm.IsDeleted);
+            if (!hasShopServiceData)
+            {
+                var shopServices = new List<ListManagement>
+                {
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Puncture", Type = ListType.ShopService, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null, DefaultPrice = 15.00m },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "New tyres (supply and fit)", Type = ListType.ShopService, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null, DefaultPrice = 20.00m },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Wheel balancing", Type = ListType.ShopService, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null, DefaultPrice = 12.00m },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Valve replacement", Type = ListType.ShopService, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null, DefaultPrice = 5.00m },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Tyre fitting only", Type = ListType.ShopService, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null, DefaultPrice = 10.00m },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Tyre removal and disposal", Type = ListType.ShopService, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null, DefaultPrice = 8.00m },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Wheel alignment check", Type = ListType.ShopService, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null, DefaultPrice = 25.00m },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Other service", Type = ListType.ShopService, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null, DefaultPrice = 0.00m }
+                };
+                await context.ListManagements.AddRangeAsync(shopServices);
             }
 
             await context.SaveChangesAsync();

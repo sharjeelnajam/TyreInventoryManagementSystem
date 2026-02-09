@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using IMS.Components;
@@ -44,6 +44,7 @@ builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IWholesalerService, WholesalerService>();
 builder.Services.AddScoped<IAdminPanalService, AdminPanalService>();
 builder.Services.AddScoped<IListManagementService, ListManagementService>();
+builder.Services.AddScoped<IShopServiceBillingService, ShopServiceBillingService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IWholesalerPriceService, WholesalerPriceService>();
 

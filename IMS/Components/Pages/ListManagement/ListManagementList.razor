@@ -1,4 +1,4 @@
-﻿@page "/listmanagement"
+@page "/listmanagement"
 
 @using Domain
 @using Domain.Enums
@@ -63,6 +63,10 @@
                     <tr>
                         <th>Type</th>
                         <th>Name</th>
+                        @if (ShowDefaultPriceColumn)
+                        {
+                            <th>Default price (£)</th>
+                        }
                         <th style="width:120px;">Actions</th>
                     </tr>
                 </thead>
@@ -74,6 +78,10 @@
                                 <span class="badge bg-secondary">@item.Type</span>
                             </td>
                             <td>@item.Name</td>
+                            @if (ShowDefaultPriceColumn)
+                            {
+                                <td>@(item.DefaultPrice?.ToString("N2") ?? "-")</td>
+                            }
                             <td>
                                 <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
                                    title="Edit"
@@ -114,6 +122,14 @@
                                placeholder="Enter name"
                                @bind="NewName" />
                     </div>
+                    @if (SelectedType == ListType.ShopService)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Default price (£)</label>
+                            <input type="number" class="form-control" step="0.01" min="0" placeholder="0.00"
+                                   @bind="NewDefaultPrice" />
+                        </div>
+                    }
 
                     @if (!string.IsNullOrEmpty(Error))
                     {
@@ -147,9 +163,12 @@
     bool IsEdit;
 
     string NewName = string.Empty;
+    decimal NewDefaultPrice;
     string Error = string.Empty;
 
     ListManagement? EditItem;
+
+    bool ShowDefaultPriceColumn => SelectedType == ListType.ShopService;
 
     protected override async Task OnInitializedAsync()
     {
@@ -191,6 +210,7 @@
         IsEdit = false;
         EditItem = null;
         NewName = string.Empty;
+        NewDefaultPrice = 0;
         Error = string.Empty;
         ShowModal = true;
     }
@@ -199,8 +219,9 @@
     {
         IsEdit = true;
         EditItem = item;
-        SelectedType = item.Type; // Set the type for editing
+        SelectedType = item.Type;
         NewName = item.Name;
+        NewDefaultPrice = item.DefaultPrice ?? 0;
         Error = string.Empty;
         ShowModal = true;
     }
@@ -234,15 +255,20 @@
         if (IsEdit)
         {
             EditItem!.Name = NewName.Trim();
+            if (itemType == ListType.ShopService)
+                EditItem.DefaultPrice = NewDefaultPrice;
             await Service.UpdateAsync(EditItem);
         }
         else
         {
-            await Service.AddAsync(new ListManagement
-                {
-                    Name = NewName.Trim(),
-                    Type = itemType
-                });
+            var newItem = new ListManagement
+            {
+                Name = NewName.Trim(),
+                Type = itemType
+            };
+            if (itemType == ListType.ShopService)
+                newItem.DefaultPrice = NewDefaultPrice;
+            await Service.AddAsync(newItem);
         }
 
         // Refresh the list based on current filter selection
