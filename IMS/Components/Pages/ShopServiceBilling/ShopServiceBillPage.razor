@@ -3,6 +3,7 @@
 @using Domain.Enums
 @using Domain.DTO
 @using Infrastructure.Services
+@using IMS.Components.Pages.Customer
 @inject IShopServiceBillingService BillingService
 @inject IListManagementService ListManagementService
 @inject ICustomerService CustomerService
@@ -356,11 +357,10 @@
     <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add new customer</h5>
+                <div class="modal-header border-0 pb-0">
                     <button type="button" class="btn-close" @onclick="CloseAddCustomerModal"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body pt-0">
                     <AddCustomer CustomerModel="selectedCustomerForModal" OnSaved="OnAddCustomerSaved" OnCancelled="CloseAddCustomerModal" />
                 </div>
             </div>
@@ -585,6 +585,10 @@
         var customerTypes = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
         selectedCustomerForModal = new Customer
         {
+            Id = Guid.Empty,
+            Name = string.Empty,
+            Phone = string.Empty,
+            IsActive = true,
             ListManagementId = customerTypes.Any() ? customerTypes.First().Id : Guid.Empty
         };
         showAddCustomerModal = true;
@@ -593,9 +597,11 @@
     private async Task OnAddCustomerSaved()
     {
         Customers = await CustomerService.GetCustomersAsync();
-        selectedCustomerId = selectedCustomerForModal.Id != Guid.Empty ? selectedCustomerForModal.Id : Customers.FirstOrDefault(c => c.Name == selectedCustomerForModal.Name)?.Id;
-        if (selectedCustomerId.HasValue)
+        if (selectedCustomerForModal?.Id != Guid.Empty)
+        {
+            selectedCustomerId = selectedCustomerForModal.Id;
             await BillingService.UpdateBillCustomerAsync(BillId, selectedCustomerId, selectedCustomerForModal.Name);
+        }
         showAddCustomerModal = false;
     }
 

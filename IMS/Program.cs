@@ -47,10 +47,21 @@ builder.Services.AddScoped<IListManagementService, ListManagementService>();
 builder.Services.AddScoped<IShopServiceBillingService, ShopServiceBillingService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IWholesalerPriceService, WholesalerPriceService>();
+builder.Services.AddScoped<IExcelImportService, ExcelImportService>();
 
 
 builder.Services.AddServerSideBlazor()
-    .AddCircuitOptions(options => { options.DetailedErrors = true; });
+    .AddCircuitOptions(options => 
+    { 
+        options.DetailedErrors = true;
+        options.MaxBufferedUnacknowledgedRenderBatches = 10;
+    });
+
+// Configure Kestrel for larger file uploads (e.g. Excel imports)
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 104857600; // 100 MB
+});
 //  Database connection with interceptor
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");

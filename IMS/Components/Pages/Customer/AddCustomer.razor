@@ -1,4 +1,4 @@
-﻿@using Domain
+@using Domain
 @using Domain.Enums
 @using Infrastructure.Services
 @rendermode InteractiveServer
@@ -134,6 +134,8 @@
     {
         if (CustomerModel.Id == Guid.Empty)
         {
+            CustomerModel.Id = Guid.NewGuid();
+            CustomerModel.CreatedAt = DateTime.UtcNow;
             await CustomerService.AddCustomerAsync(CustomerModel);
         }
         else
