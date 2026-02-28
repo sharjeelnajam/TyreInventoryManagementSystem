@@ -70,11 +70,6 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
     options.UseSqlServer(connectionString);
     options.AddInterceptors(sp.GetRequiredService<MultiTenantSaveChangesInterceptor>());
 });
-builder.Services.AddDbContextFactory<ApplicationDbContext>((sp, options) =>
-{
-    options.UseSqlServer(connectionString);
-    options.AddInterceptors(sp.GetRequiredService<MultiTenantSaveChangesInterceptor>());
-});
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 

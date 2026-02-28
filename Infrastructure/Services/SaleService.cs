@@ -2,6 +2,7 @@ using Domain;
 using Domain.DTO;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
 using Shared.MultiTenancy;
@@ -12,14 +13,14 @@ namespace Infrastructure.Services
     public class SaleService : ISaleService
     {
         private readonly ApplicationDbContext _context;
-        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly ITenantProvider _tenantProvider;
 
-        public SaleService(ApplicationDbContext context, IDbContextFactory<ApplicationDbContext> contextFactory, AuthenticationStateProvider authenticationStateProvider, ITenantProvider tenantProvider)
+        public SaleService(ApplicationDbContext context, IServiceScopeFactory scopeFactory, AuthenticationStateProvider authenticationStateProvider, ITenantProvider tenantProvider)
         {
             _context = context;
-            _contextFactory = contextFactory;
+            _scopeFactory = scopeFactory;
             _authStateProvider = authenticationStateProvider;
             _tenantProvider = tenantProvider;
         }
@@ -181,7 +182,8 @@ namespace Infrastructure.Services
 
         public async Task UpdateAsync(Sale sale)
         {
-            await using var ctx = _contextFactory.CreateDbContext();
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var ctx = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             try
             {
                 var existingSales = await ctx.Sale.Include(p => p.SaleDetails).FirstOrDefaultAsync(p => p.Id == sale.Id);

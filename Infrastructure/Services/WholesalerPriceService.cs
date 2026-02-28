@@ -95,8 +95,30 @@ namespace Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
+        public async Task UpsertPricesAsync(List<CustomerSalerPrice> prices)
+        {
+            if (prices == null || !prices.Any()) return;
 
+            foreach (var p in prices)
+            {
+                var existing = await _context.CustomerSalerPrices
+                    .FirstOrDefaultAsync(x =>
+                        x.CustomerId == p.CustomerId &&
+                        x.ThreadId == p.ThreadId &&
+                        x.UnitId == p.UnitId);
 
+                if (existing != null)
+                {
+                    existing.Price = p.Price;
+                }
+                else
+                {
+                    await _context.CustomerSalerPrices.AddAsync(p);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
 
         public async Task<List<CustomerSalerPrice>> GetByCustomerIdAsync(Guid customerId)
         {
@@ -114,5 +136,14 @@ namespace Infrastructure.Services
             
         }
 
+        public async Task DeletePriceAsync(Guid priceId)
+        {
+            var entity = await _context.CustomerSalerPrices.FindAsync(priceId);
+            if (entity != null)
+            {
+                _context.CustomerSalerPrices.Remove(entity);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

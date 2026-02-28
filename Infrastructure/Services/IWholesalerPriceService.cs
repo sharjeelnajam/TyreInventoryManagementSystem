@@ -11,7 +11,9 @@ namespace Infrastructure.Services
     {
         Task SavePricesAsync(Guid customerId, List<CustomerSalerPrice> prices);
         Task SavePriceAsync(List<CustomerSalerPrice> prices);
+        Task UpsertPricesAsync(List<CustomerSalerPrice> prices);
         Task<List<CustomerSalerPrice>> GetByCustomerIdAsync(Guid customerId);
         Task UpdatePriceOnlyAsync(Guid priceId, decimal price);
+        Task DeletePriceAsync(Guid priceId);
     }
 }

@@ -9,62 +9,66 @@
 @inject ApplicationDbContext _context
 @rendermode InteractiveServer
 
-<div class="modal fade show d-block" tabindex="-1"
-     style="background-color:rgba(0,0,0,0.5)">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+@{
+    var threadSelectId = (IdPrefix ?? "") + "ThreadSelect";
+    var unitSelectId = (IdPrefix ?? "") + "unitSelect";
+}
 
-            <div class="modal-header">
-                <h5>Manage Prices</h5>
-                <button class="btn-close" @onclick="Close"></button>
-            </div>
-
-            <div class="modal-body">
-
-                @if (!string.IsNullOrEmpty(ErrorMessage))
-                {
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <strong>Error:</strong> @ErrorMessage
-                        <button type="button" class="btn-close" @onclick="() => ErrorMessage = null"></button>
-                    </div>
-                }
-
-
-                <div class="d-flex gap-3  mb-4">
-
-                    <!-- Thread -->
-                    <div class="d-flex flex-column">
-                        <label class="fw-bold mb-1">Select Threads</label>
-                        <select id="ThreadSelect" class="form-select" multiple>
-                            @foreach (var s in Threads)
-                            {
-                                <option value="@s.Id">@s.Name</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Unit -->
-                    <div class="d-flex flex-column">
-                        <label class="fw-bold mb-1">Select Units</label>
-                        <select id="unitSelect" class="form-select" multiple>
-                            @foreach (var u in Units)
-                            {
-                                <option value="@u.Id">@u.Name</option>
-                            }
-                        </select>
-                    </div>
-
+@if (Inline)
+{
+    <div class="border rounded-3 p-3 bg-light">
+        <h5 class="mb-0">Manage Prices</h5>
+        <div class="pt-2">
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Error:</strong> @ErrorMessage
+                    <button type="button" class="btn-close" @onclick="() => ErrorMessage = null"></button>
                 </div>
-
-                <!-- Dynamic Price Grid -->
-                @if (PriceRows.Any())
-                {
+            }
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="fw-bold mb-2">Select Threads</label>
+                    <div class="border rounded p-2 bg-white" style="max-height:140px; overflow-y:auto;">
+                        @foreach (var s in Threads)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="thread_@s.Id" checked="@SelectedThreads.Contains(s.Id)" @onchange="() => ToggleThread(s.Id)" />
+                                <label class="form-check-label" for="thread_@s.Id">@s.Name</label>
+                            </div>
+                        }
+                        @if (!Threads.Any())
+                        {
+                            <span class="text-muted small">No threads defined.</span>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="fw-bold mb-2">Select Units</label>
+                    <div class="border rounded p-2 bg-white" style="max-height:140px; overflow-y:auto;">
+                        @foreach (var u in Units)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="unit_@u.Id" checked="@SelectedUnits.Contains(u.Id)" @onchange="() => ToggleUnit(u.Id)" />
+                                <label class="form-check-label" for="unit_@u.Id">@u.Name</label>
+                            </div>
+                        }
+                        @if (!Units.Any())
+                        {
+                            <span class="text-muted small">No units defined.</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            @if (PriceRows.Any())
+            {
+                <div class="table-responsive">
                     <table class="table table-bordered w-auto">
                         <thead>
                             <tr>
                                 <th style="width:150px">Thread</th>
                                 <th style="width:150px">Unit</th>
-                                <th style="width:150px">Price</th>
+                                <th style="width:150px">Price (£)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -74,32 +78,126 @@
                                     <td>@row.ThreadName</td>
                                     <td>@row.UnitName</td>
                                     <td>
-                                        <input type="number"
-                                               class="form-control"
-                                               style="width:130px"
-                                               @bind="row.Price" />
+                                        <input type="number" class="form-control" style="width:130px" step="0.01" min="0" @bind="row.Price" />
                                     </td>
                                 </tr>
                             }
                         </tbody>
                     </table>
-                }
-
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn btn-secondary" @onclick="Close">Cancel</button>
-                <button class="btn btn-primary" @onclick="Save">Save</button>
-            </div>
-
+                </div>
+                <p class="small text-muted mt-1">Enter price for each row, then click Save.</p>
+            }
+            else if (Threads.Any() && Units.Any())
+            {
+                <p class="text-muted mb-0">Select at least one Thread and one Unit above to show the price grid.</p>
+            }
+        </div>
+        <div class="pt-2 border-top mt-2">
+            <button class="btn btn-secondary btn-sm" @onclick="Close">Cancel</button>
+            <button class="btn btn-primary btn-sm" @onclick="Save" disabled="@(!PriceRows.Any())">Save</button>
         </div>
     </div>
-</div>
-
+}
+else if (ShowModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog"
+         style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:1050; background-color:rgba(0,0,0,0.5); overflow-y:auto;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i> Add pricing entry</h5>
+                    <button type="button" class="btn-close" @onclick="Close" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Add tier/grade and unit with price. Entries are saved for this customer and will appear in the list below.</p>
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>Error:</strong> @ErrorMessage
+                            <button type="button" class="btn-close" @onclick="() => ErrorMessage = null"></button>
+                        </div>
+                    }
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="fw-bold mb-2">Tier / Grade (Thread)</label>
+                            <div class="border rounded p-2 bg-white" style="max-height:140px; overflow-y:auto;">
+                                @foreach (var s in Threads)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="modal_thread_@s.Id" checked="@SelectedThreads.Contains(s.Id)" @onchange="() => ToggleThread(s.Id)" />
+                                        <label class="form-check-label" for="modal_thread_@s.Id">@s.Name</label>
+                                    </div>
+                                }
+                                @if (!Threads.Any())
+                                {
+                                    <span class="text-muted small">No tiers defined.</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fw-bold mb-2">Unit</label>
+                            <div class="border rounded p-2 bg-white" style="max-height:140px; overflow-y:auto;">
+                                @foreach (var u in Units)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="modal_unit_@u.Id" checked="@SelectedUnits.Contains(u.Id)" @onchange="() => ToggleUnit(u.Id)" />
+                                        <label class="form-check-label" for="modal_unit_@u.Id">@u.Name</label>
+                                    </div>
+                                }
+                                @if (!Units.Any())
+                                {
+                                    <span class="text-muted small">No units defined.</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    @if (PriceRows.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered w-auto">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:150px">Tier / Grade</th>
+                                        <th style="width:150px">Unit</th>
+                                        <th style="width:150px">Price (£)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in PriceRows)
+                                    {
+                                        <tr>
+                                            <td>@row.ThreadName</td>
+                                            <td>@row.UnitName</td>
+                                            <td>
+                                                <input type="number" class="form-control" style="width:130px" step="0.01" min="0" @bind="row.Price" />
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="small text-muted mt-1 mb-0">Enter price for each row, then click Save.</p>
+                    }
+                    else if (Threads.Any() && Units.Any())
+                    {
+                        <p class="text-muted mb-0">Select at least one Tier/Grade and one Unit to show the price grid.</p>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Close">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="Save" disabled="@(!PriceRows.Any())">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public Guid CustomerId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public bool Inline { get; set; }
+    [Parameter] public bool ShowModal { get; set; }
+    [Parameter] public string? IdPrefix { get; set; }
 
     List<ListManagement> Threads = new();
     List<ListManagement> Units = new();
@@ -113,10 +211,12 @@
 
     DotNetObjectReference<WholesalerManagePrice>? objRef;
 
+    string GetSelectId(string name) => (IdPrefix ?? "") + name;
+
     protected override async Task OnInitializedAsync()
     {
-        Threads = await ListService.GetByTypeAsync(ListType.Thread);
-        Units = await ListService.GetByTypeAsync(ListType.Unit);
+        Threads = await ListService.GetByTypeAsync(ListType.Thread) ?? new();
+        Units = await ListService.GetByTypeAsync(ListType.Unit) ?? new();
 
         // ExistingPrices = await PriceService
         // .GetByWholesalerIdAsync(WholesalerId);
@@ -137,35 +237,50 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !Inline)
         {
             objRef = DotNetObjectReference.Create(this);
-
             await Task.Delay(50);
-            await JS.InvokeVoidAsync("initMultiSelect",
-                "ThreadSelect", objRef, nameof(OnThreadSelected));
-
-            await JS.InvokeVoidAsync("initMultiSelect",
-                "unitSelect", objRef, nameof(OnUnitSelected));
-
+            try
+            {
+                await JS.InvokeVoidAsync("initMultiSelect",
+                    GetSelectId("ThreadSelect"), objRef, nameof(OnThreadSelected));
+                await JS.InvokeVoidAsync("initMultiSelect",
+                    GetSelectId("unitSelect"), objRef, nameof(OnUnitSelected));
+            }
+            catch { /* Select2 not available or element not in DOM */ }
         }
+    }
+
+    void ToggleThread(Guid id)
+    {
+        if (SelectedThreads.Contains(id))
+            SelectedThreads.Remove(id);
+        else
+            SelectedThreads.Add(id);
+        BuildRows();
+    }
+
+    void ToggleUnit(Guid id)
+    {
+        if (SelectedUnits.Contains(id))
+            SelectedUnits.Remove(id);
+        else
+            SelectedUnits.Add(id);
+        BuildRows();
     }
 
     [JSInvokable]
     public void OnThreadSelected(string[] values)
     {
         SelectedThreads = values.Select(Guid.Parse).ToHashSet();
-
         BuildRows();
     }
 
     [JSInvokable]
     public void OnUnitSelected(string[] values)
     {
-        SelectedUnits = values
-            .Select(Guid.Parse)
-            .ToHashSet();
-
+        SelectedUnits = values.Select(Guid.Parse).ToHashSet();
         BuildRows();
     }
 
@@ -195,9 +310,11 @@
 
     async Task Save()
     {
+        if (!PriceRows.Any()) return;
         try
         {
-            var newPrices = PriceRows.Select(x => new CustomerSalerPrice
+            ErrorMessage = null;
+            var prices = PriceRows.Select(x => new CustomerSalerPrice
                 {
                     CustomerId = CustomerId,
                     ThreadId = x.ThreadId,
@@ -205,14 +322,13 @@
                     Price = x.Price
                 }).ToList();
 
-            await PriceService.SavePriceAsync(newPrices);
-
+            await PriceService.UpsertPricesAsync(prices);
             await OnClose.InvokeAsync();
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            // ✅ JS message
             ErrorMessage = ex.Message;
+            StateHasChanged();
         }
     }
 

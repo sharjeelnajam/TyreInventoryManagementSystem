@@ -6,155 +6,262 @@
 @inject IListManagementService ListManagementService
 @inject IWholesalerPriceService WholesalerPriceService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>Customer Details</PageTitle>
 
-<div class="container mt-4">
+<h4 class="mb-3">👤 View Customer Details</h4>
 
-    <div class="card shadow-lg rounded-4">
-        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">
-                <i class="bi bi-eye me-2"></i> Customer Details
-            </h5>
-
-            <button class="btn btn-light btn-sm" @onclick="GoBack">
-                <i class="bi bi-arrow-left"></i> Back
-            </button>
+@if (Customer == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card p-3">
+        <!-- Customer summary - same style as Purchase View -->
+        <div class="row">
+            <div class="col-md-4">
+                <label>Name</label>
+                <input class="form-control" value="@Customer.Name" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Phone</label>
+                <input class="form-control" value="@Customer.Phone" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Email</label>
+                <input class="form-control" value="@(Customer.Email ?? "N/A")" readonly />
+            </div>
         </div>
 
-        <div class="card-body">
+        <div class="row mt-2">
+            <div class="col-md-4">
+                <label>Registered At</label>
+                <input class="form-control" value="@Customer.CreatedAt.ToString("dd-MMM-yyyy")" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>City</label>
+                <input class="form-control" value="@(Customer.City ?? "N/A")" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Vehicle Number</label>
+                <input class="form-control" value="@(Customer.VehicleNumber ?? "N/A")" readonly />
+            </div>
+        </div>
 
-            @if (Customer == null)
-            {
-                <div class="text-center py-4">
-                    <div class="spinner-border text-secondary"></div>
-                </div>
-            }
-            else
-            {
-                <div class="row g-3">
+        <div class="row mt-2">
+            <div class="col-md-4">
+                <label>Customer Type</label>
+                <input class="form-control" value="@CustomerTypeName" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Status</label>
+                <input class="form-control" value="@(Customer.IsActive ? "Active" : "Inactive")" readonly />
+            </div>
+            <div class="col-md-4">
+                <label>Address</label>
+                <input class="form-control" value="@(Customer.Address ?? "N/A")" readonly />
+            </div>
+        </div>
 
-                    <div class="col-md-6">
-                        <strong>Name:</strong>
-                        <p>@Customer.Name</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Phone:</strong>
-                        <p>@Customer.Phone</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Email:</strong>
-                        <p>@(Customer.Email ?? "N/A")</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Registered At:</strong>
-                        <p>@Customer.CreatedAt.ToShortDateString()</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>City:</strong>
-                        <p>@(Customer.City ?? "N/A")</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Vehicle Number:</strong>
-                        <p>@(Customer.VehicleNumber ?? "N/A")</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Customer Type:</strong>
-                        <p>@CustomerTypeName</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Status:</strong>
-                        <p>
-                            <span class="badge @(Customer.IsActive ? "bg-success" : "bg-danger")">
-                                @(Customer.IsActive ? "Active" : "Inactive")
-                            </span>
-                        </p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Credit Limit:</strong>
-                        <p>£ @(Customer.CreditLimit?.ToString("N2") ?? "0.00")</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Discount %:</strong>
-                        <p>@(Customer.Percentage?.ToString("N2") ?? "0") %</p>
-                    </div>
-
-                    <div class="col-md-6">
-                        <strong>Custom Price:</strong>
-                        <p>£ @(Customer.CustomPrice?.ToString("N2") ?? "0.00")</p>
-                    </div>
-
-                    <div class="col-md-12">
-                        <strong>Address:</strong>
-                        <p>@(Customer.Address ?? "N/A")</p>
-                    </div>
-
-                    @if (IsWholesalerType)
-                    {
-                        <div class="col-md-12 mt-3">
-                            <hr />
-                            <h5 class="mb-3"><i class="bi bi-currency-pound me-2"></i> Wholesaler Price List</h5>
-                            <button class="btn btn-sm btn-success" @onclick="OpenPriceModal">
-                                <i class="bi bi-plus-circle me-1"></i> Manage Prices
-                            </button>
-                            @if (Prices != null && Prices.Any())
-                            {
-                                <table class="table table-bordered mt-3">
-                                    <thead>
-                                        <tr><th>Thread</th><th>Unit</th><th class="text-end">Price (£)</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var p in Prices)
-                                        {
-                                            <tr>
-                                                <td>@GetThreadName(p.ThreadId)</td>
-                                                <td>@GetUnitName(p.UnitId)</td>
-                                                <td class="text-end">£ @p.Price</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            }
-                            else if (Prices != null)
-                            {
-                                <p class="text-muted mt-2">No prices added. Click "Manage Prices" to add.</p>
-                            }
-                        </div>
-                        @if (ShowPriceModal)
+        <hr />
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h5 class="mb-0"><i class="bi bi-currency-pound me-2"></i> Price List</h5>
+            <button type="button" class="btn btn-success btn-sm" @onclick="OpenManagePricingAsync" title="Add or edit product prices">
+                <i class="bi bi-currency-pound me-1"></i> Manage Pricing
+            </button>
+        </div>
+        @if (Prices != null && Prices.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Thread</th>
+                            <th>Unit</th>
+                            <th class="text-end">Price (£)</th>
+                            <th style="width:100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Prices)
                         {
-                            <WholesalerManagePrice CustomerId="@Id" OnClose="ClosePriceModalAndRefresh" />
+                            <tr>
+                                <td>@GetThreadName(p.ThreadId)</td>
+                                <td>@GetUnitName(p.UnitId)</td>
+                                <td class="text-end">@p.Price.ToString("N2")</td>
+                                <td>
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-1 me-1" title="Edit price" @onclick="() => OpenEditPricePopup(p)">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete" @onclick="() => DeletePriceAsync(p)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
                         }
-                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else if (Prices != null)
+        {
+            <p class="text-muted mb-0">No prices added yet. Click <strong>Manage Pricing</strong> to add tier/grade and unit prices for this customer.</p>
+        }
 
-                </div>
-            }
-
+        <div class="mt-3 text-end">
+            <button class="btn btn-secondary" @onclick="GoBack">Back</button>
         </div>
     </div>
 
-</div>
+    @* Modal: centered, larger size; no modal-content so Select2 dropdown parents to body and isn't clipped *@
+    @if (ShowManagePricing)
+    {
+        <div class="manage-pricing-overlay" @onclick="CloseManagePricing" style="position:fixed; inset:0; z-index:1050; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; overflow-y:auto; padding:2rem;">
+            <div class="manage-pricing-dialog" @onclick:stopPropagation style="background:white; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.2); width:min(920px, 94vw); min-height:520px; max-height:88vh; overflow:auto; margin:auto; display:flex; flex-direction:column;">
+                <div class="manage-pricing-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light rounded-top">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i> Add pricing</h5>
+                    <button type="button" class="btn-close" @onclick="CloseManagePricing" aria-label="Close"></button>
+                </div>
+                <div class="manage-pricing-body p-4" style="flex:1; min-height:0;">
+                    
+                    @if (!string.IsNullOrEmpty(ManagePriceError))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show py-2">
+                            @ManagePriceError
+                            <button type="button" class="btn-close btn-sm" @onclick="() => ManagePriceError = null"></button>
+                        </div>
+                    }
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="fw-bold mb-2">Inches</label>
+                            <select id="customerViewThreadSelect" class="form-select" multiple>
+                                @foreach (var s in ThreadsList)
+                                {
+                                    <option value="@s.Id">@s.Name</option>
+                                }
+                            </select>
+                            @if (!ThreadsList.Any())
+                            {
+                                <span class="text-muted small">No tiers defined in list management.</span>
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fw-bold mb-2">Sizes</label>
+                            <select id="customerViewUnitSelect" class="form-select" multiple>
+                                @foreach (var u in UnitsList)
+                                {
+                                    <option value="@u.Id">@u.Name</option>
+                                }
+                            </select>
+                            @if (!UnitsList.Any())
+                            {
+                                <span class="text-muted small">No units defined in list management.</span>
+                            }
+                        </div>
+                    </div>
+                   
+                    @if (ManagePriceRows.Any())
+                    {
+                        <div class="table-responsive mb-2">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Inches</th>
+                                        <th>Size</th>
+                                        <th>Price (£)</th>
+                                        <th style="width:44px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in ManagePriceRows)
+                                    {
+                                        <tr>
+                                            <td>@row.ThreadName</td>
+                                            <td>@row.UnitName</td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm" style="width:120px" step="0.01" min="0" @bind="row.Price" />
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-outline-danger btn-sm p-1" title="Remove row" @onclick="() => RemoveManagePriceRow(row)">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else if (ThreadsList.Any() && UnitsList.Any())
+                    {
+                        <p class="text-muted small mb-0">Select at least one Tier/Grade and one Unit to show the price grid.</p>
+                    }
+                </div>
+                <div class="manage-pricing-footer d-flex justify-content-end gap-2 p-3 border-top bg-light rounded-bottom">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="CloseManagePricing">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveManagePrice" disabled="@(!ManagePriceRows.Any())">Save</button>
+                </div>
+            </div>
+        </div>
+    }
 
+    @* Edit price popup *@
+    @if (ShowEditPricePopup && EditingPrice != null)
+    {
+        <div class="manage-pricing-overlay" @onclick="CloseEditPricePopup" style="position:fixed; inset:0; z-index:1060; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center;">
+            <div class="manage-pricing-dialog" @onclick:stopPropagation style="background:white; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.2); width:min(400px, 94vw); padding:0; margin:auto;">
+                <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light rounded-top">
+                    <h5 class="mb-0"><i class="bi bi-pencil me-2"></i> Edit price</h5>
+                    <button type="button" class="btn-close" @onclick="CloseEditPricePopup" aria-label="Close"></button>
+                </div>
+                <div class="p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tier / Grade (Thread)</label>
+                        <input type="text" class="form-control" value="@GetThreadName(EditingPrice.ThreadId)" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Unit</label>
+                        <input type="text" class="form-control" value="@GetUnitName(EditingPrice.UnitId)" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Price (£)</label>
+                        <input type="number" class="form-control" step="0.01" min="0" @bind="EditPriceValue" />
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 p-3 border-top bg-light rounded-bottom">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="CloseEditPricePopup">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveEditPriceAsync">Save</button>
+                </div>
+            </div>
+        </div>
+    }
+}
 
 @code {
     [Parameter] public Guid Id { get; set; }
 
     private Customer? Customer;
     private string CustomerTypeName = "N/A";
-    private bool IsWholesalerType;
     private List<CustomerSalerPrice>? Prices;
     private Dictionary<Guid, string> ThreadLookup = new();
     private Dictionary<Guid, string> UnitLookup = new();
-    private bool ShowPriceModal;
+    private bool ShowManagePricing;
+    private bool ShowEditPricePopup;
+    private CustomerSalerPrice? EditingPrice;
+    private decimal EditPriceValue;
+
+    private List<ListManagement> ThreadsList = new();
+    private List<ListManagement> UnitsList = new();
+    private HashSet<Guid> ManageSelectedThreads = new();
+    private HashSet<Guid> ManageSelectedUnits = new();
+    private List<ManagePriceRow> ManagePriceRows = new();
+    private string? ManagePriceError;
+    private DotNetObjectReference<CustomerView>? _managePriceDotNetRef;
+    private bool _managePriceSelectsInitialized;
 
     protected override async Task OnInitializedAsync()
     {
@@ -164,31 +271,202 @@
         {
             var types = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
             CustomerTypeName = types.FirstOrDefault(x => x.Id == Customer.ListManagementId)?.Name ?? "N/A";
-            IsWholesalerType = string.Equals(CustomerTypeName, "Wholesaler", StringComparison.OrdinalIgnoreCase);
-            if (IsWholesalerType)
-            {
-                Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
-                var threads = await ListManagementService.GetByTypeAsync(ListType.Thread);
-                var units = await ListManagementService.GetByTypeAsync(ListType.Unit);
-                ThreadLookup = threads.ToDictionary(x => x.Id, x => x.Name);
-                UnitLookup = units.ToDictionary(x => x.Id, x => x.Name);
-            }
+
+            Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+            var threads = await ListManagementService.GetByTypeAsync(ListType.Thread) ?? new List<ListManagement>();
+            var units = await ListManagementService.GetByTypeAsync(ListType.Unit) ?? new List<ListManagement>();
+            ThreadLookup = threads.ToDictionary(x => x.Id, x => x.Name);
+            UnitLookup = units.ToDictionary(x => x.Id, x => x.Name);
+            ThreadsList = threads;
+            UnitsList = units;
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ShowManagePricing && ThreadsList.Any() && UnitsList.Any() && !_managePriceSelectsInitialized)
+        {
+            _managePriceDotNetRef = DotNetObjectReference.Create(this);
+            await Task.Delay(100);
+            try
+            {
+                await JS.InvokeVoidAsync("initMultiSelect", "customerViewThreadSelect", _managePriceDotNetRef, "OnManageThreadsSelected");
+                await JS.InvokeVoidAsync("initMultiSelect", "customerViewUnitSelect", _managePriceDotNetRef, "OnManageUnitsSelected");
+                _managePriceSelectsInitialized = true;
+            }
+            catch { _managePriceSelectsInitialized = false; }
+        }
+        if (!ShowManagePricing && _managePriceSelectsInitialized)
+        {
+            _managePriceDotNetRef?.Dispose();
+            _managePriceDotNetRef = null;
+            _managePriceSelectsInitialized = false;
+        }
+    }
+
+    [JSInvokable]
+    public void OnManageThreadsSelected(string[] values)
+    {
+        ManageSelectedThreads = values.Length > 0 ? values.Select(Guid.Parse).ToHashSet() : new HashSet<Guid>();
+        BuildManagePriceRows();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnManageUnitsSelected(string[] values)
+    {
+        ManageSelectedUnits = values.Length > 0 ? values.Select(Guid.Parse).ToHashSet() : new HashSet<Guid>();
+        BuildManagePriceRows();
+        StateHasChanged();
     }
 
     string GetThreadName(Guid id) => ThreadLookup.TryGetValue(id, out var n) ? n : "N/A";
     string GetUnitName(Guid id) => UnitLookup.TryGetValue(id, out var n) ? n : "N/A";
-    void OpenPriceModal() => ShowPriceModal = true;
+
+    async Task OpenManagePricingAsync()
+    {
+        ShowManagePricing = true;
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
+    void CloseManagePricing()
+    {
+        ShowManagePricing = false;
+        ManagePriceError = null;
+        _managePriceSelectsInitialized = false;
+        StateHasChanged();
+    }
+
+    void RemoveManagePriceRow(ManagePriceRow row)
+    {
+        ManagePriceRows.Remove(row);
+        StateHasChanged();
+    }
+
+    void BuildManagePriceRows()
+    {
+        ManagePriceRows = (
+            from s in ManageSelectedThreads
+            from u in ManageSelectedUnits
+            let thread = ThreadsList.FirstOrDefault(x => x.Id == s)
+            let unit = UnitsList.FirstOrDefault(x => x.Id == u)
+            where thread != null && unit != null
+            select new ManagePriceRow
+            {
+                ThreadId = s,
+                UnitId = u,
+                ThreadName = thread!.Name,
+                UnitName = unit!.Name,
+                Price = 0
+            }
+        ).ToList();
+        StateHasChanged();
+    }
+
+    async Task SaveManagePrice()
+    {
+        if (!ManagePriceRows.Any()) return;
+        ManagePriceError = null;
+        try
+        {
+            var prices = ManagePriceRows.Select(x => new CustomerSalerPrice
+            {
+                CustomerId = Id,
+                ThreadId = x.ThreadId,
+                UnitId = x.UnitId,
+                Price = x.Price
+            }).ToList();
+            await WholesalerPriceService.UpsertPricesAsync(prices);
+            if (Customer != null)
+                Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+            ShowManagePricing = false;
+            ManageSelectedThreads.Clear();
+            ManageSelectedUnits.Clear();
+            ManagePriceRows.Clear();
+        }
+        catch (Exception ex)
+        {
+            ManagePriceError = ex.Message;
+        }
+        StateHasChanged();
+    }
+
+    void OpenEditPricePopup(CustomerSalerPrice p)
+    {
+        EditingPrice = p;
+        EditPriceValue = p.Price;
+        ShowEditPricePopup = true;
+        StateHasChanged();
+    }
+
+    void CloseEditPricePopup()
+    {
+        ShowEditPricePopup = false;
+        EditingPrice = null;
+        StateHasChanged();
+    }
+
+    async Task SaveEditPriceAsync()
+    {
+        if (EditingPrice == null) return;
+        try
+        {
+            await WholesalerPriceService.UpdatePriceOnlyAsync(EditingPrice.Id, EditPriceValue);
+            if (Customer != null)
+                Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+            CloseEditPricePopup();
+        }
+        catch (Exception)
+        {
+            if (Customer != null)
+                Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+            StateHasChanged();
+        }
+        StateHasChanged();
+    }
+
+    async Task DeletePriceAsync(CustomerSalerPrice p)
+    {
+        try
+        {
+            await WholesalerPriceService.DeletePriceAsync(p.Id);
+            if (Customer != null)
+                Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+        }
+        catch (Exception)
+        {
+            if (Customer != null)
+                Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+            StateHasChanged();
+        }
+        StateHasChanged();
+    }
+
     async Task ClosePriceModalAndRefresh()
     {
-        ShowPriceModal = false;
-        if (IsWholesalerType)
+        if (Customer != null)
             Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+        ShowManagePricing = false;
         StateHasChanged();
     }
 
     void GoBack()
     {
         Navigation.NavigateTo("/customers");
+    }
+
+    public void Dispose()
+    {
+        _managePriceDotNetRef?.Dispose();
+    }
+
+    private class ManagePriceRow
+    {
+        public Guid ThreadId { get; set; }
+        public Guid UnitId { get; set; }
+        public string ThreadName { get; set; } = "";
+        public string UnitName { get; set; } = "";
+        public decimal Price { get; set; }
     }
 }

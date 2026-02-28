@@ -4,6 +4,9 @@
 @rendermode InteractiveServer
 @inject ICustomerService CustomerService
 @inject IListManagementService ListManagementService
+@inject IWholesalerPriceService WholesalerPriceService
+@inject IJSRuntime JS
+@implements IDisposable
 
 <EditForm Model="CustomerModel" OnValidSubmit="HandleValidSubmit">
     <DataAnnotationsValidator />
@@ -79,6 +82,18 @@
             </div>
         </div>
 
+        <div class="d-flex justify-content-between align-items-center mt-3 py-2 border-top">
+            <div>
+                <button type="button" class="btn btn-success btn-sm" @onclick="OpenManagePricing" title="Add pricing (saved together with customer)">
+                    <span class="bi bi-currency-pound me-1"></span> Manage Pricing
+                </button>
+                @if (PendingPriceRows.Any())
+                {
+                    <span class="text-muted small ms-2">@PendingPriceRows.Count entry(ies) will be saved with customer</span>
+                }
+            </div>
+        </div>
+
         <div class="d-flex justify-content-end mt-4">
             <button type="submit"
             class="btn text-white px-4 py-2 me-2 shadow-sm"
@@ -97,16 +112,185 @@
     </div>
 </EditForm>
 
+@* Same "Add pricing entry" popup as View Customer: multi-select dropdowns, grid, Cancel/Save *@
+@if (ShowManagePricing)
+{
+    <div class="manage-pricing-overlay" @onclick="CloseManagePricing" style="position:fixed; inset:0; z-index:1050; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; overflow-y:auto; padding:2rem;">
+        <div class="manage-pricing-dialog" @onclick:stopPropagation style="background:white; border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,0.2); width:min(920px, 94vw); min-height:520px; max-height:88vh; overflow:auto; margin:auto; display:flex; flex-direction:column;">
+            <div class="manage-pricing-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light rounded-top">
+                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i> Add pricing entry</h5>
+                <button type="button" class="btn-close" @onclick="CloseManagePricing" aria-label="Close"></button>
+            </div>
+            <div class="manage-pricing-body p-4" style="flex:1; min-height:0;">
+                <p class="text-muted small mb-3">Select tier/grade and unit, enter price, then Save. Entries appear in the list below. They will be saved when you click Save on the customer form.</p>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="fw-bold mb-2">Tier / Grade (Thread)</label>
+                        <select id="addCustomerThreadSelect" class="form-select" multiple>
+                            @foreach (var s in ThreadsList)
+                            {
+                                <option value="@s.Id">@s.Name</option>
+                            }
+                        </select>
+                        @if (!ThreadsList.Any())
+                        {
+                            <span class="text-muted small">No tiers defined in list management.</span>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <label class="fw-bold mb-2">Unit</label>
+                        <select id="addCustomerUnitSelect" class="form-select" multiple>
+                            @foreach (var u in UnitsList)
+                            {
+                                <option value="@u.Id">@u.Name</option>
+                            }
+                        </select>
+                        @if (!UnitsList.Any())
+                        {
+                            <span class="text-muted small">No units defined in list management.</span>
+                        }
+                    </div>
+                </div>
+                <p class="small text-muted mb-2">Select multiple tier/grade and unit from the dropdowns above.</p>
+                @if (PendingPriceRows.Any())
+                {
+                    <div class="table-responsive mb-2">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tier / Grade</th>
+                                    <th>Unit</th>
+                                    <th>Price (£)</th>
+                                    <th style="width:44px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in PendingPriceRows)
+                                {
+                                    <tr>
+                                        <td>@row.ThreadName</td>
+                                        <td>@row.UnitName</td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm" style="width:120px" step="0.01" min="0" @bind="row.Price" />
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-outline-danger btn-sm p-1" title="Remove row" @onclick="() => RemovePendingRow(row)">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="small text-muted mb-0">Enter price for each row. Use <i class="bi bi-x-lg text-danger small"></i> to remove a row.</p>
+                }
+                else if (ThreadsList.Any() && UnitsList.Any())
+                {
+                    <p class="text-muted small mb-0">Select at least one Tier/Grade and one Unit to show the price grid.</p>
+                }
+            </div>
+            <div class="manage-pricing-footer d-flex justify-content-end gap-2 p-3 border-top bg-light rounded-bottom">
+                <button type="button" class="btn btn-secondary btn-sm" @onclick="CloseManagePricing">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" @onclick="CloseManagePricing">Save</button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [Parameter] public Customer CustomerModel { get; set; }
     [Parameter] public EventCallback OnSaved { get; set; }
     [Parameter] public EventCallback OnCancelled { get; set; }
     private List<ListManagement> listManagements = new List<ListManagement>();
+    private List<ListManagement> ThreadsList = new();
+    private List<ListManagement> UnitsList = new();
+    private bool ShowManagePricing;
+    private HashSet<Guid> PendingSelectedThreads = new();
+    private HashSet<Guid> PendingSelectedUnits = new();
+    private List<PendingPriceRow> PendingPriceRows = new();
+    private DotNetObjectReference<AddCustomer>? _addCustomerDotNetRef;
+    private bool _addCustomerSelectsInitialized;
 
-    protected override  async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
-        listManagements = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
+        listManagements = await ListManagementService.GetByTypeAsync(ListType.CustomerType) ?? new();
+        ThreadsList = await ListManagementService.GetByTypeAsync(ListType.Thread) ?? new();
+        UnitsList = await ListManagementService.GetByTypeAsync(ListType.Unit) ?? new();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (ShowManagePricing && ThreadsList.Any() && UnitsList.Any() && !_addCustomerSelectsInitialized)
+        {
+            _addCustomerDotNetRef = DotNetObjectReference.Create(this);
+            await Task.Delay(100);
+            try
+            {
+                await JS.InvokeVoidAsync("initMultiSelect", "addCustomerThreadSelect", _addCustomerDotNetRef, "OnAddCustomerThreadsSelected");
+                await JS.InvokeVoidAsync("initMultiSelect", "addCustomerUnitSelect", _addCustomerDotNetRef, "OnAddCustomerUnitsSelected");
+                _addCustomerSelectsInitialized = true;
+            }
+            catch { _addCustomerSelectsInitialized = false; }
+        }
+        if (!ShowManagePricing && _addCustomerSelectsInitialized)
+        {
+            _addCustomerDotNetRef?.Dispose();
+            _addCustomerDotNetRef = null;
+            _addCustomerSelectsInitialized = false;
+        }
+    }
+
+    [JSInvokable]
+    public void OnAddCustomerThreadsSelected(string[] values)
+    {
+        PendingSelectedThreads = values.Length > 0 ? values.Select(Guid.Parse).ToHashSet() : new HashSet<Guid>();
+        BuildPendingPriceRows();
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnAddCustomerUnitsSelected(string[] values)
+    {
+        PendingSelectedUnits = values.Length > 0 ? values.Select(Guid.Parse).ToHashSet() : new HashSet<Guid>();
+        BuildPendingPriceRows();
+        StateHasChanged();
+    }
+
+    private void OpenManagePricing()
+    {
+        ShowManagePricing = true;
+        StateHasChanged();
+    }
+
+    private void CloseManagePricing()
+    {
+        ShowManagePricing = false;
+        _addCustomerSelectsInitialized = false;
+        StateHasChanged();
+    }
+
+    private void BuildPendingPriceRows()
+    {
+        var existingKeys = PendingPriceRows.Select(x => (x.ThreadId, x.UnitId)).ToHashSet();
+        var newRows = (
+            from s in PendingSelectedThreads
+            from u in PendingSelectedUnits
+            let thread = ThreadsList.FirstOrDefault(x => x.Id == s)
+            let unit = UnitsList.FirstOrDefault(x => x.Id == u)
+            where thread != null && unit != null && !existingKeys.Contains((s, u))
+            select new PendingPriceRow { ThreadId = s, UnitId = u, ThreadName = thread!.Name, UnitName = unit!.Name, Price = 0 }
+        ).ToList();
+        foreach (var r in newRows) PendingPriceRows.Add(r);
+        var toRemove = PendingPriceRows.Where(r => !PendingSelectedThreads.Contains(r.ThreadId) || !PendingSelectedUnits.Contains(r.UnitId)).ToList();
+        foreach (var r in toRemove) PendingPriceRows.Remove(r);
+        StateHasChanged();
+    }
+
+    private void RemovePendingRow(PendingPriceRow row)
+    {
+        PendingPriceRows.Remove(row);
+        StateHasChanged();
     }
 
     private async Task HandleValidSubmit()
@@ -122,6 +306,35 @@
             await CustomerService.UpdateCustomerAsync(CustomerModel);
         }
 
+        if (PendingPriceRows.Any())
+        {
+            var prices = PendingPriceRows.Select(x => new CustomerSalerPrice
+            {
+                CustomerId = CustomerModel.Id,
+                ThreadId = x.ThreadId,
+                UnitId = x.UnitId,
+                Price = x.Price
+            }).ToList();
+            await WholesalerPriceService.UpsertPricesAsync(prices);
+            PendingPriceRows.Clear();
+            PendingSelectedThreads.Clear();
+            PendingSelectedUnits.Clear();
+        }
+
         await OnSaved.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _addCustomerDotNetRef?.Dispose();
+    }
+
+    private class PendingPriceRow
+    {
+        public Guid ThreadId { get; set; }
+        public Guid UnitId { get; set; }
+        public string ThreadName { get; set; } = "";
+        public string UnitName { get; set; } = "";
+        public decimal Price { get; set; }
     }
 }
