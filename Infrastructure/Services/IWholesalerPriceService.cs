@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,11 +9,9 @@ namespace Infrastructure.Services
 {
     public interface IWholesalerPriceService
     {
-        Task SavePricesAsync(Guid wholesalerId, List<WholeSalerPrice> prices);
-        Task SavePriceAsync(List<WholeSalerPrice> prices);
-        Task<List<WholeSalerPrice>> GetByWholesalerIdAsync(Guid wholesalerId);
+        Task SavePricesAsync(Guid customerId, List<CustomerSalerPrice> prices);
+        Task SavePriceAsync(List<CustomerSalerPrice> prices);
+        Task<List<CustomerSalerPrice>> GetByCustomerIdAsync(Guid customerId);
         Task UpdatePriceOnlyAsync(Guid priceId, decimal price);
-
-
     }
 }

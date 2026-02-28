@@ -106,6 +106,19 @@ namespace Infrastructure.Persistence.Data
                 await context.ListManagements.AddRangeAsync(expenses);
             }
 
+            // Seed Customer Type data (Wholesaler, Customer, Walk-in) - used for unified Customer module
+            var hasCustomerTypeData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.CustomerType && !lm.IsDeleted);
+            if (!hasCustomerTypeData)
+            {
+                var customerTypes = new List<ListManagement>
+                {
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Wholesaler", Type = ListType.CustomerType, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Customer", Type = ListType.CustomerType, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Walk-in", Type = ListType.CustomerType, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
+                };
+                await context.ListManagements.AddRangeAsync(customerTypes);
+            }
+
             // Seed Shop Service data - common services staff can select when billing
             var hasShopServiceData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.ShopService && !lm.IsDeleted);
             if (!hasShopServiceData)

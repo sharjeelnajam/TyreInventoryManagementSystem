@@ -1,5 +1,5 @@
 @implements IDisposable
-
+@rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 
 <div class="top-row ps-3 navbar navbar-dark">
@@ -8,283 +8,246 @@
     </div>
 </div>
 
+@* Simplified the toggler to prevent event interference *@
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     <nav class="flex-column">
 
-      @*   <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-              <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div> *@
+        @* --- ADMIN SECTIONS --- *@
+        <AuthorizeView Roles="Admin">
+            <Authorized>
 
-        <div class="nav-item px-3">
-            <AuthorizeView Roles="SuperAdmin">
-                <Authorized>
-
-                    <NavLink class="nav-link d-flex align-items-center" href="/branches">
-                        <span class="bi bi-person-fill-nav-menu"></span>
-                        <span>Branches</span>
-                    </NavLink>
-
-                        <NavLink class="nav-link d-flex align-items-center"
-                                 href="/adminPanal"
-                                 ActiveClass="active-dashboard">
-                            <i class="fa fa-dashboard me-3"></i>
-                            <span>AdminPanal</span>
-                        </NavLink> 
-                        
-                        <NavLink class="nav-link d-flex align-items-center"
-                                 href="/products"
-                                 ActiveClass="active-dashboard">
-                            <i class="fa fa-dashboard me-3"></i>
-                            <span>Products</span>
+                @* Dashboard Section *@
+                <div class="nav-section-header" @onclick="ToggleDashboard">
+                    <span class="header-text">Dashboard</span>
+                    <i class="@GetChevronClass(isDashboardOpen)"></i>
+                </div>
+                @if (isDashboardOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/dashboard" Match="NavLinkMatch.All">
+                            <i class="fa fa-dashboard me-3"></i> Dashboard
                         </NavLink>
-           
-                </Authorized>
-            </AuthorizeView>
-        </div>
+                        <NavLink class="nav-link" href="/analytics">
+                            <i class="fa fa-chart-line me-3"></i> Analytics
+                        </NavLink>
+                        <NavLink class="nav-link" href="/daily-report">
+                            <i class="fas fa-file-invoice-dollar me-3"></i> Daily Report
+                        </NavLink>
+                    </div>
+                }
 
-      
-            <AuthorizeView Roles="Staff">
-                <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/products">
-                        <span class="bi bi-box-fill"></span>Products
-                    </NavLink>
+                @* Sales Section *@
+                <div class="nav-section-header" @onclick="ToggleSales">
+                    <span class="header-text">Sales</span>
+                    <i class="@GetChevronClass(isSalesOpen)"></i>
                 </div>
+                @if (isSalesOpen)
+                {
+                    <div class="nav-sub-items">
+                        <a class="nav-link" href="/pos" target="_blank">
+                            <span class="bi bi-cart-fill me-2"></span> POS
+                        </a>
+                        <NavLink class="nav-link" href="/shop-billing">
+                            <span class="bi bi-receipt me-2"></span> Shop Billing
+                        </NavLink>
+                        <NavLink class="nav-link" href="/sales">
+                            <span class="bi bi-file-earmark-text me-2"></span> Invoices
+                        </NavLink>
+                    </div>
+                }
 
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/suppliers">
-                        <span class="bi bi-person-fill-nav-menu"></span>Suppliers
-                    </NavLink>
+                @* Product Section *@
+                <div class="nav-section-header" @onclick="ToggleProduct">
+                    <span class="header-text">Product</span>
+                    <i class="@GetChevronClass(isProductOpen)"></i>
                 </div>
+                @if (isProductOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/products">
+                            <span class="bi bi-box-fill me-2"></span> Products
+                        </NavLink>
+                        <NavLink class="nav-link" href="/stock-history">
+                            <span class="bi bi-cart-fill me-2"></span> Stock
+                        </NavLink>
+                    </div>
+                }
 
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/customers">
-                        <span class="bi bi-person-fill-nav-menu"></span>Customers
-                    </NavLink>
+                @* Account Section *@
+                <div class="nav-section-header" @onclick="ToggleAccount">
+                    <span class="header-text">Account</span>
+                    <i class="@GetChevronClass(isAccountOpen)"></i>
                 </div>
+                @if (isAccountOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/purchases">
+                            <span class="bi bi-cart-fill me-2"></span> Purchases
+                        </NavLink>
+                        <NavLink class="nav-link" href="/expenses"><i class="fas fa-file-invoice-dollar me-2"></i> Expenses</NavLink>
+                    </div>
+                }
 
-
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/purchases">
-                        <span class="bi bi-cart-fill me-2"></span>Purchases
-                    </NavLink>
+                @* Staff Section *@
+                <div class="nav-section-header" @onclick="ToggleStaff">
+                    <span class="header-text">Staff</span>
+                    <i class="@GetChevronClass(isStaffOpen)"></i>
                 </div>
+                @if (isStaffOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/staff"><span class="bi bi-person me-2"></span> Staff</NavLink>
+                    </div>
+                }
 
-                <div class="nav-item px-3">
-                    <a class="align-items-center align-items-lg-baseline d-flex nav-link" href="/pos" target="_blank">
-                        <span class="bi bi-cart-fill me-2"></span>POS
-                    </a>
+                @* Suppliers Section *@
+                <div class="nav-section-header" @onclick="ToggleSuppliers">
+                    <span class="header-text">Suppliers</span>
+                    <i class="@GetChevronClass(isSuppliersOpen)"></i>
                 </div>
+                @if (isSuppliersOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/suppliers"><span class="bi bi-truck me-2"></span> Suppliers</NavLink>
+                    </div>
+                }
 
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/shop-billing">
-                        <span class="bi bi-receipt me-2"></span>Shop Billing
-                    </NavLink>
+                @* Partners Section (Customers: retail, wholesaler, walk-in) *@
+                <div class="nav-section-header" @onclick="TogglePartners">
+                    <span class="header-text">Partners</span>
+                    <i class="@GetChevronClass(isPartnersOpen)"></i>
                 </div>
+                @if (isPartnersOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/customers"><span class="bi bi-person me-2"></span> Customers</NavLink>
+                    </div>
+                }
 
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/stock-history">
-                        <span class="bi bi-cart-fill me-2"></span>Stock
-                    </NavLink>
+                @* Profile Section *@
+                <div class="nav-section-header" @onclick="ToggleProfile">
+                    <span class="header-text">Profile</span>
+                    <i class="@GetChevronClass(isProfileOpen)"></i>
                 </div>
+                @if (isProfileOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/import">
+                            <span class="bi bi-file-earmark-excel me-2"></span> Import
+                        </NavLink>
+                        <NavLink class="nav-link" href="/profile">
+                            <span class="bi bi-person-circle me-2"></span> Profile
+                        </NavLink>
+                        <NavLink class="nav-link" href="/listmanagement">
+                            <span class="bi bi-gear-fill me-2"></span> Settings
+                        </NavLink>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
 
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/listmanagement">
-                        <span class="bi bi-cart-fill me-2"></span>Settings
-                    </NavLink>
+        @* --- SUPER ADMIN --- *@
+        <AuthorizeView Roles="SuperAdmin">
+            <Authorized>
+                <div class="nav-section-header" @onclick="ToggleSupervisor">
+                    <span class="header-text">Supervisor</span>
+                    <i class="@GetChevronClass(isSupervisorOpen)"></i>
                 </div>
+                @if (isSupervisorOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/branches">Branches</NavLink>
+                        <NavLink class="nav-link" href="/adminPanal">Admin Panel</NavLink>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
 
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/import">
-                        <span class="bi bi-file-earmark-excel me-2"></span>Import
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/Account/Manage">
-                        <span class="bi bi-person-fill-nav-menu"></span>Profile
-                    </NavLink>
-                </div>
-                </Authorized>
-            </AuthorizeView>
-
-
+        @* --- LOGIN --- *@
         <AuthorizeView>
             <NotAuthorized>
-             @*    <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Register">
-                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
-                    </NavLink>
-                </div> *@
-                <div class="nav-item px-3">
+                <div class="nav-item px-3 mt-3">
                     <NavLink class="nav-link" href="Account/Login">
-                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
+                        <span class="bi bi-person-badge" aria-hidden="true"></span> Login
                     </NavLink>
                 </div>
             </NotAuthorized>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Supplier">
-            <div class="nav-item px-3">
-                <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/products">
-                    <span class="bi bi-box-fill"></span>Products
-                </NavLink>
-            </div>
-
-            <div class="nav-item px-3">
-                <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/stock-history">
-                    <span class="bi bi-cart-fill me-2"></span>Stock
-                </NavLink>
-            </div>
-        </AuthorizeView>
-     
-            <AuthorizeView Roles="Admin">
-                 <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center"
-                             href="/dashboard"
-                             ActiveClass="active-dashboard">
-                        <i class="fa fa-dashboard me-3"></i>
-                        <span>Dashboard</span>
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center"
-                             href="/analytics"
-                             ActiveClass="active-dashboard">
-                        <i class="fa fa-dashboard me-3"></i>
-                        <span>Analytics</span>
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/daily-report">
-                        <i class="fas fa-file-invoice-dollar me-3"></i>
-                        <span>Daily Report</span>
-                    </NavLink>
-                </div>
-
-                   <div class="nav-item px-3">
-                    <a class="align-items-center align-items-lg-baseline d-flex nav-link" href="/pos" target="_blank">
-                        <span class="bi bi-cart-fill me-2"></span>POS
-                    </a>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/shop-billing">
-                        <span class="bi bi-receipt me-2"></span>Shop Billing
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/expenses">
-                      <i class="fas fa-file-invoice-dollar me-3"></i>
-                        <span>Expenses</span>
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/staff">
-                        <span class="bi bi-person-fill-nav-menu"></span>
-                        <span>Staff</span>
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/suppliers">
-                        <span class="bi bi-person-fill-nav-menu"></span>
-                        <sapn>Suppliers</sapn>
-                    </NavLink>
-                </div>
-                
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/wholesalers">
-                        <span class="bi bi-person-fill-nav-menu"></span>
-                        <sapn>WholeSalers</sapn>
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/customers">
-                        <span class="bi bi-person-fill-nav-menu"></span><span>Customers</span>
-                    </NavLink>
-                </div>
-
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/products">
-                        <span class="bi bi-box-fill"></span>Products
-                    </NavLink>
-                </div>
-
-                  <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/purchases">
-                        <span class="bi bi-cart-fill me-2"></span>Purchases
-                    </NavLink>
-                </div>
-
-             
-
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/stock-history">
-                        <span class="bi bi-cart-fill me-2"></span>Stock
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/listmanagement">
-                        <span class="bi bi-cart-fill me-2"></span>Settings
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link d-flex align-items-center" href="/import">
-                        <span class="bi bi-file-earmark-excel me-2"></span>Import
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="align-items-center align-items-lg-baseline d-flex nav-link" href="/Account/Manage">
-                        <span class="bi bi-person-fill-nav-menu"></span>Profile
-                    </NavLink>
-                </div>
-
-            </Authorized>
-        </AuthorizeView>
     </nav>
 </div>
+
 <style>
-    .tenant-icon {
-        position: relative;
-        top: -2px; /* adjust until aligned */
+    .nav-section-header {
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        background-color: transparent;
+        transition: background 0.2s;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
     }
 
-    .bi.nav-menu {
-        font-size: 1.2rem; /* size adjust */
-        margin-right: 8px; /* spacing before text */
-        color: #333; /* default color */
+        .nav-section-header:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+    .header-text {
+        color: rgba(255,255,255,0.7);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.05rem;
+        pointer-events: none; /* Crucial: clicks pass through to the parent div */
+    }
+
+    .nav-section-header i {
+        color: rgba(255,255,255,0.5);
+        font-size: 0.8rem;
+        pointer-events: none; /* Crucial: clicks pass through to parent div */
+    }
+
+    /* Indent child links */
+    .nav-sub-items {
+        background-color: rgba(0,0,0,0.1);
+        padding-left: 1rem;
     }
 </style>
 
 @code {
-    private string? currentUrl;
+    private bool isDashboardOpen;
+    private bool isSalesOpen;
+    private bool isProductOpen;
+    private bool isAccountOpen;
+    private bool isStaffOpen;
+    private bool isSuppliersOpen;
+    private bool isPartnersOpen;
+    private bool isProfileOpen;
+    private bool isSupervisorOpen;
 
     protected override void OnInitialized()
     {
-        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         NavigationManager.LocationChanged += OnLocationChanged;
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
-        StateHasChanged();
-    }
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => StateHasChanged();
 
-    public void Dispose()
-    {
-        NavigationManager.LocationChanged -= OnLocationChanged;
-    }
+    public void Dispose() => NavigationManager.LocationChanged -= OnLocationChanged;
+
+    // Toggle Methods
+    private void ToggleDashboard() { isDashboardOpen = !isDashboardOpen; Console.WriteLine("Dashboard Toggled"); }
+    private void ToggleSales() => isSalesOpen = !isSalesOpen;
+    private void ToggleProduct() => isProductOpen = !isProductOpen;
+    private void ToggleAccount() => isAccountOpen = !isAccountOpen;
+    private void ToggleStaff() => isStaffOpen = !isStaffOpen;
+    private void ToggleSuppliers() => isSuppliersOpen = !isSuppliersOpen;
+    private void TogglePartners() => isPartnersOpen = !isPartnersOpen;
+    private void ToggleProfile() => isProfileOpen = !isProfileOpen;
+    private void ToggleSupervisor() => isSupervisorOpen = !isSupervisorOpen;
+
+    private string GetChevronClass(bool isOpen) =>
+        isOpen ? "bi bi-chevron-up" : "bi bi-chevron-down";
 }
-

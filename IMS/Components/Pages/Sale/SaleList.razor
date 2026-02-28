@@ -1,20 +1,15 @@
-﻿@page "/sales"
+@page "/sales"
 @using Domain
 @using Infrastructure.Services
 @inject ISaleService SaleService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Nav
 @rendermode InteractiveServer
-@inject AuthenticationStateProvider AuthenticationStateProvider
-
 <PageTitle>Sales</PageTitle>
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="fw-bold">Sales</h3>
-        <button class="btn btn-primary" @onclick="GoToAddSale">
-            <i class="bi bi-plus-circle"></i>  Sale
-        </button>
     </div>
 
     <!-- Table of Sales -->
@@ -22,8 +17,7 @@
         <thead>
             <tr>
                 <th>Sale #</th>
-                <th>Customer Name</th>
-                <th>WholeSaler Name</th>
+                <th>Customer</th>
                 <th>Total</th>
                 <th>Net</th>
                 <th>Payment Method</th>
@@ -37,27 +31,19 @@
                 <tr>
                     <td>@sale.SaleNumber</td>
                     <td>@sale.Customer?.Name</td>
-                    <td>@sale.Wholesaler?.Name</td>
                     <td>@sale.TotalAmount</td>
                     <td>@sale.NetAmount</td>
                     <td>@sale.PaymentMethod</td>
                     <td>@sale.SaleDate.ToShortDateString()</td>
                     <td>
-                        @if (!isStaff)
-                        {
-                            <span role="button" title="Edit" class="text-warning me-2"
-                                  @onclick="() => GoToEditSale(sale.Id)">
-                                <i class="bi bi-pencil-square fs-5"></i>
-                            </span>
-                        }
                         <span role="button" title="Download Receipt" class="text-success me-2"
                         @onclick="() => DownloadReceipt(sale.Id)">
                             <i class="bi bi-download fs-5"></i>
                         </span>
 
-                        <i class="bi bi-eye text-success fs-5 ms-2 cursor-pointer"
-                        title="Preview Receipt"
-                        @onclick="() => PreviewFile(sale.Id)"></i>
+                        <i class="bi bi-eye text-primary fs-5 ms-2 cursor-pointer"
+                           title="View Invoice"
+                           @onclick="() => GoToViewSale(sale.Id)"></i>
 
                         @*     <span role="button" title="Delete" class="text-danger"
                               @onclick="() => DeleteSale(sale.Id)">
@@ -76,14 +62,9 @@
 
 @code {
     private List<Sale> sales = new();
-    private bool isStaff = false;
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        isStaff = user.IsInRole("Staff");
-
         sales = await SaleService.GetAllAsync();
     }
 
@@ -142,29 +123,9 @@
         Nav.NavigateTo("/sales/add");
     }
 
-    private void GoToEditSale(Guid id)
+    private void GoToViewSale(Guid id)
     {
-        Nav.NavigateTo($"/sales/edit/{id}");
-    }
-
-
-    private async Task PreviewFile(Guid saleId)
-    {
-        var sale = await SaleService.GetByIdAsync(saleId);
-        if (sale == null)
-            return;
-
-        // Generate PDF as byte[]
-        var pdfBytes = await SaleService.GenerateReceiptPdfAsync(saleId);
-
-        if (pdfBytes == null || pdfBytes.Length == 0)
-            return;
-
-        // Convert byte[] to base64
-        string base64Pdf = Convert.ToBase64String(pdfBytes);
-
-        // Open in a new browser tab
-        await JSRuntime.InvokeVoidAsync("openPdfInNewTab", base64Pdf);
+        Nav.NavigateTo($"/sales/view/{id}");
     }
 
 }

@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -15,14 +15,14 @@ namespace Infrastructure.Services
         {
             _context = context;
         }
-        public async Task SavePricesAsync(Guid wholesalerId, List<WholeSalerPrice> prices)
+        public async Task SavePricesAsync(Guid customerId, List<CustomerSalerPrice> prices)
         {
             try
             {
-                var existing = _context.WholeSalerPrices.Where(x => x.WholesalerId == wholesalerId);
+                var existing = _context.CustomerSalerPrices.Where(x => x.CustomerId == customerId);
 
-                _context.WholeSalerPrices.RemoveRange(existing);
-                await _context.WholeSalerPrices.AddRangeAsync(prices);
+                _context.CustomerSalerPrices.RemoveRange(existing);
+                await _context.CustomerSalerPrices.AddRangeAsync(prices);
                 await _context.SaveChangesAsync();
             }
             catch (Exception)
@@ -41,7 +41,7 @@ namespace Infrastructure.Services
                 if (price < 0)
                     throw new ArgumentException("Price cannot be negative");
 
-                var entity = await _context.WholeSalerPrices
+                var entity = await _context.CustomerSalerPrices
                     .FirstOrDefaultAsync(x => x.Id == priceId);
 
                 if (entity == null)
@@ -63,11 +63,11 @@ namespace Infrastructure.Services
         }
 
 
-        public async Task SavePriceAsync(List<WholeSalerPrice> prices)
+        public async Task SavePriceAsync(List<CustomerSalerPrice> prices)
         {
             // 1️⃣ Prevent duplicates inside same request (PriceRows duplicates)
             var duplicateInRequest = prices
-                .GroupBy(x => new { x.WholesalerId, x.ThreadId, x.UnitId })
+                .GroupBy(x => new { x.CustomerId, x.ThreadId, x.UnitId })
                 .Any(g => g.Count() > 1);
 
             if (duplicateInRequest)
@@ -76,35 +76,34 @@ namespace Infrastructure.Services
                 );
 
             // 2️⃣ Prevent duplicates against database
-            // <<< PUT YOUR FOREACH DUPLICATE CHECK HERE >>>
             foreach (var price in prices)
             {
-                bool exists = await _context.WholeSalerPrices.AnyAsync(x =>
-                    x.WholesalerId == price.WholesalerId &&
+                bool exists = await _context.CustomerSalerPrices.AnyAsync(x =>
+                    x.CustomerId == price.CustomerId &&
                     x.ThreadId == price.ThreadId &&
                     x.UnitId == price.UnitId
                 );
 
                 if (exists)
                     throw new InvalidOperationException(
-                        $"Price already exists Against this Thread and unit'."
+                        $"Price already exists against this Thread and unit."
                     );
             }
 
             // 3️⃣ Save safely (only after all checks pass)
-            await _context.WholeSalerPrices.AddRangeAsync(prices);
+            await _context.CustomerSalerPrices.AddRangeAsync(prices);
             await _context.SaveChangesAsync();
         }
 
 
 
 
-        public async Task<List<WholeSalerPrice>> GetByWholesalerIdAsync(Guid wholesalerId)
+        public async Task<List<CustomerSalerPrice>> GetByCustomerIdAsync(Guid customerId)
         {
             try
             {
-                return await _context.WholeSalerPrices
-                    .Where(x => x.WholesalerId == wholesalerId)
+                return await _context.CustomerSalerPrices
+                    .Where(x => x.CustomerId == customerId)
                     .ToListAsync();
             }
             catch (Exception)

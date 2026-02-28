@@ -1,4 +1,5 @@
-﻿using Domain;
+using Domain;
+using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Shared.MultiTenancy;
 using System;
@@ -121,20 +122,24 @@ namespace Infrastructure.Services
             
         }
 
-        public async Task<List<Wholesaler>> GetWholeSalers(Guid? tenantId)
+        public async Task<List<Customer>> GetWholesalerCustomers(Guid? tenantId)
         {
             try
             {
-                return await _context.Wholesalers
-               .Where(c => !tenantId.HasValue || c.TenantId == tenantId)
-               .ToListAsync();
+                var wholesalerTypeId = await _context.ListManagements
+                    .Where(lm => lm.Type == ListType.CustomerType && lm.Name == "Wholesaler" && !lm.IsDeleted)
+                    .Select(lm => lm.Id)
+                    .FirstOrDefaultAsync();
+                if (wholesalerTypeId == Guid.Empty)
+                    return new List<Customer>();
+                return await _context.Customer
+                    .Where(c => c.ListManagementId == wholesalerTypeId && (!tenantId.HasValue || c.TenantId == tenantId))
+                    .ToListAsync();
             }
             catch (Exception)
             {
-
                 throw;
             }
-
         }
 
         public async Task<decimal> GetTotalPurchaseAmountAsync(Guid? tenantId)

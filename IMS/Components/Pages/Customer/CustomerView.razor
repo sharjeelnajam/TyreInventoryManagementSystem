@@ -1,9 +1,10 @@
-﻿@page "/customers/view/{Id:guid}"
+@page "/customers/view/{Id:guid}"
 @using Domain
 @using Domain.Enums
 @using Infrastructure.Services
 @inject ICustomerService CustomerService
 @inject IListManagementService ListManagementService
+@inject IWholesalerPriceService WholesalerPriceService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -44,8 +45,13 @@
                         <p>@Customer.Phone</p>
                     </div>
 
-                      <div class="col-md-6">
-                        <strong>Registerd At:</strong>
+                    <div class="col-md-6">
+                        <strong>Email:</strong>
+                        <p>@(Customer.Email ?? "N/A")</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <strong>Registered At:</strong>
                         <p>@Customer.CreatedAt.ToShortDateString()</p>
                     </div>
 
@@ -61,7 +67,7 @@
 
                     <div class="col-md-6">
                         <strong>Customer Type:</strong>
-                        <p>@CustomerType</p>
+                        <p>@CustomerTypeName</p>
                     </div>
 
                     <div class="col-md-6">
@@ -93,6 +99,43 @@
                         <p>@(Customer.Address ?? "N/A")</p>
                     </div>
 
+                    @if (IsWholesalerType)
+                    {
+                        <div class="col-md-12 mt-3">
+                            <hr />
+                            <h5 class="mb-3"><i class="bi bi-currency-pound me-2"></i> Wholesaler Price List</h5>
+                            <button class="btn btn-sm btn-success" @onclick="OpenPriceModal">
+                                <i class="bi bi-plus-circle me-1"></i> Manage Prices
+                            </button>
+                            @if (Prices != null && Prices.Any())
+                            {
+                                <table class="table table-bordered mt-3">
+                                    <thead>
+                                        <tr><th>Thread</th><th>Unit</th><th class="text-end">Price (£)</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var p in Prices)
+                                        {
+                                            <tr>
+                                                <td>@GetThreadName(p.ThreadId)</td>
+                                                <td>@GetUnitName(p.UnitId)</td>
+                                                <td class="text-end">£ @p.Price</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else if (Prices != null)
+                            {
+                                <p class="text-muted mt-2">No prices added. Click "Manage Prices" to add.</p>
+                            }
+                        </div>
+                        @if (ShowPriceModal)
+                        {
+                            <WholesalerManagePrice CustomerId="@Id" OnClose="ClosePriceModalAndRefresh" />
+                        }
+                    }
+
                 </div>
             }
 
@@ -106,7 +149,12 @@
     [Parameter] public Guid Id { get; set; }
 
     private Customer? Customer;
-    private string CustomerType = "N/A";
+    private string CustomerTypeName = "N/A";
+    private bool IsWholesalerType;
+    private List<CustomerSalerPrice>? Prices;
+    private Dictionary<Guid, string> ThreadLookup = new();
+    private Dictionary<Guid, string> UnitLookup = new();
+    private bool ShowPriceModal;
 
     protected override async Task OnInitializedAsync()
     {
@@ -115,9 +163,28 @@
         if (Customer != null)
         {
             var types = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
-            CustomerType = types
-                .FirstOrDefault(x => x.Id == Customer.ListManagementId)?.Name ?? "N/A";
+            CustomerTypeName = types.FirstOrDefault(x => x.Id == Customer.ListManagementId)?.Name ?? "N/A";
+            IsWholesalerType = string.Equals(CustomerTypeName, "Wholesaler", StringComparison.OrdinalIgnoreCase);
+            if (IsWholesalerType)
+            {
+                Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+                var threads = await ListManagementService.GetByTypeAsync(ListType.Thread);
+                var units = await ListManagementService.GetByTypeAsync(ListType.Unit);
+                ThreadLookup = threads.ToDictionary(x => x.Id, x => x.Name);
+                UnitLookup = units.ToDictionary(x => x.Id, x => x.Name);
+            }
         }
+    }
+
+    string GetThreadName(Guid id) => ThreadLookup.TryGetValue(id, out var n) ? n : "N/A";
+    string GetUnitName(Guid id) => UnitLookup.TryGetValue(id, out var n) ? n : "N/A";
+    void OpenPriceModal() => ShowPriceModal = true;
+    async Task ClosePriceModalAndRefresh()
+    {
+        ShowPriceModal = false;
+        if (IsWholesalerType)
+            Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+        StateHasChanged();
     }
 
     void GoBack()

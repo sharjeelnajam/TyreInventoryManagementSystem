@@ -1,4 +1,4 @@
-﻿@page "/customers"
+@page "/customers"
 @using Domain
 @using Domain.Enums
 @using Infrastructure.Services
@@ -29,15 +29,15 @@
 
     <div class="col-md-2">
         <InputSelect class="form-select"
-        TValue="CustomerType?"
-        Value="searchType"
+        TValue="Guid?"
+        Value="searchTypeId"
         ValueChanged="OnTypeChanged"
-        ValueExpression="@(() => searchType)">
+        ValueExpression="@(() => searchTypeId)">
             <option value="">-- Select Type --</option>
 
             @foreach (var type in listManagementsList)
             {
-                <option value="@type">@type.Name</option>
+                <option value="@type.Id">@type.Name</option>
             }
         </InputSelect>
     </div>
@@ -55,8 +55,6 @@
             <th>Registerd At</th>
             <th>City</th>
             <th>Type</th>
-            <th>Percentage</th>
-            <th>Custom Price</th>
             <th>Active</th>
             <th>Actions</th>
         </tr>
@@ -77,8 +75,6 @@
                     <td>@c.CreatedAt.ToShortDateString()</td>
                     <td>@c.City</td>
                     <td>@GetCustomerTypeName(c.ListManagementId)</td>
-                    <td>@c.Percentage</td>
-                    <td>@c.CustomPrice</td>
                     <td>@(c.IsActive ? "Yes" : "No")</td>
                     <td>
                         <!-- View -->
@@ -114,7 +110,7 @@
 @if (showModal)
 {
     <div class="modal fade show d-block" style="background-color:rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 800px;">
             <div class="modal-content">
                 <div class="modal-body">
                     <AddCustomer CustomerModel="selectedCustomer" OnSaved="OnSaved" OnCancelled="CloseModal" />
@@ -127,7 +123,7 @@
 @code {
     private List<Customer> customers = new();
     private string? searchName;
-    private CustomerType? searchType;
+    private Guid? searchTypeId;
     private bool showModal = false;
     private Customer selectedCustomer;
     private List<ListManagement>? customerTypes;
@@ -147,11 +143,14 @@
 
     private async Task LoadCustomers()
     {
-        customers = await CustomerService.GetCustomersAsync(searchName, searchType);
+        customers = await CustomerService.GetCustomersAsync(searchName, searchTypeId);
         customerTypes = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
 
         // Create lookup dictionary
         customerTypesLookup = customerTypes.ToDictionary(c => c.Id, c => c.Name);
+
+        // Populate type filter dropdown
+        listManagementsList = customerTypes.ToList();
     }
 
     private string GetCustomerTypeName(Guid customerTypeId)
@@ -170,9 +169,9 @@
         await ApplyFilter();
     }
 
-    private async Task OnTypeChanged(CustomerType? value)
+    private async Task OnTypeChanged(Guid? value)
     {
-        searchType = value;
+        searchTypeId = value;
         await ApplyFilter();
     }
 
@@ -183,7 +182,7 @@
             Id = c.Id,
             Name = c.Name,
             Phone = c.Phone,
-            //Email = c.Email,
+            Email = c.Email,
             City = c.City,
             Address = c.Address,
             VehicleNumber = c.VehicleNumber,

@@ -4,10 +4,10 @@
 @using Domain.DTO
 @using Domain.Enums
 @using Infrastructure.Services
+@using IMS.Components.Pages.Customer
 @inject ISaleService SaleService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
-@inject IWholesalerService WholesalerService
 @inject IListManagementService ListManagementService
 @inject ApplicationDbContext _context
 @inject IJSRuntime JSRuntime
@@ -191,56 +191,18 @@
     </EditForm>
 </div>
 
-<!-- Customer Modal -->
+<!-- Customer Details Modal (same as Customers page - used from Checkout Add New) -->
 @if (showCustomerModal)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color:rgba(0,0,0,0.5)">
-        <div class="modal-dialog">
+    <div class="modal fade show d-block" style="background-color:rgba(0,0,0,0.5); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 800px;">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5>Add Customer</h5>
-                    <button type="button" class="btn-close" @onclick="CloseCustomerModal"></button>
+                    <h5 class="modal-title">Customer Details</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCustomerModal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <EditForm Model="@NewCustomer" OnValidSubmit="SaveCustomer">
-                        <DataAnnotationsValidator />
-                        
-                        <div class="form-check form-switch mb-3">
-                            <InputCheckbox @bind-Value="EnableCustomPricing" class="form-check-input" />
-                            <label class="form-check-label fw-semibold">Enable Custom Pricing</label>
-                        </div>
-
-                        <div class="mb-3">
-                            <label>Name</label>
-                            <InputText class="form-control" @bind-Value="NewCustomer.Name" />
-                            <ValidationMessage For="@(()=>NewCustomer.Name)" />
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label>Phone</label>
-                            <InputText class="form-control" @bind-Value="NewCustomer.Phone" />
-                            <ValidationMessage For="@(()=>NewCustomer.Phone)" />
-                        </div>
-                        
-                        @if (EnableCustomPricing)
-                        {
-                            <div class="mb-3">
-                                <label>Percentage (%)</label>
-                                <InputNumber @bind-Value="NewCustomer.Percentage" class="form-control" />
-                                <ValidationMessage For="@(() => NewCustomer.Percentage)" />
-                            </div>
-                            <div class="mb-3">
-                                <label>Custom Price</label>
-                                <InputNumber @bind-Value="NewCustomer.CustomPrice" class="form-control" />
-                                <ValidationMessage For="@(() => NewCustomer.CustomPrice)" />
-                            </div>
-                        }
-
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Save</button>
-                            <button type="button" class="btn btn-secondary" @onclick="CloseCustomerModal">Cancel</button>
-                        </div>
-                    </EditForm>
+                    <AddCustomer CustomerModel="NewCustomer" OnSaved="OnCustomerSavedFromCheckout" OnCancelled="CloseCustomerModal" />
                 </div>
             </div>
         </div>
@@ -285,43 +247,39 @@
                     <span class="checkout-info-value">@cashierName</span>
                 </div>
 
-                <div class="form-check form-switch mb-2">
-                    <InputCheckbox class="form-check-input" id="checkout-bill-wholesaler" @bind-Value="_isWholesalerMode" @onchange="OnCheckoutBillToChanged" />
-                    <label class="form-check-label" for="checkout-bill-wholesaler">Bill to Wholesaler</label>
-                </div>
-
                 <div class="checkout-payment-row">
                     <div class="checkout-payment-field">
-                        <label class="form-label small text-muted mb-1">Paying as</label>
-                        @if (isWholesalerMode)
-                        {
-                            <InputSelect class="form-select form-select-sm"
-                                         TValue="Guid?"
-                                         Value="Sale.WholesalerId"
-                                         ValueChanged="OnCheckoutWholesalerChanged"
-                                         ValueExpression="@(() => Sale.WholesalerId)">
-                                <option value="">Guest</option>
-                                @foreach (var w in Wholesalers)
-                                {
-                                    <option value="@w.Id">@w.Name</option>
-                                }
-                            </InputSelect>
-                        }
-                        else
-                        {
-                            <InputSelect class="form-select form-select-sm"
-                                         TValue="Guid?"
-                                         Value="Sale.CustomerId"
-                                         ValueChanged="OnCheckoutCustomerChanged"
-                                         ValueExpression="@(() => Sale.CustomerId)">
-                                <option value="">Guest</option>
-                                @foreach (var c in Customers)
-                                {
-                                    <option value="@c.Id">@c.Name</option>
-                                }
-                            </InputSelect>
-                        }
+                        <label class="form-label small text-muted mb-1">Customer Type</label>
+                        <InputSelect class="form-select form-select-sm"
+                                     TValue="Guid?" @bind-Value="_checkoutCustomerTypeId">
+                            <option value="">All</option>
+                            @foreach (var t in _customerTypes)
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
+                        </InputSelect>
                     </div>
+                    <div class="checkout-payment-field">
+                        <label class="form-label small text-muted mb-1">Paying as</label>
+                        <InputSelect class="form-select form-select-sm"
+                                     TValue="Guid?"
+                                     Value="Sale.CustomerId"
+                                     ValueChanged="OnCheckoutCustomerChanged"
+                                     ValueExpression="@(() => Sale.CustomerId)">
+                            <option value="">Guest</option>
+                            @foreach (var c in GetCheckoutCustomers())
+                            {
+                                <option value="@c.Id">@c.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="checkout-payment-field d-flex align-items-end">
+                        <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" @onclick="OpenAddCustomer" title="Add new customer">
+                            <i class="bi bi-person-plus-fill"></i> Add New
+                        </button>
+                    </div>
+                </div>
+                <div class="checkout-payment-row checkout-payment-row-2 mt-2">
                     <div class="checkout-payment-field">
                         <label class="form-label small text-muted mb-1">Payment Method</label>
                         <InputSelect class="form-select form-select-sm" @bind-Value="Sale.PaymentMethod">
@@ -366,13 +324,13 @@
                         <span>Subtotal</span>
                         <span>£@Sale.TotalAmount.ToString("0.00")</span>
                     </div>
-                    @if (CalculateDiscount() > 0)
-                    {
-                        <div class="checkout-summary-row">
-                            <span>Discount</span>
-                            <span class="text-success">-£@CalculateDiscount().ToString("0.00")</span>
-                        </div>
-                    }
+                    <div class="checkout-summary-row d-flex align-items-center gap-2 flex-wrap">
+                        <span>Discount (£)</span>
+                        <InputNumber @bind-Value="_checkoutExtraDiscount"
+                                     @bind-Value:after="OnCheckoutExtraDiscountChanged"
+                                     class="form-control form-control-sm w-auto" style="max-width: 6rem;" />
+                        <span class="text-success">-£@CalculateDiscount().ToString("0.00")</span>
+                    </div>
                     @if (Sale.TaxAmount.HasValue && Sale.TaxAmount > 0)
                     {
                         <div class="checkout-summary-row">
@@ -381,7 +339,7 @@
                         </div>
                     }
                     <div class="checkout-summary-row checkout-total-row">
-                        <span>Total</span>
+                        <span>Total (after discount)</span>
                         <span>£@Sale.NetAmount.ToString("0.00")</span>
                     </div>
                 </div>
@@ -408,26 +366,26 @@
                     <button type="button" class="btn-close" @onclick="CloseWholesalerModal"></button>
                 </div>
                 <div class="modal-body">
-                    <EditForm Model="@NewWholesaler" OnValidSubmit="SaveWholesaler">
+                    <EditForm Model="@NewWholesalerCustomer" OnValidSubmit="SaveWholesaler">
                         <DataAnnotationsValidator />
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label>Name</label>
-                                <InputText class="form-control" @bind-Value="NewWholesaler.Name" />
-                                <ValidationMessage For="@(() => NewWholesaler.Name)" />
+                                <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Name" />
+                                <ValidationMessage For="@(() => NewWholesalerCustomer.Name)" />
                             </div>
                             <div class="col-md-6">
                                 <label>Email</label>
-                                <InputText class="form-control" @bind-Value="NewWholesaler.Email" />
+                                <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Email" />
                             </div>
                             <div class="col-md-6">
                                 <label>Phone</label>
-                                <InputText class="form-control" @bind-Value="NewWholesaler.Phone" />
-                                <ValidationMessage For="@(()=>NewWholesaler.Phone)" />
+                                <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Phone" />
+                                <ValidationMessage For="@(()=>NewWholesalerCustomer.Phone)" />
                             </div>
                             <div class="col-md-6">
                                 <label>Address</label>
-                                <InputText class="form-control" @bind-Value="NewWholesaler.Address" />
+                                <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Address" />
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -452,9 +410,11 @@
 
     protected bool showCustomerModal = false;
     protected Customer NewCustomer { get; set; } = new();
-    protected List<Wholesaler> Wholesalers { get; set; } = new();
+    protected List<Customer> WholesalerCustomers { get; set; } = new();
     protected bool showWholesalerModal = false;
-    protected Wholesaler NewWholesaler { get; set; } = new();
+    protected Customer NewWholesalerCustomer { get; set; } = new();
+    private Guid? _wholesalerTypeId;
+    private List<ListManagement> _customerTypes = new();
     private bool showOutOfStockModal = false;
     private bool showCheckoutModal = false;
     private string cashierName = "";
@@ -463,7 +423,7 @@
     private decimal? CustomerPercentage { get; set; }
     private bool EnableCustomPricing { get; set; } = false;
     private bool _isWholesalerMode;
-    private List<WholeSalerPrice> wholeSalerPrices = new List<WholeSalerPrice>();
+    private List<CustomerSalerPrice> wholeSalerPrices = new List<CustomerSalerPrice>();
 
     private bool isWholesalerMode
     {
@@ -471,10 +431,7 @@
         set
         {
             _isWholesalerMode = value;
-            if (value)
-                Sale.CustomerId = Guid.Empty;
-            else
-                Sale.WholesalerId = Guid.Empty;
+            Sale.CustomerId = null;
         }
     }
 
@@ -484,9 +441,15 @@
         cashierName = authState.User.Identity?.Name ?? "—";
 
         Customers = await CustomerService.GetCustomersAsync();
+        var customerTypes = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
+        _customerTypes = customerTypes.ToList();
+        _wholesalerTypeId = _customerTypes
+            .FirstOrDefault(t => t.Name.Contains("whole", StringComparison.OrdinalIgnoreCase))?.Id;
+        WholesalerCustomers = _wholesalerTypeId.HasValue
+            ? await CustomerService.GetCustomersAsync(typeId: _wholesalerTypeId)
+            : new List<Customer>();
         products = await ProductService.GetAllAsync();
         Stocks = _context.StockHistories.ToList();
-        Wholesalers = await WholesalerService.GetAllAsync();
 
         Sale = new Sale
         {
@@ -557,9 +520,9 @@
             Sale.CustomerId = null;
             CustomerCustomPrice = null;
             CustomerPercentage = null;
-            if (Sale.WholesalerId.HasValue)
+            if (Sale.CustomerId.HasValue)
             {
-                wholeSalerPrices = _context.WholeSalerPrices.Where(w => w.WholesalerId == Sale.WholesalerId).ToList();
+                wholeSalerPrices = _context.CustomerSalerPrices.Where(w => w.CustomerId == Sale.CustomerId).ToList();
                 foreach (var detail in Sale.SaleDetails)
                 {
                     var product = products.FirstOrDefault(p => p.Id == detail.ProductId);
@@ -573,7 +536,7 @@
         }
         else
         {
-            Sale.WholesalerId = null;
+            Sale.CustomerId = null;
             wholeSalerPrices.Clear();
         }
         RecalculateTotals();
@@ -601,8 +564,8 @@
 
     private async Task OnCheckoutWholesalerChanged(Guid? value)
     {
-        Sale.WholesalerId = value;
-        wholeSalerPrices = value.HasValue ? _context.WholeSalerPrices.Where(w => w.WholesalerId == value).ToList() : new List<WholeSalerPrice>();
+        Sale.CustomerId = value;
+        wholeSalerPrices = value.HasValue ? _context.CustomerSalerPrices.Where(w => w.CustomerId == value).ToList() : new List<CustomerSalerPrice>();
         foreach (var detail in Sale.SaleDetails)
         {
             var product = products.FirstOrDefault(p => p.Id == detail.ProductId);
@@ -650,13 +613,10 @@
     {
         if (Sale.CustomerId.HasValue)
         {
-            var customer = Customers.FirstOrDefault(c => c.Id == Sale.CustomerId);
+            var customer = isWholesalerMode
+                ? WholesalerCustomers.FirstOrDefault(c => c.Id == Sale.CustomerId)
+                : Customers.FirstOrDefault(c => c.Id == Sale.CustomerId);
             return customer?.Name ?? "Guest";
-        }
-        if (Sale.WholesalerId.HasValue)
-        {
-            var wholesaler = Wholesalers.FirstOrDefault(w => w.Id == Sale.WholesalerId);
-            return wholesaler?.Name ?? "Guest";
         }
         return "Guest";
     }
@@ -710,8 +670,8 @@
         if (value == null || value == Guid.Empty)
             return;
 
-        Sale.WholesalerId = value;
-        wholeSalerPrices = _context.WholeSalerPrices.Where(w => w.WholesalerId == Sale.WholesalerId).ToList();
+        Sale.CustomerId = value;
+        wholeSalerPrices = _context.CustomerSalerPrices.Where(w => w.CustomerId == Sale.CustomerId).ToList();
 
         foreach (var detail in Sale.SaleDetails)
         {
@@ -751,13 +711,13 @@
 
         if (value)
         {
-            Sale.CustomerId = Guid.Empty;
+            Sale.CustomerId = null;
             CustomerCustomPrice = null;
             CustomerPercentage = null;
         }
         else
         {
-            Sale.WholesalerId = Guid.Empty;
+            Sale.CustomerId = null;
             wholeSalerPrices.Clear();
         }
 
@@ -790,6 +750,9 @@
             discount = CustomerCustomPrice.Value + percentageAmount;
         }
 
+        // Add any manual checkout discount
+        discount += _checkoutExtraDiscount;
+
         return discount;
     }
 
@@ -817,6 +780,12 @@
             Sale.NetAmount = 0;
     }
 
+    private void OnCheckoutExtraDiscountChanged()
+    {
+        RecalculateTotals();
+        StateHasChanged();
+    }
+
     protected void OpenAddCustomer()
     {
         NewCustomer = new Customer();
@@ -824,9 +793,8 @@
         EnableCustomPricing = NewCustomer.Percentage.HasValue || NewCustomer.CustomPrice.HasValue;
     }
 
-    protected async Task SaveCustomer()
+    private async Task OnCustomerSavedFromCheckout()
     {
-        await CustomerService.AddCustomerAsync(NewCustomer);
         Customers = await CustomerService.GetCustomersAsync();
         Sale.CustomerId = NewCustomer.Id;
         if (NewCustomer.CustomPrice.HasValue || NewCustomer.Percentage.HasValue)
@@ -845,20 +813,32 @@
 
     protected void OpenAddWholesaler()
     {
-        NewWholesaler = new Wholesaler();
+        NewWholesalerCustomer = new Customer { ListManagementId = _wholesalerTypeId ?? Guid.Empty };
         showWholesalerModal = true;
     }
 
     protected async Task SaveWholesaler()
     {
-        if (NewWholesaler.Id == Guid.Empty)
-            NewWholesaler.Id = Guid.NewGuid();
-
-        await WholesalerService.AddAsync(NewWholesaler);
-        Wholesalers = await WholesalerService.GetAllAsync();
-        Sale.WholesalerId = NewWholesaler.Id;
+        if (NewWholesalerCustomer.Id == Guid.Empty)
+            NewWholesalerCustomer.Id = Guid.NewGuid();
+        if (NewWholesalerCustomer.ListManagementId == Guid.Empty && _wholesalerTypeId.HasValue)
+            NewWholesalerCustomer.ListManagementId = _wholesalerTypeId.Value;
+        await CustomerService.AddCustomerAsync(NewWholesalerCustomer);
+        WholesalerCustomers = _wholesalerTypeId.HasValue ? await CustomerService.GetCustomersAsync(typeId: _wholesalerTypeId) : new List<Customer>();
+        Sale.CustomerId = NewWholesalerCustomer.Id;
         showWholesalerModal = false;
         StateHasChanged();
+    }
+
+    private Guid? _checkoutCustomerTypeId { get; set; }
+    private decimal _checkoutExtraDiscount { get; set; } = 0m;
+
+    private IEnumerable<Customer> GetCheckoutCustomers()
+    {
+        if (!_checkoutCustomerTypeId.HasValue || _checkoutCustomerTypeId == Guid.Empty)
+            return Customers;
+
+        return Customers.Where(c => c.ListManagementId == _checkoutCustomerTypeId);
     }
 
     protected void CloseWholesalerModal()

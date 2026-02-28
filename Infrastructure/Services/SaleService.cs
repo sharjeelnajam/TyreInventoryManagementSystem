@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Domain.DTO;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +12,14 @@ namespace Infrastructure.Services
     public class SaleService : ISaleService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly ITenantProvider _tenantProvider;
 
-        public SaleService(ApplicationDbContext context, AuthenticationStateProvider authenticationStateProvider, ITenantProvider tenantProvider)
+        public SaleService(ApplicationDbContext context, IDbContextFactory<ApplicationDbContext> contextFactory, AuthenticationStateProvider authenticationStateProvider, ITenantProvider tenantProvider)
         {
             _context = context;
+            _contextFactory = contextFactory;
             _authStateProvider = authenticationStateProvider;
             _tenantProvider = tenantProvider;
         }
@@ -36,9 +38,6 @@ namespace Infrastructure.Services
 
                     // Manually load and attach customers
                     await HydrateSalesWithCustomers(sales);
-
-                    // Manually load and attach wholesalers if needed
-                    await HydrateSalesWithWholesalers(sales);
 
                     return sales ?? new List<Sale>();
                 }
@@ -71,9 +70,6 @@ namespace Infrastructure.Services
                     // Manually load and attach customer
                     await HydrateSaleWithCustomer(sale);
 
-                    // Manually load and attach wholesaler if needed
-                    await HydrateSaleWithWholesaler(sale);
-
                     return sale;
 
                 }
@@ -97,9 +93,6 @@ namespace Infrastructure.Services
 
                 if (sale.CustomerId == Guid.Empty)
                     sale.CustomerId = null;
-
-                if (sale.WholesalerId == Guid.Empty)
-                    sale.WholesalerId = null;
 
                 sale.Id = Guid.NewGuid();
                 sale.CreatedAt = DateTime.Now;
@@ -188,9 +181,10 @@ namespace Infrastructure.Services
 
         public async Task UpdateAsync(Sale sale)
         {
+            await using var ctx = _contextFactory.CreateDbContext();
             try
             {
-                var existingSales = await _context.Sale.Include(p => p.SaleDetails).FirstOrDefaultAsync(p => p.Id == sale.Id);
+                var existingSales = await ctx.Sale.Include(p => p.SaleDetails).FirstOrDefaultAsync(p => p.Id == sale.Id);
 
                 if (existingSales == null)
                     throw new Exception("Purchase not found in DB");
@@ -198,7 +192,6 @@ namespace Infrastructure.Services
                 // Update fields
                 existingSales.SaleNumber = sale.SaleNumber;
                 existingSales.CustomerId = sale.CustomerId;
-                existingSales.WholesalerId = sale.WholesalerId;
                 existingSales.TotalAmount = sale.TotalAmount;
                 existingSales.Discount = sale.Discount;
                 existingSales.TaxAmount = sale.TaxAmount;
@@ -213,8 +206,8 @@ namespace Infrastructure.Services
                 // --- Sync SaleDetails ---
                 var updatedDetailIds = sale.SaleDetails?.Select(s => s.Id).ToList() ?? new List<Guid>();
 
-                var toRemove = _context.SaleDetail.Where(s => !updatedDetailIds.Contains(s.Id) && s.SaleId == sale.Id).ToList();
-                var availAbleStocks = _context.StockHistories.ToList();
+                var toRemove = ctx.SaleDetail.Where(s => !updatedDetailIds.Contains(s.Id) && s.SaleId == sale.Id).ToList();
+                var availAbleStocks = ctx.StockHistories.ToList();
 
                 foreach (var r in toRemove)
                 {
@@ -223,12 +216,12 @@ namespace Infrastructure.Services
                     if (stockProduct != null)
                     {
                         stockProduct.NewStockLevel = stockProduct.NewStockLevel + r.Quantity;
-                        _context.StockHistories.Update(stockProduct);
+                        ctx.StockHistories.Update(stockProduct);
                     }
 
-                    _context.SaleDetail.Remove(r);
-                    await _context.SaveChangesAsync();
+                    ctx.SaleDetail.Remove(r);
                 }
+                await ctx.SaveChangesAsync();
 
                 // Add or Update
                 if (sale.SaleDetails != null && sale.SaleDetails.Any())
@@ -251,7 +244,7 @@ namespace Infrastructure.Services
 
                                 stockProduct.NewStockLevel = stockProduct.NewStockLevel + newValue;
                                 stockProduct.UpdatedAt = DateTime.Now;
-                                _context.StockHistories.Update(stockProduct);
+                                ctx.StockHistories.Update(stockProduct);
                             }
                             else if (detail.Quantity > existingDetail.Quantity)
                             {
@@ -264,7 +257,7 @@ namespace Infrastructure.Services
 
                                 stockProduct.NewStockLevel = stockProduct.NewStockLevel - newValue;
                                 stockProduct.UpdatedAt = DateTime.Now;
-                                _context.StockHistories.Update(stockProduct);
+                                ctx.StockHistories.Update(stockProduct);
                             }
                             else
                             {
@@ -273,13 +266,13 @@ namespace Infrastructure.Services
                                 existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
                             }
 
-                            _context.SaleDetail.Update(existingDetail);
+                            ctx.SaleDetail.Update(existingDetail);
 
                             // 🟢 NEW: Update ProfitHistory record for edited detail
-                            var profit = await _context.ProfitHistories.FirstOrDefaultAsync(p => p.SaleDetailId == existingDetail.Id);
+                            var profit = await ctx.ProfitHistories.FirstOrDefaultAsync(p => p.SaleDetailId == existingDetail.Id);
                             if (profit != null)
                             {
-                                var product = await _context.Products.FindAsync(detail.ProductId);
+                                var product = await ctx.Products.FindAsync(detail.ProductId);
                                 existingDetail.CostPrice = product.AverageCostPrice;
                                 existingDetail.ProfitAmount = Math.Round((detail.UnitPrice - existingDetail.CostPrice) * detail.Quantity, 2);
 
@@ -289,11 +282,11 @@ namespace Infrastructure.Services
                                 profit.ProfitAmount = existingDetail.ProfitAmount;
                                 profit.RecordedAt = DateTime.Now;
 
-                                _context.ProfitHistories.Update(profit);
+                                ctx.ProfitHistories.Update(profit);
                             }
                             else
                             {
-                                var product = await _context.Products.FindAsync(detail.ProductId);
+                                var product = await ctx.Products.FindAsync(detail.ProductId);
                                 var ph = new ProfitHistory
                                 {
                                     SaleId = existingSales.Id,
@@ -306,7 +299,7 @@ namespace Infrastructure.Services
                                     RecordedAt = DateTime.Now,
                                     ReferenceNumber = existingSales.SaleNumber
                                 };
-                                _context.ProfitHistories.Add(ph);
+                                ctx.ProfitHistories.Add(ph);
                             }
                             // 🟢 END NEW
                         }
@@ -320,13 +313,13 @@ namespace Infrastructure.Services
                             detail.TotalPrice = detail.Quantity * detail.UnitPrice;
 
                             stockProduct.NewStockLevel = stockProduct.NewStockLevel - detail.Quantity;
-                            _context.StockHistories.Update(stockProduct);
+                            ctx.StockHistories.Update(stockProduct);
                             stockProduct.UpdatedAt = DateTime.Now;
 
-                            _context.SaleDetail.Add(detail);
+                            ctx.SaleDetail.Add(detail);
 
                             // 🟢 NEW: Add new ProfitHistory + StockHistory entries for new details
-                            var product = await _context.Products.FindAsync(detail.ProductId);
+                            var product = await ctx.Products.FindAsync(detail.ProductId);
                             detail.CostPrice = product.AverageCostPrice;
                             detail.ProfitAmount = Math.Round((detail.UnitPrice - product.AverageCostPrice) * detail.Quantity, 2);
 
@@ -342,7 +335,7 @@ namespace Infrastructure.Services
                                 RecordedAt = DateTime.Now,
                                 ReferenceNumber = existingSales.SaleNumber
                             };
-                            _context.ProfitHistories.Add(phNew);
+                            ctx.ProfitHistories.Add(phNew);
 
                             var shNew = new StockHistory
                             {
@@ -355,13 +348,13 @@ namespace Infrastructure.Services
                                 ReferenceNumber = existingSales.SaleNumber,
                                 ActionDate = DateTime.Now
                             };
-                            _context.StockHistories.Add(shNew);
+                            ctx.StockHistories.Add(shNew);
                             // 🟢 END NEW
                         }
                     }
                 }
 
-                await _context.SaveChangesAsync();
+                await ctx.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException ex)
             {
@@ -432,10 +425,6 @@ namespace Infrastructure.Services
             // Manually load and attach customer
             await HydrateSaleWithCustomer(sale);
 
-            // Manually load and attach wholesaler if needed
-            await HydrateSaleWithWholesaler(sale);
-
-
             if (sale == null)
                 return Array.Empty<byte>();
 
@@ -496,14 +485,16 @@ namespace Infrastructure.Services
                         {
                             customerCol.Item().Text("Sold To:").Bold().FontSize(14);
 
-                            if(sale.Customer != null)
+                            if (sale.Customer != null)
                             {
-                                customerCol.Item().Text($"{sale.Customer?.Name?.ToUpper() ?? "N/A"}").FontSize(14);
-                                //customerCol.Item().Text($"{sale.Customer?.Email ?? "N/A"}").FontSize(16);
+                                customerCol.Item().Text($"{sale.Customer.Name?.ToUpper() ?? "N/A"}").FontSize(14);
+                                customerCol.Item().Text($"{sale.Customer.Email ?? "N/A"}").FontSize(16);
                             }
-
-                            customerCol.Item().Text($"{sale.Wholesaler?.Name?.ToUpper() ?? "N/A"}").FontSize(14);
-                            customerCol.Item().Text($"{sale.Wholesaler?.Email ?? "N/A"}").FontSize(16);
+                            else
+                            {
+                                customerCol.Item().Text("N/A").FontSize(14);
+                                customerCol.Item().Text("N/A").FontSize(16);
+                            }
                         });
                     });
 
@@ -638,17 +629,15 @@ namespace Infrastructure.Services
                     foreach (var sale in sales)
                     {
                         await HydrateSaleWithCustomer(sale);
-
-                        await HydrateSaleWithWholesaler(sale);
                     }
 
                     // 3. Group in memory (since Customer is hydrated)
                     var result = sales
-                       .GroupBy(s => new { Customer = s.Customer?.Name ?? "----", Wholesaler = s.Wholesaler?.Name ?? "----" })
+                       .GroupBy(s => s.Customer?.Name ?? "----")
                        .Select(g => new TopCustomerDto
                        {
-                           CustomerName = g.Key.Customer,
-                           WholesalerName = g.Key.Wholesaler,
+                           CustomerName = g.Key,
+                           WholesalerName = g.Key,
                            TotalOrders = g.Count(),
                            TotalQuantity = g.SelectMany(x => x.SaleDetails).Sum(x => x.Quantity),
                            TotalAmountSpent = g.Sum(x => x.NetAmount)
@@ -747,27 +736,6 @@ namespace Infrastructure.Services
             }
         }
 
-        private async Task HydrateSalesWithWholesalers(List<Sale> sales)
-        {
-            var wholesalerIds = sales.Where(s => s.WholesalerId.HasValue)
-                                    .Select(s => s.WholesalerId.Value)
-                                    .Distinct()
-                                    .ToList();
-
-            if (!wholesalerIds.Any()) return;
-
-            var wholesalers = await _context.Wholesalers
-                .Where(w => wholesalerIds.Contains(w.Id))
-                .ToDictionaryAsync(w => w.Id);
-
-            foreach (var sale in sales)
-            {
-                if (sale.WholesalerId.HasValue && wholesalers.TryGetValue(sale.WholesalerId.Value, out var wholesaler))
-                {
-                    sale.Wholesaler = wholesaler;
-                }
-            }
-        }
         private async Task HydrateSaleWithCustomer(Sale sale)
         {
             if (sale.CustomerId.HasValue)
@@ -778,19 +746,6 @@ namespace Infrastructure.Services
 
                 sale.Customer = customer;
             }
-        }
-
-        private async Task HydrateSaleWithWholesaler(Sale sale)
-        {
-            if (sale.WholesalerId.HasValue)
-            {
-                var wholesaler = await _context.Wholesalers
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(w => w.Id == sale.WholesalerId.Value);
-
-                sale.Wholesaler = wholesaler;
-            }
-
         }
     }
 }

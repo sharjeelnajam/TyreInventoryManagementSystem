@@ -1,11 +1,10 @@
-﻿@using Domain
+@using Domain
 @using Domain.DTO
 @using Domain.Enums
 @using Infrastructure.Services
 @inject ISaleService SaleService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
-@inject IWholesalerService WholesalerService
 @inject IListManagementService ListManagementService
 @inject ApplicationDbContext _context
 @inject IJSRuntime JSRuntime
@@ -91,12 +90,12 @@
                                     <label>Wholesaler</label>
                                     <InputSelect class="form-control"
                                     TValue="Guid?"
-                                    Value="Sale.WholesalerId"
-                                    ValueChanged="OnWholeSalerChanged"
-                                    ValueExpression="@(() => Sale.WholesalerId)">
-                                        <option value="">-- Select Customer --</option>
+                                    Value="Sale.CustomerId"
+                                    ValueChanged="OnWholesalerCustomerChanged"
+                                    ValueExpression="@(() => Sale.CustomerId)">
+                                        <option value="">-- Select Wholesaler --</option>
 
-                                        @foreach (var w in Wholesalers)
+                                        @foreach (var w in WholesalerCustomers)
                                         {
                                             <option value="@w.Id">@w.Name</option>
                                         }
@@ -387,7 +386,7 @@
 }
 
 
-<!-- Add Wholesaler Popup -->
+<!-- Add Wholesaler (Customer with type Wholesaler) Popup -->
 @if (showWholesalerModal)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color:rgba(0,0,0,0.5)">
@@ -398,35 +397,27 @@
                     <button type="button" class="btn-close" @onclick="CloseWholesalerModal"></button>
                 </div>
                 <div class="modal-body">
-                    <EditForm Model="@NewWholesaler" OnValidSubmit="SaveWholesaler">
+                    <EditForm Model="@NewWholesalerCustomer" OnValidSubmit="SaveWholesaler">
                         <DataAnnotationsValidator />
                         <div class="mb-3">
                             <label>Name</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Name" />
-                            <ValidationMessage For="@(()=>NewWholesaler.Name)" />
+                            <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Name" />
+                            <ValidationMessage For="@(()=>NewWholesalerCustomer.Name)" />
                         </div>
                         <div class="mb-3">
                             <label>Email</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Email" />
+                            <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Email" />
                         </div>
                         <div class="mb-3">
                             <label>Phone</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Phone" />
-                            <ValidationMessage For="@(()=>NewWholesaler.Phone)" />
+                            <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Phone" />
+                            <ValidationMessage For="@(()=>NewWholesalerCustomer.Phone)" />
                         </div>
                         <div class="mb-3">
                             <label>Address</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Address" />
+                            <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Address" />
                         </div>
-                        <div class="mb-3 col-md-4">
-                            <label>Type</label>
-                            <InputSelect class="form-select" @bind-Value="NewWholesaler.ListManagementId">
-                                @foreach (var t in listManagements)
-                                {
-                                    <option value="@t.Id">@t</option>
-                                }
-                            </InputSelect>
-                        </div>
+                        <input type="hidden" value="@NewWholesalerCustomer.ListManagementId" />
 
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary">Save</button>
@@ -463,9 +454,10 @@
     protected bool showCustomerModal = false;
     protected Customer NewCustomer { get; set; } = new();
 
-    protected List<Wholesaler> Wholesalers { get; set; } = new();
+    protected List<Customer> WholesalerCustomers { get; set; } = new();
     protected bool showWholesalerModal = false;
-    protected Wholesaler NewWholesaler { get; set; } = new();
+    protected Customer NewWholesalerCustomer { get; set; } = new();
+    private Guid? _wholesalerTypeId;
 
     private decimal? CustomerCustomPrice { get; set; }
     private decimal? CustomerPercentage { get; set; }
@@ -473,7 +465,7 @@
     private bool ShowOldDiscountField = true;
     private bool EnableCustomPricing { get; set; } = false;
     private List<ListManagement> listManagements = new List<ListManagement>();
-    private List<WholeSalerPrice> wholeSalerPrices = new List<WholeSalerPrice>();
+    private List<CustomerSalerPrice> wholeSalerPrices = new List<CustomerSalerPrice>();
     private bool isWholeSaler = false;
 
 
@@ -484,11 +476,12 @@
         if (IsVisible)
         {
             Customers = await CustomerService.GetCustomersAsync();
+            var customerTypes = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
+            _wholesalerTypeId = customerTypes.FirstOrDefault(t => t.Name == "Wholesaler")?.Id;
+            WholesalerCustomers = _wholesalerTypeId.HasValue ? await CustomerService.GetCustomersAsync(typeId: _wholesalerTypeId) : new List<Customer>();
             products = await ProductService.GetAllAsync();
             Stocks = _context.StockHistories.ToList();
             listManagements = await ListManagementService.GetByTypeAsync(ListType.Expense);
-
-            Wholesalers = await WholesalerService.GetAllAsync();
 
             if (Id != Guid.Empty)
             {
@@ -784,14 +777,14 @@
         RecalculateTotals();
     }
 
-    private async Task OnWholeSalerChanged(Guid? value)
+    private async Task OnWholesalerCustomerChanged(Guid? value)
     {
         if (value == null || value == Guid.Empty)
             return;
 
-        Sale.WholesalerId = value;
+        Sale.CustomerId = value;
         isWholeSaler = true;
-        wholeSalerPrices = _context.WholeSalerPrices.Where(w => w.WholesalerId == Sale.WholesalerId).ToList();
+        wholeSalerPrices = _context.CustomerSalerPrices.Where(w => w.CustomerId == Sale.CustomerId).ToList();
 
         foreach (var detail in Sale.SaleDetails)
         {
@@ -835,13 +828,13 @@
         // Clear customer / wholesaler
         if (value)
         {
-            Sale.CustomerId = Guid.Empty;
+            Sale.CustomerId = null;
             CustomerCustomPrice = null;
             CustomerPercentage = null;
         }
         else
         {
-            Sale.WholesalerId = Guid.Empty;
+            Sale.CustomerId = null;
             wholeSalerPrices.Clear();
             isWholeSaler = false;
         }
@@ -917,11 +910,11 @@
 
             if (value)
             {
-                Sale.CustomerId = Guid.Empty;   // Clear customer
+                Sale.CustomerId = null;   // Clear retail customer
             }
             else
             {
-                Sale.WholesalerId = Guid.Empty; // Clear wholesaler
+                Sale.CustomerId = null; // Clear wholesaler
             }
         }
     }
@@ -953,26 +946,24 @@
         showCustomerModal = false;
     }
 
-    // WholeSaler popup methods
+    // Wholesaler (customer with type Wholesaler) popup methods
     protected void OpenAddWholesaler()
     {
-        NewWholesaler = new Wholesaler();
+        NewWholesalerCustomer = new Customer { ListManagementId = _wholesalerTypeId ?? Guid.Empty };
         showWholesalerModal = true;
     }
 
     protected async Task SaveWholesaler()
     {
-        // ensure Id is set (if your service expects auto-generated, Wholesaler constructor may set it)
-        if (NewWholesaler.Id == Guid.Empty)
-            NewWholesaler.Id = Guid.NewGuid();
+        if (NewWholesalerCustomer.Id == Guid.Empty)
+            NewWholesalerCustomer.Id = Guid.NewGuid();
+        if (NewWholesalerCustomer.ListManagementId == Guid.Empty && _wholesalerTypeId.HasValue)
+            NewWholesalerCustomer.ListManagementId = _wholesalerTypeId.Value;
 
-        await WholesalerService.AddAsync(NewWholesaler);
+        await CustomerService.AddCustomerAsync(NewWholesalerCustomer);
 
-        // reload lists
-        Wholesalers = await WholesalerService.GetAllAsync();
-        // pre-select the newly added wholesaler for this sale
-        Sale.WholesalerId = NewWholesaler.Id;
-
+        WholesalerCustomers = _wholesalerTypeId.HasValue ? await CustomerService.GetCustomersAsync(typeId: _wholesalerTypeId) : new List<Customer>();
+        Sale.CustomerId = NewWholesalerCustomer.Id;
         showWholesalerModal = false;
         StateHasChanged();
     }

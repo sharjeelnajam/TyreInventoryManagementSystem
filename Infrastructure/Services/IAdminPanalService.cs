@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +16,7 @@ namespace Infrastructure.Services
         Task<decimal> GetTotalExpense(Guid? tenantId);
         Task<int> GetTotalInvoices(Guid? tenantId);
         Task<List<Supplier>> GetSuppliers(Guid? tenantId);
-        Task<List<Wholesaler>> GetWholeSalers(Guid? tenantId);
+        Task<List<Customer>> GetWholesalerCustomers(Guid? tenantId);
         Task<decimal> GetTotalPurchaseAmountAsync(Guid? tenantId);
         Task<decimal> GetTotalSalesAsync(Guid? tenantId);
         Task<decimal> GetTotalProfit(Guid? tenantId);

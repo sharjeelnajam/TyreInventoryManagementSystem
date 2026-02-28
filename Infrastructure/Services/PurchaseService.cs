@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
@@ -54,26 +54,24 @@ namespace Infrastructure.Services
         {
             try
             {
-                if (_tenantProvider.TenantId == Guid.Empty)
+                if (_tenantProvider.TenantId != Guid.Empty)
                 {
                     var purchase = await _context.Purchase
-                          .Where(p => p.TenantId == _tenantProvider.TenantId)
-                          .Include(p => p.Supplier)
-                          .Include(p => p.PurchaseDetails)
-                          .ThenInclude(d => d.Product)
-                          .FirstOrDefaultAsync(p => p.Id == id);
+                        .Where(p => p.TenantId == _tenantProvider.TenantId)
+                        .Include(p => p.Supplier)
+                        .Include(p => p.PurchaseDetails)
+                            .ThenInclude(d => d.Product)
+                        .FirstOrDefaultAsync(p => p.Id == id);
 
-                        return purchase;
+                    return purchase ?? new Purchase();
                 }
-                else
-                    return new Purchase();
+
+                return new Purchase();
             }
             catch (Exception)
             {
-
                 throw;
             }
-
         }
 
         public async Task AddPurchaseAsync(Purchase purchase)

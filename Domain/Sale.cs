@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -21,11 +21,6 @@ namespace Domain
 
         [NotMapped]
         public Customer? Customer { get; set; }
-
-        public Guid? WholesalerId { get; set; }
-
-        [NotMapped]
-        public Wholesaler? Wholesaler { get; set; }
 
         [Required(ErrorMessage = "Total amount is required.")]
         [Precision(18, 2)]

@@ -13,9 +13,6 @@ namespace Domain
         public Guid? CustomerId { get; set; }
         public string? CustomerName { get; set; }
 
-        public Guid? WholesalerId { get; set; }
-        public string? WholesalerName { get; set; }
-
         [NotMapped]
         public Customer? Customer { get; set; }
 

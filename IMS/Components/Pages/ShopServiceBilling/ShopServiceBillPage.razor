@@ -7,7 +7,6 @@
 @inject IShopServiceBillingService BillingService
 @inject IListManagementService ListManagementService
 @inject ICustomerService CustomerService
-@inject IWholesalerService WholesalerService
 @inject IProductService ProductService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -66,9 +65,9 @@
                     {
                         <label class="form-label small fw-semibold">Wholesaler</label>
                         <div class="d-flex gap-2 align-items-center">
-                            <select class="form-select" style="max-width: 300px;" @bind="selectedWholesalerId" @bind:after="OnWholesalerSelectedThenSave">
+                            <select class="form-select" style="max-width: 300px;" @bind="selectedWholesalerCustomerId" @bind:after="OnWholesalerCustomerSelectedThenSave">
                                 <option value="">-- Select Wholesaler --</option>
-                                @foreach (var w in Wholesalers)
+                                @foreach (var w in WholesalerCustomers)
                                 {
                                     <option value="@w.Id">@w.Name</option>
                                 }
@@ -81,7 +80,7 @@
                 }
                 else
                 {
-                    <p class="mb-0">@(isWholesalerMode ? (Bill.WholesalerName ?? "—") : (Bill.CustomerName ?? "Walk-in"))</p>
+                    <p class="mb-0">@(Bill.CustomerName ?? "Walk-in")</p>
                 }
             </div>
         </div>
@@ -368,7 +367,7 @@
     </div>
 }
 
-<!-- Add Wholesaler modal -->
+<!-- Add Wholesaler (Customer with type Wholesaler) modal -->
 @if (showAddWholesalerModal)
 {
     <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)" tabindex="-1">
@@ -379,38 +378,26 @@
                     <button type="button" class="btn-close" @onclick="CloseAddWholesalerModal"></button>
                 </div>
                 <div class="modal-body">
-                    <EditForm Model="@NewWholesaler" OnValidSubmit="SaveWholesaler">
+                    <EditForm Model="@NewWholesalerCustomer" OnValidSubmit="SaveWholesaler">
                         <DataAnnotationsValidator />
                         <div class="mb-3">
                             <label class="form-label">Name *</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Name" />
-                            <ValidationMessage For="@(() => NewWholesaler.Name)" />
+                            <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Name" />
+                            <ValidationMessage For="@(() => NewWholesalerCustomer.Name)" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Phone *</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Phone" />
-                            <ValidationMessage For="@(() => NewWholesaler.Phone)" />
+                            <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Phone" />
+                            <ValidationMessage For="@(() => NewWholesalerCustomer.Phone)" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Email" />
+                            <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Email" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Address</label>
-                            <InputText class="form-control" @bind-Value="NewWholesaler.Address" />
+                            <InputText class="form-control" @bind-Value="NewWholesalerCustomer.Address" />
                         </div>
-                        @if (WholesalerTypes.Any())
-                        {
-                            <div class="mb-3">
-                                <label class="form-label">Type</label>
-                                <select class="form-select" @bind="NewWholesaler.ListManagementId">
-                                    @foreach (var t in WholesalerTypes)
-                                    {
-                                        <option value="@t.Id">@t.Name</option>
-                                    }
-                                </select>
-                            </div>
-                        }
                         <div class="modal-footer px-0">
                             <button type="button" class="btn btn-secondary" @onclick="CloseAddWholesalerModal">Cancel</button>
                             <button type="submit" class="btn btn-primary">Save</button>
@@ -471,14 +458,14 @@
     private ShopServiceBill? Bill;
     private List<ListManagement> ShopServices = new();
     private List<Customer> Customers = new();
-    private List<Wholesaler> Wholesalers = new();
-    private List<ListManagement> WholesalerTypes = new();
+    private List<Customer> WholesalerCustomers = new();
+    private Guid? _wholesalerTypeId;
     private List<ProductDto> products = new();
     private string productSearchText = string.Empty;
     private string? errorMessage;
     private bool isWholesalerMode;
     private Guid? selectedCustomerId;
-    private Guid? selectedWholesalerId;
+    private Guid? selectedWholesalerCustomerId;
     private Guid? selectedServiceId;
     private decimal addUnitPrice;
     private decimal billDiscount;
@@ -491,14 +478,15 @@
     private bool showAddCustomerModal;
     private Customer selectedCustomerForModal = new();
     private bool showAddWholesalerModal;
-    private Wholesaler NewWholesaler = new();
+    private Customer NewWholesalerCustomer = new();
 
     protected override async Task OnInitializedAsync()
     {
         ShopServices = await ListManagementService.GetByTypeAsync(ListType.ShopService);
-        WholesalerTypes = await ListManagementService.GetByTypeAsync(ListType.WholeSalerType);
+        var customerTypes = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
+        _wholesalerTypeId = customerTypes.FirstOrDefault(t => t.Name == "Wholesaler")?.Id;
+        WholesalerCustomers = _wholesalerTypeId.HasValue ? await CustomerService.GetCustomersAsync(typeId: _wholesalerTypeId) : new List<Customer>();
         Customers = await CustomerService.GetCustomersAsync();
-        Wholesalers = await WholesalerService.GetAllAsync();
         products = await ProductService.GetAllAsync();
         await LoadBill();
     }
@@ -511,9 +499,9 @@
             errorMessage = "Bill not found.";
             return;
         }
-        isWholesalerMode = Bill.WholesalerId.HasValue && Bill.WholesalerId.Value != Guid.Empty;
-        selectedCustomerId = Bill.CustomerId;
-        selectedWholesalerId = Bill.WholesalerId;
+        isWholesalerMode = WholesalerCustomers.Any(c => c.Id == Bill.CustomerId);
+        selectedCustomerId = isWholesalerMode ? null : Bill.CustomerId;
+        selectedWholesalerCustomerId = isWholesalerMode ? Bill.CustomerId : null;
         billDiscount = Bill.Discount;
         if (Bill.Status == ShopServiceBillStatus.Open && ShopServices.Any() && !selectedServiceId.HasValue)
         {
@@ -546,20 +534,20 @@
         catch { /* ignore */ }
     }
 
-    private async Task OnWholesalerSelectedThenSave()
+    private async Task OnWholesalerCustomerSelectedThenSave()
     {
-        var name = selectedWholesalerId.HasValue && selectedWholesalerId.Value != Guid.Empty
-            ? Wholesalers.FirstOrDefault(x => x.Id == selectedWholesalerId.Value)?.Name
+        var name = selectedWholesalerCustomerId.HasValue && selectedWholesalerCustomerId.Value != Guid.Empty
+            ? WholesalerCustomers.FirstOrDefault(x => x.Id == selectedWholesalerCustomerId.Value)?.Name
             : null;
-        await SaveWholesalerSelection(name);
+        await SaveBillCustomer(selectedWholesalerCustomerId, name);
     }
 
-    private async Task SaveWholesalerSelection(string? wholesalerName)
+    private async Task SaveBillCustomer(Guid? customerId, string? customerName)
     {
         if (Bill == null) return;
         try
         {
-            await BillingService.UpdateBillWholesalerAsync(BillId, selectedWholesalerId, wholesalerName);
+            await BillingService.UpdateBillCustomerAsync(BillId, customerId, customerName);
         }
         catch { /* ignore */ }
     }
@@ -569,12 +557,12 @@
         if (isWholesalerMode)
         {
             selectedCustomerId = null;
-            selectedWholesalerId = Bill?.WholesalerId;
-            _ = SaveWholesalerSelection(Wholesalers.FirstOrDefault(x => x.Id == selectedWholesalerId)?.Name);
+            selectedWholesalerCustomerId = Bill?.CustomerId;
+            _ = SaveBillCustomer(selectedWholesalerCustomerId, WholesalerCustomers.FirstOrDefault(x => x.Id == selectedWholesalerCustomerId)?.Name);
         }
         else
         {
-            selectedWholesalerId = null;
+            selectedWholesalerCustomerId = null;
             selectedCustomerId = Bill?.CustomerId;
             _ = SaveCustomer(Customers.FirstOrDefault(x => x.Id == selectedCustomerId)?.Name);
         }
@@ -612,9 +600,7 @@
 
     private void OpenAddWholesalerModal()
     {
-        NewWholesaler = new Wholesaler();
-        if (WholesalerTypes.Any())
-            NewWholesaler.ListManagementId = WholesalerTypes.First().Id;
+        NewWholesalerCustomer = new Customer { ListManagementId = _wholesalerTypeId ?? Guid.Empty };
         showAddWholesalerModal = true;
     }
 
@@ -625,12 +611,14 @@
 
     private async Task SaveWholesaler()
     {
-        if (NewWholesaler.Id == Guid.Empty)
-            NewWholesaler.Id = Guid.NewGuid();
-        await WholesalerService.AddAsync(NewWholesaler);
-        Wholesalers = await WholesalerService.GetAllAsync();
-        selectedWholesalerId = NewWholesaler.Id;
-        await BillingService.UpdateBillWholesalerAsync(BillId, NewWholesaler.Id, NewWholesaler.Name);
+        if (NewWholesalerCustomer.Id == Guid.Empty)
+            NewWholesalerCustomer.Id = Guid.NewGuid();
+        if (NewWholesalerCustomer.ListManagementId == Guid.Empty && _wholesalerTypeId.HasValue)
+            NewWholesalerCustomer.ListManagementId = _wholesalerTypeId.Value;
+        await CustomerService.AddCustomerAsync(NewWholesalerCustomer);
+        WholesalerCustomers = _wholesalerTypeId.HasValue ? await CustomerService.GetCustomersAsync(typeId: _wholesalerTypeId) : new List<Customer>();
+        selectedWholesalerCustomerId = NewWholesalerCustomer.Id;
+        await BillingService.UpdateBillCustomerAsync(BillId, NewWholesalerCustomer.Id, NewWholesalerCustomer.Name);
         showAddWholesalerModal = false;
     }
 

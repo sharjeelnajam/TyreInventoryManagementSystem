@@ -1,4 +1,4 @@
-﻿@page "/purchase-view/{PurchaseId:guid}/{ProductId:guid}"
+@page "/purchase-view/{PurchaseId:guid}/{ProductId:guid}"
 @using Domain
 @using Infrastructure.Services
 @inject IPurchaseService PurchaseService
@@ -103,6 +103,6 @@ else
 
     private void GoBack()
     {
-        Navigation.NavigateTo($"/purchasehistory/{ProductId}");
+        Navigation.NavigateTo("/purchases");
     }
 }

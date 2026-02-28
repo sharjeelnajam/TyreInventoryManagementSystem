@@ -1,4 +1,4 @@
-﻿using Domain.Enums;
+using Domain.Enums;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -22,7 +22,7 @@ namespace Infrastructure.Services
             _tenantProvider = tenantProvider;
         }
 
-        public async Task<List<Customer>> GetCustomersAsync(string? name = null, CustomerType? type = null)
+        public async Task<List<Customer>> GetCustomersAsync(string? name = null, Guid? typeId = null)
         {
             try
             {
@@ -33,8 +33,8 @@ namespace Infrastructure.Services
                     if (!string.IsNullOrWhiteSpace(name))
                         query = query.Where(s => s.Name.Contains(name));
 
-                    //if (type.HasValue)
-                    //    query = query.Where(c => c.CustomerType == type);
+                    if (typeId.HasValue && typeId.Value != Guid.Empty)
+                        query = query.Where(c => c.ListManagementId == typeId.Value);
 
                     var customers = await query.ToListAsync();
                     return customers;
@@ -94,6 +94,7 @@ namespace Infrastructure.Services
                 // Update ONLY editable fields
                 existingCustomer.Name = customer.Name;
                 existingCustomer.Phone = customer.Phone;
+                existingCustomer.Email = customer.Email;
                 existingCustomer.Address = customer.Address;
                 existingCustomer.City = customer.City;
                 existingCustomer.VehicleNumber = customer.VehicleNumber;

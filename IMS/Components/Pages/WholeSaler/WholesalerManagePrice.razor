@@ -1,4 +1,4 @@
-﻿
+
 @using Domain.Enums
 @using Infrastructure.Services
 @using Domain
@@ -98,7 +98,7 @@
 
 
 @code {
-    [Parameter] public Guid WholesalerId { get; set; }
+    [Parameter] public Guid CustomerId { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
     List<ListManagement> Threads = new();
@@ -197,9 +197,9 @@
     {
         try
         {
-            var newPrices = PriceRows.Select(x => new WholeSalerPrice
+            var newPrices = PriceRows.Select(x => new CustomerSalerPrice
                 {
-                    WholesalerId = WholesalerId,
+                    CustomerId = CustomerId,
                     ThreadId = x.ThreadId,
                     UnitId = x.UnitId,
                     Price = x.Price

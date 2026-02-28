@@ -1,4 +1,4 @@
-﻿@page "/adminPanal"
+@page "/adminPanal"
 @attribute [Authorize(Roles = "SuperAdmin")]
 
 @using Infrastructure.Services
@@ -124,8 +124,8 @@
             <div class="col-md-3">
                 <div class="card text-white" style="background:#dc3545; min-height:110px;">
                     <div class="card-body">
-                        <h6>Total WholeSalers</h6>
-                        <h5>@WholeSalers.Count</h5>
+                        <h6>Total Wholesalers</h6>
+                        <h5>@WholesalerCustomers.Count</h5>
                     </div>
                 </div>
             </div>
@@ -230,7 +230,7 @@
     private List<Customer> customers = new();
     private List<Staff> Staffs = new();
     private List<Supplier> Suppliers = new();
-    private List<Wholesaler> WholeSalers = new();
+    private List<Customer> WholesalerCustomers = new();
     private decimal TotalExpense = 0;
     private decimal TotalPurchase = 0;
     private decimal TotalSales = 0;
@@ -255,7 +255,7 @@
         TotalExpense = await adminPanalService.GetTotalExpense(selectedTenant);
         TotalInvoices = await adminPanalService.GetTotalInvoices(selectedTenant);
         Suppliers = await adminPanalService.GetSuppliers(selectedTenant);
-        WholeSalers = await adminPanalService.GetWholeSalers(selectedTenant);
+        WholesalerCustomers = await adminPanalService.GetWholesalerCustomers(selectedTenant);
         TotalPurchase = await adminPanalService.GetTotalPurchaseAmountAsync(selectedTenant);
         TotalSales = await adminPanalService.GetTotalSalesAsync(selectedTenant);
         TotalProfit = await adminPanalService.GetTotalProfit(selectedTenant);

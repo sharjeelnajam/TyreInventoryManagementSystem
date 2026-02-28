@@ -66,20 +66,6 @@ namespace Infrastructure.Services
                 return;
             bill.CustomerId = customerId;
             bill.CustomerName = customerName;
-            bill.WholesalerId = null;
-            bill.WholesalerName = null;
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task UpdateBillWholesalerAsync(Guid billId, Guid? wholesalerId, string? wholesalerName)
-        {
-            var bill = await _context.ShopServiceBills.FindAsync(billId);
-            if (bill == null || bill.Status != ShopServiceBillStatus.Open)
-                return;
-            bill.WholesalerId = wholesalerId;
-            bill.WholesalerName = wholesalerName;
-            bill.CustomerId = null;
-            bill.CustomerName = null;
             await _context.SaveChangesAsync();
         }
 

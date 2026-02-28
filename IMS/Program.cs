@@ -41,7 +41,6 @@ builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
 builder.Services.AddScoped<IProfitReportService, ProfitReportService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
-builder.Services.AddScoped<IWholesalerService, WholesalerService>();
 builder.Services.AddScoped<IAdminPanalService, AdminPanalService>();
 builder.Services.AddScoped<IListManagementService, ListManagementService>();
 builder.Services.AddScoped<IShopServiceBillingService, ShopServiceBillingService>();
@@ -67,6 +66,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+{
+    options.UseSqlServer(connectionString);
+    options.AddInterceptors(sp.GetRequiredService<MultiTenantSaveChangesInterceptor>());
+});
+builder.Services.AddDbContextFactory<ApplicationDbContext>((sp, options) =>
 {
     options.UseSqlServer(connectionString);
     options.AddInterceptors(sp.GetRequiredService<MultiTenantSaveChangesInterceptor>());

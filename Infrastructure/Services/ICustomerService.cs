@@ -1,4 +1,4 @@
-﻿using Domain.Enums;
+using Domain.Enums;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -10,7 +10,7 @@ namespace Infrastructure.Services
 {
     public interface ICustomerService
     {
-        Task<List<Customer>> GetCustomersAsync(string? name = null, CustomerType? type = null);
+        Task<List<Customer>> GetCustomersAsync(string? name = null, Guid? typeId = null);
         Task<Customer?> GetCustomerByIdAsync(Guid id);
         Task AddCustomerAsync(Customer customer);
         Task UpdateCustomerAsync(Customer customer);
