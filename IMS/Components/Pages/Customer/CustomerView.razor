@@ -80,8 +80,8 @@ else
                 <table class="table table-sm table-bordered">
                     <thead class="table-light">
                         <tr>
-                            <th>Thread</th>
-                            <th>Unit</th>
+                            <th>Size</th>
+                            <th>Tread</th>
                             <th class="text-end">Price (£)</th>
                             <th style="width:100px;">Actions</th>
                         </tr>
@@ -273,8 +273,8 @@ else
             CustomerTypeName = types.FirstOrDefault(x => x.Id == Customer.ListManagementId)?.Name ?? "N/A";
 
             Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
-            var threads = await ListManagementService.GetByTypeAsync(ListType.Thread) ?? new List<ListManagement>();
-            var units = await ListManagementService.GetByTypeAsync(ListType.Unit) ?? new List<ListManagement>();
+            var threads = await ListManagementService.GetByTypeAsync(ListType.Size) ?? new List<ListManagement>();
+            var units = await ListManagementService.GetByTypeAsync(ListType.Tread) ?? new List<ListManagement>();
             ThreadLookup = threads.ToDictionary(x => x.Id, x => x.Name);
             UnitLookup = units.ToDictionary(x => x.Id, x => x.Name);
             ThreadsList = threads;

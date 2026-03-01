@@ -253,8 +253,8 @@
             products = await ProductService.GetAllAsync();
             filteredProducts = products;
 
-           units = await ListManagementService.GetByTypeAsync(ListType.Unit);
-           Threads = await ListManagementService.GetByTypeAsync(ListType.Thread);
+           units = await ListManagementService.GetByTypeAsync(ListType.Tread);
+           Threads = await ListManagementService.GetByTypeAsync(ListType.Size);
             unitsLookup = units.ToDictionary(c => c.Id, c => c.Name);
             ThreadsLookup = Threads.ToDictionary(c => c.Id, c => c.Name);
         }

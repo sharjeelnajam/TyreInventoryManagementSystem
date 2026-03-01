@@ -127,16 +127,16 @@ namespace Infrastructure.Services
             }
 
             var listManagementItems = await _context.ListManagements
-                .Where(x => x.Type == ListType.Unit || x.Type == ListType.Thread)
+                .Where(x => x.Type == ListType.Tread || x.Type == ListType.Size)
                 .ToListAsync(cancellationToken);
 
             var unitLookup = listManagementItems
-                .Where(x => x.Type == ListType.Unit)
+                .Where(x => x.Type == ListType.Tread)
                 .GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
             var threadLookup = listManagementItems
-                .Where(x => x.Type == ListType.Thread)
+                .Where(x => x.Type == ListType.Size)
                 .GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 

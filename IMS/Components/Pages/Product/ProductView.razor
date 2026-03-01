@@ -133,8 +133,8 @@
     {
         Product = await ProductService.GetByIdAsync(Id);
 
-        var units = await ListManagementService.GetByTypeAsync(ListType.Unit);
-        var Threads = await ListManagementService.GetByTypeAsync(ListType.Thread);
+        var units = await ListManagementService.GetByTypeAsync(ListType.Tread);
+        var Threads = await ListManagementService.GetByTypeAsync(ListType.Size);
 
         unitLookup = units.ToDictionary(x => x.Id, x => x.Name);
         ThreadLookup = Threads.ToDictionary(x => x.Id, x => x.Name);

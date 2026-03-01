@@ -46,7 +46,7 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label fw-semibold">Registration Number</label>
+                <label class="form-label fw-semibold">Car Registration Number</label>
                 <InputText @bind-Value="CustomerModel.VehicleNumber"
                            class="form-control shadow-sm" />
             </div>
@@ -122,10 +122,9 @@
                 <button type="button" class="btn-close" @onclick="CloseManagePricing" aria-label="Close"></button>
             </div>
             <div class="manage-pricing-body p-4" style="flex:1; min-height:0;">
-                <p class="text-muted small mb-3">Select tier/grade and unit, enter price, then Save. Entries appear in the list below. They will be saved when you click Save on the customer form.</p>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label class="fw-bold mb-2">Tier / Grade (Thread)</label>
+                        <label class="fw-bold mb-2">Size</label>
                         <select id="addCustomerThreadSelect" class="form-select" multiple>
                             @foreach (var s in ThreadsList)
                             {
@@ -138,7 +137,7 @@
                         }
                     </div>
                     <div class="col-md-6">
-                        <label class="fw-bold mb-2">Unit</label>
+                        <label class="fw-bold mb-2">Tread</label>
                         <select id="addCustomerUnitSelect" class="form-select" multiple>
                             @foreach (var u in UnitsList)
                             {
@@ -151,15 +150,14 @@
                         }
                     </div>
                 </div>
-                <p class="small text-muted mb-2">Select multiple tier/grade and unit from the dropdowns above.</p>
                 @if (PendingPriceRows.Any())
                 {
                     <div class="table-responsive mb-2">
                         <table class="table table-sm table-bordered">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Tier / Grade</th>
-                                    <th>Unit</th>
+                                    <th>Size</th>
+                                    <th>Tread</th>
                                     <th>Price (£)</th>
                                     <th style="width:44px;"></th>
                                 </tr>
@@ -183,7 +181,6 @@
                             </tbody>
                         </table>
                     </div>
-                    <p class="small text-muted mb-0">Enter price for each row. Use <i class="bi bi-x-lg text-danger small"></i> to remove a row.</p>
                 }
                 else if (ThreadsList.Any() && UnitsList.Any())
                 {
@@ -215,8 +212,8 @@
     protected override async Task OnInitializedAsync()
     {
         listManagements = await ListManagementService.GetByTypeAsync(ListType.CustomerType) ?? new();
-        ThreadsList = await ListManagementService.GetByTypeAsync(ListType.Thread) ?? new();
-        UnitsList = await ListManagementService.GetByTypeAsync(ListType.Unit) ?? new();
+        ThreadsList = await ListManagementService.GetByTypeAsync(ListType.Size) ?? new();
+        UnitsList = await ListManagementService.GetByTypeAsync(ListType.Tread) ?? new();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

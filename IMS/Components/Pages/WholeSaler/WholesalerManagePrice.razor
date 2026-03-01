@@ -119,7 +119,7 @@ else if (ShowModal)
                     }
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="fw-bold mb-2">Tier / Grade (Thread)</label>
+                            <label class="fw-bold mb-2">Size</label>
                             <div class="border rounded p-2 bg-white" style="max-height:140px; overflow-y:auto;">
                                 @foreach (var s in Threads)
                                 {
@@ -157,8 +157,8 @@ else if (ShowModal)
                             <table class="table table-bordered w-auto">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width:150px">Tier / Grade</th>
-                                        <th style="width:150px">Unit</th>
+                                        <th style="width:150px">Size</th>
+                                        <th style="width:150px">Tread</th>
                                         <th style="width:150px">Price (£)</th>
                                     </tr>
                                 </thead>
@@ -215,8 +215,8 @@ else if (ShowModal)
 
     protected override async Task OnInitializedAsync()
     {
-        Threads = await ListService.GetByTypeAsync(ListType.Thread) ?? new();
-        Units = await ListService.GetByTypeAsync(ListType.Unit) ?? new();
+        Threads = await ListService.GetByTypeAsync(ListType.Size) ?? new();
+        Units = await ListService.GetByTypeAsync(ListType.Tread) ?? new();
 
         // ExistingPrices = await PriceService
         // .GetByWholesalerIdAsync(WholesalerId);

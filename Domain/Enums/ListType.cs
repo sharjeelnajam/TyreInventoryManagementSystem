@@ -10,9 +10,8 @@ namespace Domain.Enums
     {
         CustomerType = 1,
         Expense = 2,
-        WholeSalerType = 3,
-        Thread = 4,
-        Unit = 5,
+        Size = 4,
+        Tread = 5,
         ShopService = 6
     }
 }

@@ -59,36 +59,36 @@ namespace Infrastructure.Persistence.Data
         private static async Task SeedListManagementDataAsync(ApplicationDbContext context)
         {
             // Seed Thread data - TenantId is null for shared reference data
-            var hasThreadData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Thread && !lm.IsDeleted);
+            var hasThreadData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Size && !lm.IsDeleted);
             if (!hasThreadData)
             {
                 var Threads = new List<ListManagement>
                 {
-                    new ListManagement { Id = Guid.NewGuid(), Name = "14'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "15'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "16'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "17'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "18'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "19'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "20'", Type = ListType.Thread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
+                    new ListManagement { Id = Guid.NewGuid(), Name = "14'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "15'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "16'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "17'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "18'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "19'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "20'", Type = ListType.Size, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
                 };
                 await context.ListManagements.AddRangeAsync(Threads);
             }
 
             // Seed Unit data - TenantId is null for shared reference data
-            var hasUnitData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Unit && !lm.IsDeleted);
+            var hasUnitData = await context.ListManagements.AnyAsync(lm => lm.Type == ListType.Tread && !lm.IsDeleted);
             if (!hasUnitData)
             {
                 var units = new List<ListManagement>
                 {
-                    new ListManagement { Id = Guid.NewGuid(), Name = "5mm", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "5mm+", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "6mm", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "6mm+", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "7mm", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "7mm+", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "8mm", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "8mm+", Type = ListType.Unit, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
+                    new ListManagement { Id = Guid.NewGuid(), Name = "5mm", Type = ListType.Tread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "5mm+", Type = ListType.Tread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "6mm", Type = ListType.Tread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "6mm+", Type = ListType.Tread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "7mm", Type = ListType.Tread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "7mm+", Type = ListType.Tread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "8mm", Type = ListType.Tread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
+                    new ListManagement { Id = Guid.NewGuid(), Name = "8mm+", Type = ListType.Tread, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
                 };
                 await context.ListManagements.AddRangeAsync(units);
             }
