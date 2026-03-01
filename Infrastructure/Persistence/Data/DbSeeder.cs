@@ -114,7 +114,7 @@ namespace Infrastructure.Persistence.Data
                 {
                     new ListManagement { Id = Guid.NewGuid(), Name = "Wholesaler", Type = ListType.CustomerType, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
                     new ListManagement { Id = Guid.NewGuid(), Name = "Customer", Type = ListType.CustomerType, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null },
-                    new ListManagement { Id = Guid.NewGuid(), Name = "Walk-in", Type = ListType.CustomerType, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
+                    new ListManagement { Id = Guid.NewGuid(), Name = "Walk-In", Type = ListType.CustomerType, IsActive = true, CreatedAt = DateTime.UtcNow, TenantId = null }
                 };
                 await context.ListManagements.AddRangeAsync(customerTypes);
             }

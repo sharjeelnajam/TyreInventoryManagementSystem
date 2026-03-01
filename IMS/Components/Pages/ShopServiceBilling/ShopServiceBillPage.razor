@@ -36,6 +36,29 @@
             </h3>
         </div>
 
+        <!-- Bill details: open/close dates and notes -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <span class="text-muted small d-block">Opened</span>
+                        <span class="fw-semibold">@Bill.OpenedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</span>
+                    </div>
+                    @if (Bill.ClosedAt.HasValue)
+                    {
+                        <div class="col-md-4">
+                            <span class="text-muted small d-block">Closed</span>
+                            <span class="fw-semibold">@Bill.ClosedAt.Value.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</span>
+                        </div>
+                    }
+                    <div class="@(Bill.ClosedAt.HasValue ? "col-md-4" : "col-md-8")">
+                        <span class="text-muted small d-block">Notes</span>
+                        <span class="@(string.IsNullOrWhiteSpace(Bill.Notes) ? "text-muted fst-italic" : "")">@(string.IsNullOrWhiteSpace(Bill.Notes) ? "—" : Bill.Notes)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Bill to: Customer or Wholesaler toggle -->
         <div class="card mb-3">
             <div class="card-body">
@@ -96,7 +119,7 @@
                         </div>
                         <div class="card-body p-2">
                             <input class="form-control form-control-sm mb-2"
-                                   placeholder="Search by name, size, brand..."
+                                   placeholder="Search by name, size, brand, tread..."
                                    @bind="productSearchText"
                                    @bind:event="oninput" />
                             <div class="border rounded p-2" style="max-height: 280px; overflow-y: auto;">
@@ -105,7 +128,8 @@
                                         .Where(p => string.IsNullOrWhiteSpace(productSearchText) ||
                                             (p.ProductName != null && p.ProductName.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
                                             (p.Brand != null && p.Brand.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
-                                            (p.TyreSize != null && p.TyreSize.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)))
+                                            (p.TyreSize != null && p.TyreSize.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                                            (p.TreadName != null && p.TreadName.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)))
                                         .ToList();
                                     var toShow = string.IsNullOrWhiteSpace(productSearchText) ? filteredProducts.Take(20) : filteredProducts.Take(50);
                                 }
@@ -119,8 +143,9 @@
                                         <div class="small">
                                             <div class="fw-semibold">@p.ProductName</div>
                                             <div class="text-muted">
-                                                @if (!string.IsNullOrEmpty(p.TyreSize)) { <span>@p.TyreSize</span> }
-                                                @if (!string.IsNullOrEmpty(p.Brand)) { <span> • @p.Brand</span> }
+                                                @if (!string.IsNullOrEmpty(p.TyreSize)) { <span>Size: @p.TyreSize</span> }
+                                                @if (!string.IsNullOrEmpty(p.TreadName)) { <span>@(string.IsNullOrEmpty(p.TyreSize) ? "" : " • ")Tread: @p.TreadName</span> }
+                                                @if (!string.IsNullOrEmpty(p.Brand)) { <span>@(string.IsNullOrEmpty(p.TyreSize) && string.IsNullOrEmpty(p.TreadName) ? "" : " • ")@p.Brand</span> }
                                             </div>
                                             <div class="@(inStock ? "text-success fw-semibold" : "text-danger fw-semibold")">@(inStock ? $"{stockLevel} in stock" : "Out of stock")</div>
                                         </div>

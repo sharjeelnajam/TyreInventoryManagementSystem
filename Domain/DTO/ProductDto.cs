@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -50,6 +50,8 @@ namespace Domain.DTO
         public Guid Unit { get; set; }
         //basically ListManagementId
         public Guid ThreadId { get; set; }
+        /// <summary>Tread display name from ListManagement (e.g. 5mm+, 6mm).</summary>
+        public string? TreadName { get; set; }
 
         public ICollection<PurchaseDetail> PurchaseDetails { get; set; }
     }

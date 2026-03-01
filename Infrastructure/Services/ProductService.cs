@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Domain.DTO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -95,6 +95,7 @@ namespace Infrastructure.Services
                        TyreSize = product.TyreSize,
                        Type = product.Type,
                        ThreadId = product.ThreadId,
+                       TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
                        Unit = product.Unit,
 
                        PurchasePrice = product.PurchaseDetails
@@ -144,6 +145,9 @@ namespace Infrastructure.Services
                        DOT = product.DOT,
                        TyreSize = product.TyreSize,
                        Type = product.Type,
+                       ThreadId = product.ThreadId,
+                       TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
+                       Unit = product.Unit,
 
                        PurchasePrice = product.PurchaseDetails
                             .OrderByDescending(pd => pd.Id)
@@ -422,6 +426,7 @@ namespace Infrastructure.Services
                 Type = product.Type,
                 Unit = product.Unit,
                 ThreadId = product.ThreadId,
+                TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
 
                 PurchasePrice = product.PurchaseDetails
                     .OrderByDescending(pd => pd.Id) 
