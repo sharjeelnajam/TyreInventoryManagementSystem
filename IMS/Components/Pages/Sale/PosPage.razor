@@ -45,8 +45,7 @@
                     }
                     @foreach (var product in displayedProducts)
                     {
-                        var stock = Stocks.FirstOrDefault(s => s.ProductId == product.Id);
-                        var stockLevel = stock?.NewStockLevel ?? 0;
+                        var stockLevel = product.Quantity;
                         var isOutOfStock = stockLevel <= 0;
                         
                         <div class="product-row @(isOutOfStock ? "out-of-stock-row" : "")" 
@@ -473,8 +472,7 @@
 
     private void AddItemFromGrid(ProductDto product)
     {
-        var stock = Stocks.FirstOrDefault(s => s.ProductId == product.Id);
-        if (stock == null || stock.NewStockLevel <= 0)
+        if (product.Quantity <= 0)
         {
             showOutOfStockModal = true;
             return;
@@ -624,18 +622,18 @@
     private void OnQuantityChanged(SaleDetail detail, int newValue)
     {
         detail.Quantity = newValue;
-        var stockProduct = Stocks.FirstOrDefault(p => p.ProductId == detail.ProductId);
+        var maxStock = products.FirstOrDefault(p => p.Id == detail.ProductId)?.Quantity ?? 0;
 
-        if (stockProduct == null)
+        if (maxStock <= 0)
         {
             quantityErrors[detail.ProductId] = $"No stock available";
             isFormValid = false;
             return;
         }
 
-        if (newValue > stockProduct.NewStockLevel)
+        if (newValue > maxStock)
         {
-            quantityErrors[detail.ProductId] = $"Max: {stockProduct.NewStockLevel}";
+            quantityErrors[detail.ProductId] = $"Max: {maxStock}";
             isFormValid = false;
         }
         else

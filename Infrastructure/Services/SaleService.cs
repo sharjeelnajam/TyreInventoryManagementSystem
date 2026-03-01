@@ -95,8 +95,15 @@ namespace Infrastructure.Services
                 if (sale.CustomerId == Guid.Empty)
                     sale.CustomerId = null;
 
+                if (string.IsNullOrWhiteSpace(sale.PaymentMethod))
+                    sale.PaymentMethod = "Cash";
+                if (string.IsNullOrWhiteSpace(sale.PaymentStatus))
+                    sale.PaymentStatus = "Paid";
+
                 sale.Id = Guid.NewGuid();
                 sale.CreatedAt = DateTime.Now;
+                if (_tenantProvider.TenantId != Guid.Empty)
+                    sale.TenantId = _tenantProvider.TenantId;
 
                 List<SaleDetail> saleDetails = new List<SaleDetail>();
 
@@ -106,6 +113,8 @@ namespace Infrastructure.Services
                     {
                         detail.SaleId = sale.Id;
                         detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+                        if (_tenantProvider.TenantId != Guid.Empty)
+                            detail.TenantId = _tenantProvider.TenantId;
 
                         // NEW: Fetch cost price & calculate profit
                         var product = await _context.Products.FindAsync(detail.ProductId);
@@ -136,15 +145,43 @@ namespace Infrastructure.Services
 
                     foreach (var detail in sale.SaleDetails)
                     {
-                        var stockProduct = _context.StockHistories.FirstOrDefault(p => p.ProductId == detail.ProductId);
+                        // Use latest stock record for this product (by ActionDate then Id) so we update current stock
+                        var stockProduct = await _context.StockHistories
+                            .Where(p => p.ProductId == detail.ProductId)
+                            .OrderByDescending(sh => sh.ActionDate)
+                            .ThenByDescending(sh => sh.Id)
+                            .FirstOrDefaultAsync();
                         var product = await _context.Products.FindAsync(detail.ProductId);
 
                         if (stockProduct != null)
                         {
+                            var previousLevel = stockProduct.NewStockLevel;
                             stockProduct.NewStockLevel = stockProduct.NewStockLevel - detail.Quantity;
-                            stockProduct.QuantityChanged = detail.Quantity;
+                            stockProduct.QuantityChanged = -detail.Quantity;
                             stockProduct.ActionDate = DateTime.UtcNow;
+                            stockProduct.PerformedBy = performedBy;
+                            stockProduct.ReferenceId = sale.Id;
+                            stockProduct.ReferenceNumber = sale.SaleNumber;
+                            stockProduct.ActionType = "Sale";
+                            stockProduct.PreviousStockLevel = previousLevel;
                             _context.Update(stockProduct);
+
+                            // Add a new StockHistory row for this sale (audit trail)
+                            var saleStockHistory = new StockHistory
+                            {
+                                Id = Guid.NewGuid(),
+                                ProductId = detail.ProductId,
+                                ActionType = "Sale",
+                                QuantityChanged = -detail.Quantity,
+                                PreviousStockLevel = previousLevel,
+                                NewStockLevel = stockProduct.NewStockLevel,
+                                ActionDate = DateTime.UtcNow,
+                                ReferenceId = sale.Id,
+                                ReferenceNumber = sale.SaleNumber,
+                                PerformedBy = performedBy,
+                                TenantId = _tenantProvider.TenantId
+                            };
+                            await _context.StockHistories.AddAsync(saleStockHistory);
                         }
 
                         // NEW: Add ProfitHistory record
@@ -430,9 +467,9 @@ namespace Infrastructure.Services
             if (sale == null)
                 return Array.Empty<byte>();
 
-            // ✅ Load logo
-            var logoPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "logo", "logo.png");
-            byte[]? logoData = File.Exists(logoPath) ? await File.ReadAllBytesAsync(logoPath) : null;
+            // Resolve logo path – try multiple locations (dev run, publish, different working dirs)
+            var logoPath = ResolveWwwRootPath("uploads", "logo", "logo.png");
+            byte[]? logoData = !string.IsNullOrEmpty(logoPath) && File.Exists(logoPath) ? await File.ReadAllBytesAsync(logoPath) : null;
 
             QuestPDF.Settings.License = LicenseType.Community;
 
@@ -442,60 +479,47 @@ namespace Infrastructure.Services
                 {
                     page.Margin(0);
 
-
-                    // ✅ Add background image
-                    // ✅ Load background image
-                    var backgroundPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "logo", "backgroundImage.png");
-                    if (File.Exists(backgroundPath))
+                    // Optional background image
+                    var backgroundPath = ResolveWwwRootPath("uploads", "logo", "backgroundImage.png");
+                    if (!string.IsNullOrEmpty(backgroundPath) && File.Exists(backgroundPath))
                     {
                         var bgImage = File.ReadAllBytes(backgroundPath);
-                        page.Background()
-        .Image(bgImage)
-        .FitWidth()
-        .FitHeight();
+                        page.Background().Image(bgImage).FitWidth().FitHeight();
                     }
-                    // 🧾 HEADER
+
+                    // 🧾 HEADER – logo from wwwroot only (no direct OH&H text)
                     page.Header().Column(col =>
                     {
-
-
-                        // Logo + Name
-                        col.Item().PaddingTop(20).AlignCenter().Column(centerCol =>
+                        if (logoData != null)
                         {
-                            centerCol.Item().Row(logoRow =>
-                            {
-                                if (logoData != null)
-                                {
-                                    logoRow.ConstantItem(90).Image(logoData);
-                                }
+                            col.Item().PaddingTop(20).AlignCenter().Width(200).Image(logoData).FitArea();
+                        }
+                        else
+                        {
+                            col.Item().PaddingTop(20).Height(60);
+                        }
 
-                                logoRow.AutoItem().Text("H&H").Bold().FontSize(80);
-                            });
-
-                            centerCol.Item().Text("BRINGING SAFETY TO THE ROAD").FontSize(12);
+                        // Invoice number (bound to sale)
+                        col.Item().PaddingTop(24).PaddingLeft(40).Column(invoiceCol =>
+                        {
+                            invoiceCol.Item().Text("Invoice").FontSize(16).Bold();
+                            invoiceCol.Item().Text($"Invoice #: {sale.SaleNumber ?? "N/A"}").FontSize(14);
                         });
 
-                        // Invoice title and date
-                        col.Item().PaddingTop(60).PaddingLeft(40).PaddingBottom(40).Column(customerCol =>
+                        // Date, Sold To: Name, Email (formatted)
+                        col.Item().PaddingTop(16).PaddingLeft(40).PaddingBottom(24).Column(customerCol =>
                         {
-                            customerCol.Item().Text("Invoice").FontSize(14);
-                            customerCol.Item().Text($"Date: {DateTime.Now:dd MMM yyyy}").FontSize(14);
-                        });
-
-                        // Customer info
-                        col.Item().PaddingLeft(40).PaddingBottom(60).Column(customerCol =>
-                        {
-                            customerCol.Item().Text("Sold To:").Bold().FontSize(14);
-
+                            customerCol.Item().Text($"Date: {sale.SaleDate:dd MMM yyyy}").FontSize(14);
+                            customerCol.Item().PaddingTop(8).Text("Sold To:").Bold().FontSize(14);
                             if (sale.Customer != null)
                             {
-                                customerCol.Item().Text($"{sale.Customer.Name?.ToUpper() ?? "N/A"}").FontSize(14);
-                                customerCol.Item().Text($"{sale.Customer.Email ?? "N/A"}").FontSize(16);
+                                customerCol.Item().Text($"Name: {sale.Customer.Name ?? "N/A"}").FontSize(14);
+                                customerCol.Item().Text($"Email: {sale.Customer.Email ?? "N/A"}").FontSize(14);
                             }
                             else
                             {
-                                customerCol.Item().Text("N/A").FontSize(14);
-                                customerCol.Item().Text("N/A").FontSize(16);
+                                customerCol.Item().Text("Name: N/A").FontSize(14);
+                                customerCol.Item().Text("Email: N/A").FontSize(14);
                             }
                         });
                     });
@@ -531,40 +555,27 @@ namespace Infrastructure.Services
                             {
                                 table.Cell().PaddingVertical(3).Text(item.Product?.ProductName ?? "N/A").FontSize(14);
                                 table.Cell().PaddingVertical(3).Text(item.Quantity.ToString()).FontSize(14);
-                                table.Cell().PaddingVertical(3).Text($"Rs {item.UnitPrice:0.00}").FontSize(14);
-                                table.Cell().PaddingVertical(3).Text($"Rs {item.TotalPrice:0.00}").FontSize(14);
+                                table.Cell().PaddingVertical(3).Text($"£{item.UnitPrice:0.00}").FontSize(14);
+                                table.Cell().PaddingVertical(3).Text($"£{item.TotalPrice:0.00}").FontSize(14);
                             }
                         });
 
-                        // VAN info
-                        var vanRegistration = "SD63 WTM";
-                        if (!string.IsNullOrEmpty(vanRegistration))
+                        // Totals (no VAT, no Van registration)
+                        contentCol.Item().PaddingTop(24).Column(totalsCol =>
                         {
-                            contentCol.Item().PaddingTop(30).Text($"VAN Registration: {vanRegistration}").FontSize(14);
-                            contentCol.Item().PaddingBottom(20).Text("");
-                        }
-
-                        // Totals
-                        contentCol.Item().Column(totalsCol =>
-                        {
-                            totalsCol.Item().AlignLeft().Text($"SubTotal: Rs {sale.TotalAmount:0.00}").FontSize(14);
-
-                            var vatAmount = sale.TotalAmount * 0.2m;
-                            totalsCol.Item().AlignLeft().Text($"VAT (20%): Rs {vatAmount:0.00}").FontSize(14);
-
-                            var totalDue = sale.TotalAmount + vatAmount;
-                            totalsCol.Item().AlignLeft().Text($"Total Amount Due: Rs {totalDue:0.00}").Bold().FontSize(14);
+                            totalsCol.Item().AlignLeft().Text($"SubTotal: £{sale.TotalAmount:0.00}").FontSize(14);
+                            totalsCol.Item().AlignLeft().Text($"Total Amount Due: £{sale.NetAmount:0.00}").Bold().FontSize(14);
                         });
 
                         // Payment Info
                         contentCol.Item().PaddingTop(40).Column(paymentCol =>
                         {
                             paymentCol.Item().Text("Payment Terms: Due on Receipt").FontSize(14);
-                            paymentCol.Item().Text("Payment Method: Bank Transfer").FontSize(14);
+                            paymentCol.Item().Text($"Payment Method: {sale.PaymentMethod ?? "N/A"}").FontSize(14);
                         });
 
-                        // Thank you
-                        contentCol.Item().PaddingTop(30).AlignLeft().Column(thankYouCol =>
+                        // Thank you – centered
+                        contentCol.Item().PaddingTop(30).AlignCenter().Column(thankYouCol =>
                         {
                             thankYouCol.Item().PaddingVertical(10).Text("Thank you for your business!").Italic().FontSize(20);
                         });
@@ -748,6 +759,35 @@ namespace Infrastructure.Services
 
                 sale.Customer = customer;
             }
+        }
+
+        /// <summary>
+        /// Resolves a file path under wwwroot so the logo (and other assets) are found
+        /// whether the app runs from project dir, bin, or published output.
+        /// </summary>
+        private static string? ResolveWwwRootPath(params string[] relativePathParts)
+        {
+            var relativePath = Path.Combine(relativePathParts);
+            var candidates = new List<string>
+            {
+                Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativePath),
+                Path.Combine(AppContext.BaseDirectory, "wwwroot", relativePath),
+                Path.Combine(AppContext.BaseDirectory, "..", "wwwroot", relativePath),
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "wwwroot", relativePath),
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "wwwroot", relativePath),
+                Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "wwwroot", relativePath)
+            };
+            foreach (var path in candidates)
+            {
+                try
+                {
+                    var full = Path.GetFullPath(path);
+                    if (File.Exists(full))
+                        return full;
+                }
+                catch { /* skip invalid paths */ }
+            }
+            return null;
         }
     }
 }

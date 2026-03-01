@@ -110,6 +110,8 @@ namespace Infrastructure.Services
 
                        Quantity =  _context.StockHistories
                             .Where(s => s.ProductId == product.Id)
+                            .OrderByDescending(s => s.ActionDate)
+                            .ThenByDescending(s => s.Id)
                             .Select(s => s.NewStockLevel)
                             .FirstOrDefault()
                    })
@@ -161,6 +163,8 @@ namespace Infrastructure.Services
 
                        Quantity =  _context.StockHistories
                             .Where(s => s.ProductId == product.Id)
+                            .OrderByDescending(s => s.ActionDate)
+                            .ThenByDescending(s => s.Id)
                             .Select(s => s.NewStockLevel)
                             .FirstOrDefault()
                    })
@@ -441,6 +445,8 @@ namespace Infrastructure.Services
 
             productDto.Quantity = await _context.StockHistories
                 .Where(s => s.ProductId == product.Id)
+                .OrderByDescending(s => s.ActionDate)
+                .ThenByDescending(s => s.Id)
                 .Select(s => s.NewStockLevel)
                 .FirstOrDefaultAsync();
 
