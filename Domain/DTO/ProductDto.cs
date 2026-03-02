@@ -50,7 +50,11 @@ namespace Domain.DTO
         public Guid Unit { get; set; }
         //basically ListManagementId
         public Guid ThreadId { get; set; }
-        /// <summary>Tread display name from ListManagement (e.g. 5mm+, 6mm).</summary>
+
+        /// <summary>Display name for unit (e.g. 6mm).</summary>
+        public string? UnitName { get; set; }
+
+        /// <summary>Display name for size/tread pattern from ListManagement (e.g. 21').</summary>
         public string? TreadName { get; set; }
 
         public ICollection<PurchaseDetail> PurchaseDetails { get; set; }

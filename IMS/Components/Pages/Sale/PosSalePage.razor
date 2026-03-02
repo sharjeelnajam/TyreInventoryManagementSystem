@@ -9,6 +9,7 @@
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
 @inject IListManagementService ListManagementService
+@inject IWholesalerPriceService WholesalerPriceService
 @inject ApplicationDbContext _context
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Nav
@@ -641,15 +642,12 @@
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefault();
 
-        if (wholeSalerPrices.Any() && isWholesalerMode)
+        var managedPrice = wholeSalerPrices.FirstOrDefault(w => w.UnitId == product.Unit && w.ThreadId == product.ThreadId);
+        if (managedPrice != null)
         {
-            var wholeSalerPrice = wholeSalerPrices.FirstOrDefault(w => w.UnitId == product.Unit && w.ThreadId == product.ThreadId);
-            if (wholeSalerPrice != null)
-            {
-                detail.Quantity = 1;
-                detail.UnitPrice = wholeSalerPrice.Price;
-                detail.TotalPrice = detail.Quantity * detail.UnitPrice;
-            }
+            detail.Quantity = 1;
+            detail.UnitPrice = managedPrice.Price;
+            detail.TotalPrice = detail.Quantity * detail.UnitPrice;
         }
         else if (previousProductId != product.Id)
         {
@@ -732,10 +730,14 @@
 
     private async Task OnCustomerChanged(Guid? value)
     {
-        if (value == null || value == Guid.Empty)
-            return;
-
         Sale.CustomerId = value;
+        if (value == null || value == Guid.Empty)
+        {
+            wholeSalerPrices = new List<CustomerSalerPrice>();
+            RecalculateTotals();
+            StateHasChanged();
+            return;
+        }
         var customer = Customers.FirstOrDefault(c => c.Id == value);
 
         if (customer != null)
@@ -751,7 +753,31 @@
                 ShowOldDiscountField = true;
             }
         }
+
+        wholeSalerPrices = await WholesalerPriceService.GetByCustomerIdAsync(value.Value);
+        foreach (var detail in Sale.SaleDetails)
+        {
+            if (detail.ProductId == Guid.Empty)
+                continue;
+
+            var product = products.FirstOrDefault(p => p.Id == detail.ProductId);
+            if (product == null)
+                continue;
+
+            var managedPrice = wholeSalerPrices.FirstOrDefault(w =>
+                w.ThreadId == product.ThreadId &&
+                w.UnitId == product.Unit
+            );
+
+            if (managedPrice != null)
+            {
+                detail.UnitPrice = managedPrice.Price;
+                detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+            }
+        }
+
         RecalculateTotals();
+        StateHasChanged();
     }
 
     private async Task OnWholeSalerChanged(Guid? value)
@@ -760,7 +786,7 @@
             return;
 
         Sale.CustomerId = value;
-        wholeSalerPrices = _context.CustomerSalerPrices.Where(w => w.CustomerId == Sale.CustomerId).ToList();
+        wholeSalerPrices = await WholesalerPriceService.GetByCustomerIdAsync(Sale.CustomerId.Value);
 
         foreach (var detail in Sale.SaleDetails)
         {

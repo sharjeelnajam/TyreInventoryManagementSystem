@@ -97,6 +97,7 @@ namespace Infrastructure.Services
                        ThreadId = product.ThreadId,
                        TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
                        Unit = product.Unit,
+                       UnitName = _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault(),
 
                        PurchasePrice = product.PurchaseDetails
                             .OrderByDescending(pd => pd.Id)
@@ -150,6 +151,7 @@ namespace Infrastructure.Services
                        ThreadId = product.ThreadId,
                        TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
                        Unit = product.Unit,
+                       UnitName = _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault(),
 
                        PurchasePrice = product.PurchaseDetails
                             .OrderByDescending(pd => pd.Id)
@@ -431,6 +433,7 @@ namespace Infrastructure.Services
                 Unit = product.Unit,
                 ThreadId = product.ThreadId,
                 TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
+                UnitName = _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault(),
 
                 PurchasePrice = product.PurchaseDetails
                     .OrderByDescending(pd => pd.Id) 

@@ -8,6 +8,7 @@
 @inject IListManagementService ListManagementService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
+@inject IWholesalerPriceService WholesalerPriceService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -504,6 +505,7 @@
     private Customer selectedCustomerForModal = new();
     private bool showAddWholesalerModal;
     private Customer NewWholesalerCustomer = new();
+    private List<CustomerSalerPrice> managedPricesForBillCustomer = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -528,6 +530,7 @@
         selectedCustomerId = isWholesalerMode ? null : Bill.CustomerId;
         selectedWholesalerCustomerId = isWholesalerMode ? Bill.CustomerId : null;
         billDiscount = Bill.Discount;
+        await LoadManagedPricesForCurrentCustomerAsync();
         if (Bill.Status == ShopServiceBillStatus.Open && ShopServices.Any() && !selectedServiceId.HasValue)
         {
             var first = ShopServices.First();
@@ -547,6 +550,7 @@
             ? Customers.FirstOrDefault(x => x.Id == selectedCustomerId.Value)?.Name
             : null;
         await SaveCustomer(name);
+        await LoadManagedPricesForCurrentCustomerAsync();
     }
 
     private async Task SaveCustomer(string? customerName)
@@ -565,6 +569,7 @@
             ? WholesalerCustomers.FirstOrDefault(x => x.Id == selectedWholesalerCustomerId.Value)?.Name
             : null;
         await SaveBillCustomer(selectedWholesalerCustomerId, name);
+        await LoadManagedPricesForCurrentCustomerAsync();
     }
 
     private async Task SaveBillCustomer(Guid? customerId, string? customerName)
@@ -666,12 +671,29 @@
         }
     }
 
+    private async Task LoadManagedPricesForCurrentCustomerAsync()
+    {
+        var customerId = isWholesalerMode ? selectedWholesalerCustomerId : selectedCustomerId;
+        if (customerId.HasValue && customerId.Value != Guid.Empty)
+        {
+            managedPricesForBillCustomer = await WholesalerPriceService.GetByCustomerIdAsync(customerId.Value);
+        }
+        else
+        {
+            managedPricesForBillCustomer = new List<CustomerSalerPrice>();
+        }
+    }
+
     private async Task TryAddProduct(ProductDto product, int stockLevel)
     {
         if (stockLevel <= 0 || Bill == null || Bill.Status != ShopServiceBillStatus.Open) return;
+        var unitPrice = product.SellingPrice;
+        var managed = managedPricesForBillCustomer.FirstOrDefault(p => p.ThreadId == product.ThreadId && p.UnitId == product.Unit);
+        if (managed != null)
+            unitPrice = managed.Price;
         try
         {
-            await BillingService.AddItemAsync(BillId, null, product.ProductName ?? "Product", 1, product.SellingPrice);
+            await BillingService.AddItemAsync(BillId, null, product.ProductName ?? "Product", 1, unitPrice);
             await LoadBill();
         }
         catch (Exception ex)

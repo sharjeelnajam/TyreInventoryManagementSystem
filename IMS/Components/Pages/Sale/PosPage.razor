@@ -9,6 +9,7 @@
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
 @inject IListManagementService ListManagementService
+@inject IWholesalerPriceService WholesalerPriceService
 @inject ApplicationDbContext _context
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Nav
@@ -25,7 +26,7 @@
         <div class="pos-header">
             <div class="d-flex align-items-center gap-3">
                 <input class="form-control" 
-                       placeholder="Search by name, size, brand..."
+                       placeholder="Search by name, size, tread, brand..."
                        style="max-width: 400px;"
                        @oninput="e => searchText = e.Value?.ToString()" />
             </div>
@@ -40,7 +41,9 @@
                             .Where(p => string.IsNullOrEmpty(searchText) ||
                                        (p.ProductName != null && p.ProductName.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
                                        (p.Brand != null && p.Brand.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                                       (p.TyreSize != null && p.TyreSize.Contains(searchText, StringComparison.OrdinalIgnoreCase)));
+                                       (p.TyreSize != null && p.TyreSize.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                                       (p.TreadName != null && p.TreadName.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                                       (p.UnitName != null && p.UnitName.Contains(searchText, StringComparison.OrdinalIgnoreCase)));
                         var displayedProducts = string.IsNullOrEmpty(searchText) ? filteredProducts.Take(6) : filteredProducts;
                     }
                     @foreach (var product in displayedProducts)
@@ -70,11 +73,25 @@
                                 </div>
                                 <div class="product-tags-row">
                                     @if (!string.IsNullOrEmpty(product.TyreSize))
-                                    { <span class="tag">@product.TyreSize</span> }
+                                    {
+                                        <span class="tag">@product.TyreSize</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(product.UnitName))
+                                    {
+                                        <span class="tag">@product.UnitName</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(product.TreadName))
+                                    {
+                                        <span class="tag">@product.TreadName</span>
+                                    }
                                     @if (!string.IsNullOrEmpty(product.Brand))
-                                    { <span class="tag">@product.Brand</span> }
+                                    {
+                                        <span class="tag">@product.Brand</span>
+                                    }
                                     @if (!string.IsNullOrEmpty(product.Type))
-                                    { <span class="tag">@product.Type</span> }
+                                    {
+                                        <span class="tag">@product.Type</span>
+                                    }
                                 </div>
                             </div>
 
@@ -248,7 +265,7 @@
 
                 <div class="checkout-payment-row">
                     <div class="checkout-payment-field">
-                        <label class="form-label small text-muted mb-1">Customer Type</label>
+                        <label class="form-label small mb-1 checkout-heading">Customer Type</label>
                         <InputSelect class="form-select form-select-sm"
                                      TValue="Guid?" @bind-Value="_checkoutCustomerTypeId">
                             <option value="">All</option>
@@ -259,7 +276,7 @@
                         </InputSelect>
                     </div>
                     <div class="checkout-payment-field">
-                        <label class="form-label small text-muted mb-1">Paying as</label>
+                        <label class="form-label small mb-1 checkout-heading">Paying as</label>
                         <InputSelect class="form-select form-select-sm"
                                      TValue="Guid?"
                                      Value="Sale.CustomerId"
@@ -280,7 +297,7 @@
                 </div>
                 <div class="checkout-payment-row checkout-payment-row-2 mt-2">
                     <div class="checkout-payment-field">
-                        <label class="form-label small text-muted mb-1">Payment Method</label>
+                        <label class="form-label small mb-1 checkout-heading">Payment Method</label>
                         <InputSelect class="form-select form-select-sm" @bind-Value="Sale.PaymentMethod">
                             <option value="">Select</option>
                             <option value="Cash">Cash</option>
@@ -289,7 +306,7 @@
                         </InputSelect>
                     </div>
                     <div class="checkout-payment-field">
-                        <label class="form-label small text-muted mb-1">Payment Status</label>
+                        <label class="form-label small mb-1 checkout-heading">Payment Status</label>
                         <InputSelect class="form-select form-select-sm" @bind-Value="Sale.PaymentStatus">
                             <option value="">Select</option>
                             <option value="Paid">Paid</option>
@@ -300,7 +317,7 @@
                 </div>
 
                 <div class="checkout-products-section">
-                    <div class="checkout-table-header">
+                    <div class="checkout-table-header checkout-heading">
                         <span class="checkout-col-product">PRODUCT</span>
                         <span class="checkout-col-qty">QTY</span>
                         <span class="checkout-col-total">TOTAL</span>
@@ -320,11 +337,11 @@
 
                 <div class="checkout-summary-section">
                     <div class="checkout-summary-row">
-                        <span>Subtotal</span>
+                        <span class="checkout-heading">Subtotal</span>
                         <span>£@Sale.TotalAmount.ToString("0.00")</span>
                     </div>
                     <div class="checkout-summary-row d-flex align-items-center gap-2 flex-wrap">
-                        <span>Discount (£)</span>
+                        <span class="checkout-heading">Discount (£)</span>
                         <InputNumber @bind-Value="_checkoutExtraDiscount"
                                      @bind-Value:after="OnCheckoutExtraDiscountChanged"
                                      class="form-control form-control-sm w-auto" style="max-width: 6rem;" />
@@ -333,12 +350,12 @@
                     @if (Sale.TaxAmount.HasValue && Sale.TaxAmount > 0)
                     {
                         <div class="checkout-summary-row">
-                            <span>Tax (@Sale.TaxAmount%)</span>
+                            <span class="checkout-heading">Tax (@Sale.TaxAmount%)</span>
                             <span>£@((Sale.TotalAmount * (Sale.TaxAmount.Value / 100)).ToString("0.00"))</span>
                         </div>
                     }
                     <div class="checkout-summary-row checkout-total-row">
-                        <span>Total (after discount)</span>
+                        <span class="checkout-heading">Total (after discount)</span>
                         <span>£@Sale.NetAmount.ToString("0.00")</span>
                     </div>
                 </div>
@@ -541,7 +558,7 @@
         StateHasChanged();
     }
 
-    private Task OnCheckoutCustomerChanged(Guid? value)
+    private async Task OnCheckoutCustomerChanged(Guid? value)
     {
         Sale.CustomerId = value;
         var customer = Customers.FirstOrDefault(c => c.Id == value);
@@ -555,15 +572,32 @@
             CustomerCustomPrice = null;
             CustomerPercentage = null;
         }
+
+        wholeSalerPrices = (value.HasValue && value.Value != Guid.Empty)
+            ? await WholesalerPriceService.GetByCustomerIdAsync(value.Value)
+            : new List<CustomerSalerPrice>();
+        foreach (var detail in Sale.SaleDetails)
+        {
+            var product = products.FirstOrDefault(p => p.Id == detail.ProductId);
+            if (product == null) continue;
+            var wp = wholeSalerPrices.FirstOrDefault(w => w.ThreadId == product.ThreadId && w.UnitId == product.Unit);
+            if (wp != null)
+            {
+                detail.UnitPrice = wp.Price;
+                detail.TotalPrice = detail.Quantity * detail.UnitPrice;
+            }
+        }
+
         RecalculateTotals();
         StateHasChanged();
-        return Task.CompletedTask;
     }
 
     private async Task OnCheckoutWholesalerChanged(Guid? value)
     {
         Sale.CustomerId = value;
-        wholeSalerPrices = value.HasValue ? _context.CustomerSalerPrices.Where(w => w.CustomerId == value).ToList() : new List<CustomerSalerPrice>();
+        wholeSalerPrices = (value.HasValue && value.Value != Guid.Empty)
+            ? await WholesalerPriceService.GetByCustomerIdAsync(value.Value)
+            : new List<CustomerSalerPrice>();
         foreach (var detail in Sale.SaleDetails)
         {
             var product = products.FirstOrDefault(p => p.Id == detail.ProductId);
