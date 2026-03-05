@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,5 +15,6 @@ namespace Infrastructure.Services
         Task UpdatePurchaseAsync(Purchase purchase);
         Task DeletePurchaseAsync(Guid id);
         Task<List<PurchaseDetail>> GetPurchaseDetailsByProductIdAsync(Guid productId);
+        Task<List<Purchase>> GetPurchasesBySupplierIdAsync(Guid supplierId);
     }
 }

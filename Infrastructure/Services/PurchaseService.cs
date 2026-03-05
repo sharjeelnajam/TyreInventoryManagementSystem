@@ -74,6 +74,22 @@ namespace Infrastructure.Services
             }
         }
 
+        public async Task<List<Purchase>> GetPurchasesBySupplierIdAsync(Guid supplierId)
+        {
+            if (supplierId == Guid.Empty || _tenantProvider.TenantId == Guid.Empty)
+                return new List<Purchase>();
+
+            return await _context.Purchase
+                .Where(p => p.TenantId == _tenantProvider.TenantId && p.SupplierId == supplierId)
+                .Include(p => p.Supplier)
+                .Include(p => p.PurchaseDetails)
+                    .ThenInclude(d => d.Product)
+                .OrderByDescending(p => p.PurchaseDate)
+                .ThenByDescending(p => p.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
         public async Task AddPurchaseAsync(Purchase purchase)
         {
             // Create a transaction to ensure all operations succeed or fail together

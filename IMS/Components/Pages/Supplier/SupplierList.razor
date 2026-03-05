@@ -1,4 +1,4 @@
-﻿@page "/suppliers"
+@page "/suppliers"
 @using Domain
 @using Infrastructure.Services
 @inject ISupplierService SupplierService
@@ -72,6 +72,8 @@
                             @if (!isStaff)
                             {
                                 <td>
+                                    <i class="bi bi-eye text-info fs-5 me-3 cursor-pointer"
+                                       title="View" @onclick="() => ViewSupplier(item.Id)"></i>
                                     <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
                                        title="Edit" @onclick="() => EditSupplier(item.Id)"></i>
                                     <i class="bi bi-trash text-danger fs-5 cursor-pointer"
@@ -121,6 +123,11 @@
         supplier = new Supplier(); // new supplier
         modalTitle = "Add Supplier";
         isModalVisible = true;
+    }
+
+    private void ViewSupplier(Guid id)
+    {
+        Navigation.NavigateTo($"/suppliers/view/{id}");
     }
 
     private async Task EditSupplier(Guid id)

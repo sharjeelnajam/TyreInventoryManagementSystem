@@ -5,6 +5,7 @@
 @inject ICustomerService CustomerService
 @inject IListManagementService ListManagementService
 @inject IWholesalerPriceService WholesalerPriceService
+@inject ISaleService SaleService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -110,6 +111,39 @@ else
         else if (Prices != null)
         {
             <p class="text-muted mb-0">No prices added yet. Click <strong>Manage Pricing</strong> to add tier/grade and unit prices for this customer.</p>
+        }
+
+        <hr class="my-4" />
+        <h5 class="mb-3"><i class="bi bi-cart-check me-2"></i> Selling History</h5>
+        @if (PurchasingHistory != null && PurchasingHistory.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Sale #</th>
+                            <th>Date</th>
+                            <th class="text-end">Net Amount (£)</th>
+                            <th>Payment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sale in PurchasingHistory)
+                        {
+                            <tr>
+                                <td>@(sale.SaleNumber ?? "—")</td>
+                                <td>@sale.SaleDate.ToString("dd-MMM-yyyy")</td>
+                                <td class="text-end">@sale.NetAmount.ToString("N2")</td>
+                                <td>@(sale.PaymentStatus ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else if (PurchasingHistory != null)
+        {
+            <p class="text-muted mb-0">No purchases yet for this customer.</p>
         }
 
         <div class="mt-3 text-end">
@@ -247,6 +281,7 @@ else
     private Customer? Customer;
     private string CustomerTypeName = "N/A";
     private List<CustomerSalerPrice>? Prices;
+    private List<Sale>? PurchasingHistory;
     private Dictionary<Guid, string> ThreadLookup = new();
     private Dictionary<Guid, string> UnitLookup = new();
     private bool ShowManagePricing;
@@ -273,6 +308,7 @@ else
             CustomerTypeName = types.FirstOrDefault(x => x.Id == Customer.ListManagementId)?.Name ?? "N/A";
 
             Prices = await WholesalerPriceService.GetByCustomerIdAsync(Id);
+            PurchasingHistory = await SaleService.GetSalesByCustomerIdAsync(Id);
             var threads = await ListManagementService.GetByTypeAsync(ListType.Size) ?? new List<ListManagement>();
             var units = await ListManagementService.GetByTypeAsync(ListType.Tread) ?? new List<ListManagement>();
             ThreadLookup = threads.ToDictionary(x => x.Id, x => x.Name);

@@ -727,6 +727,24 @@ namespace Infrastructure.Services
           
         }
 
+        public async Task<List<Sale>> GetSalesByCustomerIdAsync(Guid customerId)
+        {
+            if (customerId == Guid.Empty || _tenantProvider.TenantId == Guid.Empty)
+                return new List<Sale>();
+
+            var sales = await _context.Sale
+                .Where(s => s.TenantId == _tenantProvider.TenantId && s.CustomerId == customerId)
+                .Include(s => s.SaleDetails)
+                    .ThenInclude(sd => sd.Product)
+                .OrderByDescending(s => s.SaleDate)
+                .ThenByDescending(s => s.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync();
+
+            await HydrateSalesWithCustomers(sales);
+            return sales;
+        }
+
         private async Task HydrateSalesWithCustomers(List<Sale> sales)
         {
             var customerIds = sales.Where(s => s.CustomerId.HasValue)

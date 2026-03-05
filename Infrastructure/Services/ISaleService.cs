@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Domain.DTO;
 using System;
 using System.Collections.Generic;
@@ -21,5 +21,6 @@ namespace Infrastructure.Services
         Task<int> GetTotalInvoicesAsync();
         Task<List<TopCustomerDto>> GetTopCustomersByDateAsync(DateTime start, DateTime end);
         Task<List<TopProductDetailDto>> GetTopProductsByDateAsync(DateTime start, DateTime end);
+        Task<List<Sale>> GetSalesByCustomerIdAsync(Guid customerId);
     }
 }
