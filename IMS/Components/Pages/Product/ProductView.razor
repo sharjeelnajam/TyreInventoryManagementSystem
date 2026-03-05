@@ -1,4 +1,4 @@
-﻿@page "/products/view/{Id:guid}"
+@page "/products/view/{Id:guid}"
 @using Domain
 @using Domain.DTO
 @using Domain.Enums
@@ -141,10 +141,10 @@
     }
 
     string GetUnitName(Guid id)
-        => unitLookup.TryGetValue(id, out var name) ? name : "N/A";
+        => id == Guid.Empty ? "" : (unitLookup.TryGetValue(id, out var name) ? name : "");
 
     string GetThreadName(Guid id)
-        => ThreadLookup.TryGetValue(id, out var name) ? name : "N/A";
+        => id == Guid.Empty ? "" : (ThreadLookup.TryGetValue(id, out var name) ? name : "");
 
     void GoBack()
     {

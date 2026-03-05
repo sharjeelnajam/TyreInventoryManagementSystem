@@ -113,18 +113,7 @@ namespace Infrastructure.Services
             int colThread = GetColumnIndex(worksheet, "Thread");
             int colQuantity = GetColumnIndex(worksheet, "Quantity");
 
-            if (colProductName <= 0)
-            {
-                result.Message = "Required column 'ProductName' not found in Excel.";
-                result.ErrorCount++;
-                return;
-            }
-            if (colUnit <= 0 || colThread <= 0)
-            {
-                result.Message = "Required columns 'Unit' and 'Thread' (ListManagement names) must exist in Excel.";
-                result.ErrorCount++;
-                return;
-            }
+            // All columns are optional; missing columns use defaults where needed
 
             var listManagementItems = await _context.ListManagements
                 .Where(x => x.Type == ListType.Tread || x.Type == ListType.Size)
@@ -140,38 +129,28 @@ namespace Infrastructure.Services
                 .GroupBy(x => x.Name.Trim(), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
 
+            // Unit and Thread are optional: when column missing or empty, product is imported with null (no default)
             var productsToAdd = new List<Product>();
             var stockHistoriesToAdd = new List<StockHistory>();
+            var purchasesToAdd = new List<Purchase>();
             int rowNum = 2; // 1-based, row 1 = header
+
             foreach (var row in rows)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 string? productName = GetCellString(row, colProductName);
                 if (string.IsNullOrWhiteSpace(productName))
-                {
-                    result.RowErrors.Add(new ExcelImportRowError { RowNumber = rowNum, Error = "ProductName is required.", Value = rowNum.ToString() });
-                    result.ErrorCount++;
-                    rowNum++;
-                    continue;
-                }
+                    productName = "Imported Product"; // default when column missing or empty
 
-                var unitName = GetCellString(row, colUnit);
-                if (string.IsNullOrWhiteSpace(unitName) || !unitLookup.TryGetValue(unitName.Trim(), out var unitId))
-                {
-                    result.RowErrors.Add(new ExcelImportRowError { RowNumber = rowNum, Error = "Unit name not found in ListManagement.", Value = unitName });
-                    result.ErrorCount++;
-                    rowNum++;
-                    continue;
-                }
+                Guid? unitId = null;
+                string? unitName = GetCellString(row, colUnit);
+                if (!string.IsNullOrWhiteSpace(unitName) && unitLookup.TryGetValue(unitName.Trim(), out var resolvedUnitId))
+                    unitId = resolvedUnitId;
 
-                var threadName = GetCellString(row, colThread);
-                if (string.IsNullOrWhiteSpace(threadName) || !threadLookup.TryGetValue(threadName.Trim(), out var threadId))
-                {
-                    result.RowErrors.Add(new ExcelImportRowError { RowNumber = rowNum, Error = "Thread name not found in ListManagement.", Value = threadName });
-                    result.ErrorCount++;
-                    rowNum++;
-                    continue;
-                }
+                Guid? threadId = null;
+                string? threadName = GetCellString(row, colThread);
+                if (!string.IsNullOrWhiteSpace(threadName) && threadLookup.TryGetValue(threadName.Trim(), out var resolvedThreadId))
+                    threadId = resolvedThreadId;
 
                 decimal averageCostPrice = 0;
                 if (colAverageCostPrice > 0)
@@ -186,7 +165,7 @@ namespace Infrastructure.Services
                     }
                 }
 
-                int quantity = 0;
+                int quantity = 1; // default quantity 1 when column missing or empty
                 if (colQuantity > 0)
                 {
                     var qtyStr = GetCellString(row, colQuantity);
@@ -214,8 +193,8 @@ namespace Infrastructure.Services
                     Min_Threshold = colMin_Threshold > 0 ? GetCellString(row, colMin_Threshold) : null,
                     Type = colType > 0 ? GetCellString(row, colType) : null,
                     AverageCostPrice = averageCostPrice,
-                    Unit = unitId,
-                    ThreadId = threadId
+                    Unit = unitId,       // null when column missing or empty
+                    ThreadId = threadId // null when column missing or empty
                 };
                 productsToAdd.Add(product);
 
@@ -235,6 +214,42 @@ namespace Infrastructure.Services
                     stockHistoriesToAdd.Add(stockHistory);
                 }
 
+                // Bind AverageCostPrice to Selling Price: create Purchase + PurchaseDetail so product list shows selling price from Excel
+                var sellingPrice = averageCostPrice >= 0.01m ? averageCostPrice : 0.01m; // PurchaseDetail requires min 0.01
+                var purchase = new Purchase
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    CreatedAt = DateTime.UtcNow,
+                    PurchaseNumber = $"PO-Import-{DateTime.UtcNow:yyyyMMddHHmmss}-{rowNum}",
+                    PurchaseDate = DateTime.UtcNow,
+                    SupplierId = null,
+                    TotalAmount = sellingPrice * quantity,
+                    NetAmount = sellingPrice * quantity,
+                    PaymentStatus = string.Empty,
+                    PaymentMethod = string.Empty,
+                    IsApproved = false,
+                    PurchaseDetails = new List<PurchaseDetail>
+                    {
+                        new PurchaseDetail
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenantId,
+                            CreatedAt = DateTime.UtcNow,
+                            PurchaseId = Guid.Empty, // set below after we have purchase.Id
+                            ProductId = product.Id,
+                            Quantity = quantity,
+                            UnitPrice = sellingPrice,
+                            TotalPrice = sellingPrice * quantity,
+                            SellingPrice = sellingPrice,
+                            Brand = product.Brand
+                        }
+                    }
+                };
+                var detail = purchase.PurchaseDetails.First();
+                detail.PurchaseId = purchase.Id;
+                purchasesToAdd.Add(purchase);
+
                 result.ImportedCount++;
                 rowNum++;
             }
@@ -247,6 +262,11 @@ namespace Infrastructure.Services
                 if (stockHistoriesToAdd.Count > 0)
                 {
                     await _context.StockHistories.AddRangeAsync(stockHistoriesToAdd, cancellationToken);
+                }
+
+                if (purchasesToAdd.Count > 0)
+                {
+                    await _context.Purchase.AddRangeAsync(purchasesToAdd, cancellationToken);
                 }
 
                 await _context.SaveChangesAsync(cancellationToken);

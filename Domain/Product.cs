@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -32,10 +32,10 @@ namespace Domain
 
         public string? ImagePath { get; set; }
 
-        //basically ListManagementId
-        public Guid Unit { get; set; }
-        //basically ListManagementId
-        public Guid ThreadId { get; set; }
+        //basically ListManagementId (null = not set)
+        public Guid? Unit { get; set; }
+        //basically ListManagementId (null = not set)
+        public Guid? ThreadId { get; set; }
 
         public ICollection<PurchaseDetail> PurchaseDetails { get; set; }
     }

@@ -94,10 +94,10 @@ namespace Infrastructure.Services
                        DOT = product.DOT,
                        TyreSize = product.TyreSize,
                        Type = product.Type,
-                       ThreadId = product.ThreadId,
-                       TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
-                       Unit = product.Unit,
-                       UnitName = _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault(),
+                       ThreadId = product.ThreadId ?? Guid.Empty,
+                       TreadName = product.ThreadId.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault() : null,
+                       Unit = product.Unit ?? Guid.Empty,
+                       UnitName = product.Unit.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault() : null,
 
                        PurchasePrice = product.PurchaseDetails
                             .OrderByDescending(pd => pd.Id)
@@ -148,10 +148,10 @@ namespace Infrastructure.Services
                        DOT = product.DOT,
                        TyreSize = product.TyreSize,
                        Type = product.Type,
-                       ThreadId = product.ThreadId,
-                       TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
-                       Unit = product.Unit,
-                       UnitName = _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault(),
+                       ThreadId = product.ThreadId ?? Guid.Empty,
+                       TreadName = product.ThreadId.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault() : null,
+                       Unit = product.Unit ?? Guid.Empty,
+                       UnitName = product.Unit.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault() : null,
 
                        PurchasePrice = product.PurchaseDetails
                             .OrderByDescending(pd => pd.Id)
@@ -295,8 +295,9 @@ namespace Infrastructure.Services
                 if (dto == null || dto.Id == Guid.Empty)
                     throw new ArgumentException("Invalid product data.");
 
-                // 1️⃣ UPDATE PRODUCT
+                // 1️⃣ UPDATE PRODUCT (include PurchaseDetails so EntityToDto does not throw when product has no purchase)
                 var existing = await _context.Products
+                    .Include(p => p.PurchaseDetails)
                     .FirstOrDefaultAsync(p => p.Id == dto.Id && !p.IsDeleted);
 
                 if (existing == null)
@@ -308,11 +309,11 @@ namespace Infrastructure.Services
                 existing.Brand = dto.Brand;
                 existing.Type = dto.Type;
                 existing.Min_Threshold = dto.Min_Threshold;
-                existing.ThreadId = dto.ThreadId;
+                existing.ThreadId = dto.ThreadId == Guid.Empty ? null : dto.ThreadId;
                 existing.TyreSize = dto.TyreSize;
                 existing.Barcode = dto.Barcode;
                 existing.AverageCostPrice = dto.AverageCostPrice;
-                existing.Unit = dto.Unit; ;
+                existing.Unit = dto.Unit == Guid.Empty ? null : dto.Unit;
                 existing.UpdatedAt = DateTime.UtcNow;
 
                 if (!string.IsNullOrEmpty(dto.ImagePath))
@@ -400,8 +401,8 @@ namespace Infrastructure.Services
                     //Thread = productDto.Thread,
                     AverageCostPrice = productDto.AverageCostPrice,
                     ImagePath = productDto.ImagePath,
-                    Unit = productDto.Unit,
-                    ThreadId = productDto.ThreadId,
+                    Unit = productDto.Unit == Guid.Empty ? null : productDto.Unit,
+                    ThreadId = productDto.ThreadId == Guid.Empty ? null : productDto.ThreadId,
                     Barcode = Generate()
                 };
                 return product;
@@ -430,20 +431,18 @@ namespace Infrastructure.Services
                 DOT = product.DOT,
                 TyreSize = product.TyreSize,
                 Type = product.Type,
-                Unit = product.Unit,
-                ThreadId = product.ThreadId,
-                TreadName = _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault(),
-                UnitName = _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault(),
+                Unit = product.Unit ?? Guid.Empty,
+                ThreadId = product.ThreadId ?? Guid.Empty,
+                TreadName = product.ThreadId.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault() : null,
+                UnitName = product.Unit.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault() : null,
 
-                PurchasePrice = product.PurchaseDetails
-                    .OrderByDescending(pd => pd.Id) 
-                    .Select(pd => pd.UnitPrice)
-                    .FirstOrDefault(),
+                PurchasePrice = product.PurchaseDetails != null && product.PurchaseDetails.Any()
+                    ? product.PurchaseDetails.OrderByDescending(pd => pd.Id).Select(pd => pd.UnitPrice).FirstOrDefault()
+                    : 0,
 
-                SellingPrice = product.PurchaseDetails
-                    .OrderByDescending(pd => pd.Id)
-                    .Select(pd => pd.SellingPrice)
-                    .FirstOrDefault()
+                SellingPrice = product.PurchaseDetails != null && product.PurchaseDetails.Any()
+                    ? product.PurchaseDetails.OrderByDescending(pd => pd.Id).Select(pd => pd.SellingPrice).FirstOrDefault()
+                    : 0
             };
 
             productDto.Quantity = await _context.StockHistories

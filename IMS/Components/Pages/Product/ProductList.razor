@@ -1,4 +1,4 @@
-﻿@page "/products"
+@page "/products"
 @using Domain
 @using Domain.DTO
 @using Domain.Enums
@@ -60,8 +60,6 @@
                         <th>Image</th>
                         <th>Name</th>
                         <th>Quantity</th>
-                        <th>PurchasePrice</th>
-                        <th>SalePrice</th>
                         <th>Type</th>
                         <th>Tread</th>
                         <th>Size</th>
@@ -100,8 +98,6 @@
                             </td>
                             <td>@item.ProductName</td>
                             <td>@item.Quantity</td>
-                            <td>@item.PurchasePrice</td>
-                            <td>@item.SellingPrice</td>
                             <td>@item.Type</td>
                             <td>@GetUnitName(item.Unit)</td>
                             <td>@GetThreadName(item.ThreadId)</td>
@@ -261,12 +257,14 @@
 
     private string GetUnitName(Guid unitId)
     {
-        return unitsLookup.TryGetValue(unitId, out var name) ? name : "N/A";
+        if (unitId == Guid.Empty) return "";
+        return unitsLookup.TryGetValue(unitId, out var name) ? name : "";
     } 
     
-    private string GetThreadName(Guid ThreadId)
+    private string GetThreadName(Guid threadId)
     {
-        return ThreadsLookup.TryGetValue(ThreadId, out var name) ? name : "N/A";
+        if (threadId == Guid.Empty) return "";
+        return ThreadsLookup.TryGetValue(threadId, out var name) ? name : "";
     }
 
     // Improved image validation
@@ -344,7 +342,7 @@
 
         await ProductService.DeleteAsync(id);
         products = await ProductService.GetAllAsync();
-        StateHasChanged();
+        FilterProducts(); // refresh filtered list so the table updates immediately
     }
 
     private void OnSearchInput(ChangeEventArgs e)
