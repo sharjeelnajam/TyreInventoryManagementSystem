@@ -95,6 +95,14 @@ namespace Infrastructure.Services
                 if (sale.CustomerId == Guid.Empty)
                     sale.CustomerId = null;
 
+                // Validate split payment: Card + Cash must equal NetAmount when using "Card & Cash"
+                if (string.Equals(sale.PaymentMethod, "Card & Cash", StringComparison.OrdinalIgnoreCase))
+                {
+                    var sum = sale.CashAmount + sale.CardAmount;
+                    if (Math.Abs(sum - sale.NetAmount) > 0.01m)
+                        throw new InvalidOperationException($"Split payment invalid: Card (£{sale.CardAmount:N2}) + Cash (£{sale.CashAmount:N2}) = £{sum:N2} must equal Total £{sale.NetAmount:N2}. Checkout not allowed.");
+                }
+
                 if (string.IsNullOrWhiteSpace(sale.PaymentMethod))
                     sale.PaymentMethod = "Cash";
                 if (string.IsNullOrWhiteSpace(sale.PaymentStatus))
@@ -461,11 +469,26 @@ namespace Infrastructure.Services
                 .Include(x => x.SaleDetails)
                 .ThenInclude(x => x.Product)
                 .FirstOrDefaultAsync(x => x.Id == saleId);
-            // Manually load and attach customer
             await HydrateSaleWithCustomer(sale);
 
             if (sale == null)
                 return Array.Empty<byte>();
+
+            // For shop service bills: load bill items; for product sales: use SaleDetails
+            List<(string desc, int qty, decimal unit, decimal total)> lineItems;
+            if (sale.ShopServiceBillId.HasValue)
+            {
+                var bill = await _context.ShopServiceBills
+                    .Include(b => b.Items)
+                    .FirstOrDefaultAsync(b => b.Id == sale.ShopServiceBillId.Value);
+                lineItems = bill?.Items?.Select(i => (i.ServiceName, i.Quantity, i.UnitPrice, i.TotalPrice)).ToList()
+                    ?? new List<(string, int, decimal, decimal)>();
+            }
+            else
+            {
+                lineItems = (sale.SaleDetails ?? new List<SaleDetail>())
+                    .Select(d => (d.Product?.ProductName ?? "N/A", d.Quantity, d.UnitPrice, d.TotalPrice)).ToList();
+            }
 
             // Resolve logo path – try multiple locations (dev run, publish, different working dirs)
             var logoPath = ResolveWwwRootPath("uploads", "logo", "logo.png");
@@ -477,7 +500,7 @@ namespace Infrastructure.Services
             {
                 container.Page(page =>
                 {
-                    page.MarginHorizontal(60); // left & right space
+                    page.MarginHorizontal(20); // reduced - text closer to sides
                     page.MarginVertical(20);
 
                     // Optional background image
@@ -501,14 +524,14 @@ namespace Infrastructure.Services
                         }
 
                         // Invoice number (bound to sale)
-                        col.Item().PaddingTop(24).PaddingLeft(40).Column(invoiceCol =>
+                        col.Item().PaddingTop(24).Column(invoiceCol =>
                         {
                             invoiceCol.Item().Text("Invoice").FontSize(16).Bold();
                             invoiceCol.Item().Text($"Invoice #: {sale.SaleNumber ?? "N/A"}").FontSize(14);
                         });
 
                         // Date, Sold To: Name, Email (formatted)
-                        col.Item().PaddingTop(16).PaddingLeft(40).PaddingBottom(24).Column(customerCol =>
+                        col.Item().PaddingTop(16).PaddingBottom(24).Column(customerCol =>
                         {
                             customerCol.Item().Text($"Date: {sale.SaleDate:dd MMM yyyy}").FontSize(14);
                             customerCol.Item().PaddingTop(8).Text("Sold To:").Bold().FontSize(14);
@@ -526,7 +549,7 @@ namespace Infrastructure.Services
                     });
 
                     // 🧾 CONTENT
-                    page.Content().PaddingLeft(40).Column(contentCol =>
+                    page.Content().Column(contentCol =>
                     {
                         // Table
                         contentCol.Item().Table(table =>
@@ -552,12 +575,12 @@ namespace Infrastructure.Services
                                              .LineColor(QuestPDF.Helpers.Colors.Black);
                             });
 
-                            foreach (var item in sale.SaleDetails)
+                            foreach (var item in lineItems)
                             {
-                                table.Cell().PaddingVertical(3).Text(item.Product?.ProductName ?? "N/A").FontSize(14);
-                                table.Cell().PaddingVertical(3).Text(item.Quantity.ToString()).FontSize(14);
-                                table.Cell().PaddingVertical(3).Text($"£{item.UnitPrice:0.00}").FontSize(14);
-                                table.Cell().PaddingVertical(3).Text($"£{item.TotalPrice:0.00}").FontSize(14);
+                                table.Cell().PaddingVertical(3).Text(item.desc).FontSize(14);
+                                table.Cell().PaddingVertical(3).Text(item.qty.ToString()).FontSize(14);
+                                table.Cell().PaddingVertical(3).Text($"£{item.unit:0.00}").FontSize(14);
+                                table.Cell().PaddingVertical(3).Text($"£{item.total:0.00}").FontSize(14);
                             }
                         });
 
@@ -586,7 +609,7 @@ namespace Infrastructure.Services
                             .Italic()
                             .FontSize(20);
 
-                        // FOOTER LINE
+                        // FOOTER ROW (no border line)
                         col.Item()
                             .BorderTop(0.5f)
                             .BorderColor(QuestPDF.Helpers.Colors.Grey.Medium)

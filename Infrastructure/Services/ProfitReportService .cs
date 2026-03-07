@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
@@ -25,9 +25,18 @@ namespace Infrastructure.Services
             {
                 if (_tenantProvider.TenantId != Guid.Empty)
                 {
-                    return await _context.ProfitHistories
-                          .Where(p => p.RecordedAt >= start && p.RecordedAt < end && p.TenantId == _tenantProvider.TenantId)
-                          .SumAsync(p => p.ProfitAmount);
+                    // Filter by Sale.SaleDate (when sale occurred) for sales, else RecordedAt
+                    var fromSales = await _context.ProfitHistories
+                        .Where(p => p.SaleId != null && p.TenantId == _tenantProvider.TenantId)
+                        .Join(_context.Sale, ph => ph.SaleId, s => s.Id, (ph, s) => new { ph, s })
+                        .Where(x => x.s.SaleDate >= start && x.s.SaleDate < end)
+                        .SumAsync(x => x.ph.ProfitAmount);
+
+                    var fromOthers = await _context.ProfitHistories
+                        .Where(p => p.SaleId == null && p.RecordedAt >= start && p.RecordedAt < end && p.TenantId == _tenantProvider.TenantId)
+                        .SumAsync(p => p.ProfitAmount);
+
+                    return fromSales + fromOthers;
                 }
                 else return 0m;
                
@@ -121,11 +130,21 @@ namespace Infrastructure.Services
                 if (_tenantProvider.TenantId != Guid.Empty)
                 {
                     // Include the end date in the range by adding one day and using less than
-                    var adjustedEndDate = endDate.AddDays(1);
+                    var start = startDate.Date;
+                    var adjustedEndDate = endDate.Date.AddDays(1);
 
-                    return await _context.ProfitHistories
-                        .Where(p => p.RecordedAt >= startDate && p.RecordedAt < adjustedEndDate && p.TenantId == _tenantProvider.TenantId)
+                    // Filter by Sale.SaleDate (when sale occurred) so sales profit shows for the correct period
+                    var fromSales = await _context.ProfitHistories
+                        .Where(p => p.SaleId != null && p.TenantId == _tenantProvider.TenantId)
+                        .Join(_context.Sale, ph => ph.SaleId, s => s.Id, (ph, s) => new { ph, s })
+                        .Where(x => x.s.SaleDate >= start && x.s.SaleDate < adjustedEndDate)
+                        .SumAsync(x => x.ph.ProfitAmount);
+
+                    var fromOthers = await _context.ProfitHistories
+                        .Where(p => p.SaleId == null && p.RecordedAt >= start && p.RecordedAt < adjustedEndDate && p.TenantId == _tenantProvider.TenantId)
                         .SumAsync(p => p.ProfitAmount);
+
+                    return fromSales + fromOthers;
                 }
                 else return 0m;
                

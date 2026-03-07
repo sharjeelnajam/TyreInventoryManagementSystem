@@ -297,10 +297,11 @@
                 <div class="checkout-payment-row checkout-payment-row-2 mt-2">
                     <div class="checkout-payment-field">
                         <label class="form-label small mb-1 checkout-heading">Payment Method</label>
-                        <InputSelect class="form-select form-select-sm" @bind-Value="Sale.PaymentMethod">
+                        <InputSelect class="form-select form-select-sm" @bind-Value="_checkoutPaymentMethod" @bind-Value:after="OnPaymentMethodChanged">
                             <option value="">Select</option>
                             <option value="Cash">Cash</option>
                             <option value="Card">Card</option>
+                            <option value="CardAndCash">Both Card &amp; Cash</option>
                             <option value="BankTransfer">Bank Transfer</option>
                         </InputSelect>
                     </div>
@@ -314,6 +315,28 @@
                         </InputSelect>
                     </div>
                 </div>
+                @if (_checkoutPaymentMethod == "CardAndCash")
+                {
+                    <div class="checkout-payment-row mt-2 d-flex flex-wrap gap-3 align-items-end">
+                        <div class="checkout-payment-field" style="min-width: 140px;">
+                            <label class="form-label small mb-1 checkout-heading">Card Amount (£)</label>
+                            <InputNumber class="form-control form-control-sm" @bind-Value="_checkoutCardAmount" @bind-Value:after="OnSplitAmountChanged" />
+                        </div>
+                        <div class="checkout-payment-field" style="min-width: 140px;">
+                            <label class="form-label small mb-1 checkout-heading">Cash Amount (£)</label>
+                            <InputNumber class="form-control form-control-sm" @bind-Value="_checkoutCashAmount" @bind-Value:after="OnSplitAmountChanged" />
+                        </div>
+                        <div class="checkout-payment-field d-flex align-items-center small">
+                            @{
+                                var splitSum = _checkoutCardAmount + _checkoutCashAmount;
+                                var splitValid = Math.Abs(splitSum - Sale.NetAmount) < 0.01m;
+                            }
+                            <span class="@(splitValid ? "text-success" : "text-danger")">
+                                @(splitValid ? $"Card + Cash = £{splitSum:0.00} ✓" : $"Remaining: £{Sale.NetAmount - splitSum:0.00}")
+                            </span>
+                        </div>
+                    </div>
+                }
 
                 <div class="checkout-products-section">
                     <div class="checkout-table-header checkout-heading">
@@ -368,7 +391,7 @@
 
             <div class="checkout-modal-footer">
                 <button type="button" class="btn btn-checkout-cancel" @onclick="CloseCheckoutModal">Cancel</button>
-                <button type="button" class="btn btn-checkout-submit" @onclick="CompleteCheckout">
+                <button type="button" class="btn btn-checkout-submit" disabled="@(!CanProcessCheckout)" @onclick="CompleteCheckout">
                     <i class="bi bi-credit-card-2-front"></i> Process Payment
                 </button>
             </div>
@@ -524,7 +547,20 @@
     private void OpenCheckoutModal()
     {
         if (isFormValid && Sale.SaleDetails != null && Sale.SaleDetails.Any())
+        {
+            _checkoutPaymentMethod = Sale.PaymentMethod ?? "";
+            if (_checkoutPaymentMethod == "CardAndCash")
+            {
+                _checkoutCardAmount = Sale.CardAmount > 0 ? Sale.CardAmount : Math.Round(Sale.NetAmount / 2, 2);
+                _checkoutCashAmount = Sale.CashAmount > 0 ? Sale.CashAmount : (Sale.NetAmount - _checkoutCardAmount);
+            }
+            else
+            {
+                _checkoutCardAmount = 0m;
+                _checkoutCashAmount = 0m;
+            }
             showCheckoutModal = true;
+        }
     }
 
     private void CloseCheckoutModal()
@@ -621,6 +657,21 @@
 
     private async Task CompleteCheckout()
     {
+        if (!CanProcessCheckout) return;
+
+        if (_checkoutPaymentMethod == "CardAndCash")
+        {
+            Sale.PaymentMethod = "Card & Cash";
+            Sale.CardAmount = _checkoutCardAmount;
+            Sale.CashAmount = _checkoutCashAmount;
+        }
+        else
+        {
+            Sale.PaymentMethod = _checkoutPaymentMethod;
+            Sale.CashAmount = _checkoutPaymentMethod == "Cash" ? Sale.NetAmount : 0m;
+            Sale.CardAmount = _checkoutPaymentMethod == "Card" ? Sale.NetAmount : 0m;
+        }
+
         showCheckoutModal = false;
         await HandleValidSubmit();
     }
@@ -869,6 +920,45 @@
 
     private Guid? _checkoutCustomerTypeId { get; set; }
     private decimal _checkoutExtraDiscount { get; set; } = 0m;
+    private string _checkoutPaymentMethod { get; set; } = "";
+    private decimal _checkoutCardAmount { get; set; } = 0m;
+    private decimal _checkoutCashAmount { get; set; } = 0m;
+
+    private bool CanProcessCheckout
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Sale.PaymentMethod))
+                return false;
+            if (_checkoutPaymentMethod == "CardAndCash")
+            {
+                var sum = _checkoutCardAmount + _checkoutCashAmount;
+                return Math.Abs(sum - Sale.NetAmount) < 0.01m && _checkoutCardAmount >= 0 && _checkoutCashAmount >= 0;
+            }
+            return true;
+        }
+    }
+
+    private void OnPaymentMethodChanged()
+    {
+        Sale.PaymentMethod = _checkoutPaymentMethod;
+        if (_checkoutPaymentMethod == "CardAndCash")
+        {
+            _checkoutCardAmount = Math.Round(Sale.NetAmount / 2, 2);
+            _checkoutCashAmount = Sale.NetAmount - _checkoutCardAmount;
+        }
+        else
+        {
+            _checkoutCardAmount = 0m;
+            _checkoutCashAmount = 0m;
+        }
+        StateHasChanged();
+    }
+
+    private void OnSplitAmountChanged()
+    {
+        StateHasChanged();
+    }
 
     private IEnumerable<Customer> GetCheckoutCustomers()
     {

@@ -38,10 +38,10 @@ namespace Infrastructure.Services
                     )
                     .Select(pd => new TodayPurchaseReportDto
                     {
+                        ReferenceNumber = pd.Purchase.PurchaseNumber,
                         SupplierName = pd.Purchase.Supplier.Name,
                         ProductName = pd.Product.ProductName,
                         Quantity = pd.Quantity,
-                        UnitPrice = pd.UnitPrice,
                         TotalPrice = pd.TotalPrice,
                         PurchaseDate = pd.Purchase.PurchaseDate
                     })
@@ -53,7 +53,8 @@ namespace Infrastructure.Services
             }
         }
 
-        /// <summary>Sales for the whole day(s): from 00:00:00 of fromDate through end of toDate.</summary>
+        /// <summary>Sales for the whole day(s): from 00:00:00 of fromDate through end of toDate.
+        /// Includes both POS sales (products) and Shop Service sales (services).</summary>
         public async Task<List<TodaySaleReportDto>> GetSalesByDateRange(DateTime fromDate, DateTime toDate)
         {
             try
@@ -61,28 +62,51 @@ namespace Infrastructure.Services
                 var start = fromDate.Date;
                 var end = toDate.Date.AddDays(1); // exclusive: whole day(s)
 
-                var sales = await (
+                // POS sales (from SaleDetail - product sales)
+                var posSales = await (
                     from sd in _context.SaleDetail
                     join s in _context.Sale on sd.SaleId equals s.Id
                     join c in _context.Customer on s.CustomerId equals c.Id into cust
-                    from c in cust.DefaultIfEmpty()   // LEFT JOIN
+                    from c in cust.DefaultIfEmpty()
                     where !sd.IsDeleted
                        && s.SaleDate >= start
                        && s.SaleDate < end
                        && !s.IsReturn
+                       && s.ShopServiceBillId == null  // POS only
                        && (TenantId == null || s.TenantId == TenantId)
                     select new TodaySaleReportDto
                     {
-                        CustomerName = c != null ? c.Name : "Walk-in Customer",
+                        ReferenceNumber = s.SaleNumber ?? "",
+                        CustomerName = c != null ? c.Name : (s.CustomerName ?? "Walk-in Customer"),
                         ProductName = sd.Product.ProductName,
                         Quantity = sd.Quantity,
-                        UnitPrice = sd.UnitPrice,
                         TotalPrice = sd.TotalPrice,
                         SaleDate = s.SaleDate
                     }
                 ).ToListAsync();
 
-                return sales;
+                // Shop Service sales (from ShopServiceBillItem - service bills)
+                var shopSales = await (
+                    from s in _context.Sale
+                    join bill in _context.ShopServiceBills on s.ShopServiceBillId equals bill.Id
+                    join item in _context.ShopServiceBillItems on bill.Id equals item.ShopServiceBillId
+                    where s.SaleDate >= start
+                       && s.SaleDate < end
+                       && !s.IsReturn
+                       && s.ShopServiceBillId != null
+                       && (TenantId == null || s.TenantId == TenantId)
+                    select new TodaySaleReportDto
+                    {
+                        ReferenceNumber = s.SaleNumber ?? bill.BillNumber ?? "",
+                        CustomerName = s.CustomerName ?? bill.CustomerName ?? "Walk-in Customer",
+                        ProductName = item.ServiceName,
+                        Quantity = item.Quantity,
+                        TotalPrice = item.TotalPrice,
+                        SaleDate = s.SaleDate
+                    }
+                ).ToListAsync();
+
+                return posSales.Concat(shopSales).OrderBy(x => x.SaleDate).ToList();
             }
             catch
             {

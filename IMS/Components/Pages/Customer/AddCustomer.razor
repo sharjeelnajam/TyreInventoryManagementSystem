@@ -35,8 +35,9 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label fw-semibold">Email</label>
+                <label class="form-label fw-semibold">Email *</label>
                 <InputText @bind-Value="CustomerModel.Email" class="form-control shadow-sm" />
+                <ValidationMessage For="@(() => CustomerModel.Email)" />
             </div>
 
             <div class="col-md-6">

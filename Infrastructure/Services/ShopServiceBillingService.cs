@@ -138,7 +138,7 @@ namespace Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null)
+        public async Task CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, decimal? cashAmount = null, decimal? cardAmount = null)
         {
             var bill = await _context.ShopServiceBills
                 .Include(b => b.Items)
@@ -146,7 +146,17 @@ namespace Infrastructure.Services
             if (bill == null || bill.Status != ShopServiceBillStatus.Open)
                 throw new InvalidOperationException("Bill not found or already closed.");
 
-            bill.TotalAmount = Math.Max(0, bill.Items.Sum(i => i.TotalPrice) - bill.Discount);
+            var totalAmount = Math.Max(0, bill.Items.Sum(i => i.TotalPrice) - bill.Discount);
+
+            // Validate split payment: Card + Cash must equal total when using "Card & Cash"
+            if (string.Equals(paymentMethod, "Card & Cash", StringComparison.OrdinalIgnoreCase))
+            {
+                var sum = (cashAmount ?? 0) + (cardAmount ?? 0);
+                if (Math.Abs(sum - totalAmount) > 0.01m)
+                    throw new InvalidOperationException($"Split payment invalid: Card (£{(cardAmount ?? 0):N2}) + Cash (£{(cashAmount ?? 0):N2}) = £{sum:N2} must equal Total £{totalAmount:N2}. Checkout not allowed.");
+            }
+
+            bill.TotalAmount = totalAmount;
             bill.ClosedAt = DateTime.UtcNow;
             bill.Status = ShopServiceBillStatus.Closed;
             bill.PaymentMethod = paymentMethod;
@@ -167,6 +177,8 @@ namespace Infrastructure.Services
                 NetAmount = bill.TotalAmount,
                 PaymentMethod = paymentMethod ?? "Cash",
                 PaymentStatus = paymentStatus ?? "Paid",
+                CashAmount = cashAmount ?? (paymentMethod == "Cash" ? totalAmount : 0),
+                CardAmount = cardAmount ?? (paymentMethod == "Card" ? totalAmount : 0),
                 IsApproved = true,
                 Notes = notes,
                 ShopServiceBillId = bill.Id,

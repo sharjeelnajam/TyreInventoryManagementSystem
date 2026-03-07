@@ -16,6 +16,8 @@ namespace Domain
         [Required(ErrorMessage = "Sale date is required.")]
         public DateTime SaleDate { get; set; }
 
+        public decimal CashAmount { get; set; }
+        public decimal CardAmount { get; set; }
         public Guid? CustomerId { get; set; }
         public string? CustomerName { get; set; }
 

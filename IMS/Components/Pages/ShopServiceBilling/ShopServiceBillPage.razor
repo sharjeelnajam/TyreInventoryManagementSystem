@@ -460,12 +460,37 @@
                     <p class="mb-2">Total amount: <strong>£@checkoutTotal.ToString("N2")</strong></p>
                     <div class="mb-3">
                         <label class="form-label">Payment method</label>
-                        <select class="form-select" @bind="checkoutPaymentMethod">
+                        <select class="form-select" @bind="checkoutPaymentMethod" @bind:after="OnCheckoutPaymentMethodChanged">
                             <option value="Cash">Cash</option>
                             <option value="Card">Card</option>
+                            <option value="CardAndCash">Both Card &amp; Cash</option>
                             <option value="BankTransfer">Bank Transfer</option>
                         </select>
                     </div>
+                    @if (checkoutPaymentMethod == "CardAndCash")
+                    {
+                        <div class="mb-3 d-flex flex-wrap gap-3 align-items-end">
+                            <div style="min-width: 140px;">
+                                <label class="form-label small">Card Amount (£)</label>
+                                <input type="number" class="form-control form-control-sm" step="0.01" min="0"
+                                       @bind="checkoutCardAmount" @bind:after="StateHasChanged" />
+                            </div>
+                            <div style="min-width: 140px;">
+                                <label class="form-label small">Cash Amount (£)</label>
+                                <input type="number" class="form-control form-control-sm" step="0.01" min="0"
+                                       @bind="checkoutCashAmount" @bind:after="StateHasChanged" />
+                            </div>
+                            <div class="small d-flex align-items-center">
+                                @{
+                                    var splitSum = checkoutCardAmount + checkoutCashAmount;
+                                    var splitValid = Math.Abs(splitSum - checkoutTotal) < 0.01m;
+                                }
+                                <span class="@(splitValid ? "text-success" : "text-danger")">
+                                    @(splitValid ? $"Card + Cash = £{splitSum:N2} ✓" : $"Remaining: £{checkoutTotal - splitSum:N2}")
+                                </span>
+                            </div>
+                        </div>
+                    }
                     <div class="mb-3">
                         <label class="form-label">Notes (optional)</label>
                         <textarea class="form-control" rows="2" @bind="checkoutNotes"></textarea>
@@ -477,7 +502,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="CloseCheckoutModal">Cancel</button>
-                    <button type="button" class="btn btn-success" @onclick="ConfirmCheckout">Confirm &amp; close bill (Paid)</button>
+                    <button type="button" class="btn btn-success" disabled="@(!CanConfirmCheckout)" @onclick="ConfirmCheckout">Confirm &amp; close bill (Paid)</button>
                 </div>
             </div>
         </div>
@@ -506,6 +531,8 @@
     private decimal customItemPrice;
     private bool showCheckoutModal;
     private string checkoutPaymentMethod = "Cash";
+    private decimal checkoutCardAmount;
+    private decimal checkoutCashAmount;
     private string? checkoutNotes;
     private string? checkoutError;
     private bool showAddCustomerModal;
@@ -848,7 +875,46 @@
     private void ShowCheckoutModal()
     {
         checkoutError = null;
+        checkoutCardAmount = 0m;
+        checkoutCashAmount = 0m;
+        if (checkoutPaymentMethod == "CardAndCash" && Bill != null)
+        {
+            var total = Math.Max(0, (Bill.Items?.Sum(i => i.TotalPrice) ?? 0) - billDiscount);
+            checkoutCardAmount = Math.Round(total / 2, 2);
+            checkoutCashAmount = total - checkoutCardAmount;
+        }
         showCheckoutModal = true;
+    }
+
+    private bool CanConfirmCheckout
+    {
+        get
+        {
+            if (Bill == null) return false;
+            var total = Math.Max(0, (Bill.Items?.Sum(i => i.TotalPrice) ?? 0) - billDiscount);
+            if (checkoutPaymentMethod == "CardAndCash")
+            {
+                var sum = checkoutCardAmount + checkoutCashAmount;
+                return Math.Abs(sum - total) < 0.01m && checkoutCardAmount >= 0 && checkoutCashAmount >= 0;
+            }
+            return true;
+        }
+    }
+
+    private void OnCheckoutPaymentMethodChanged()
+    {
+        if (checkoutPaymentMethod == "CardAndCash" && Bill != null)
+        {
+            var total = Math.Max(0, (Bill.Items?.Sum(i => i.TotalPrice) ?? 0) - billDiscount);
+            checkoutCardAmount = Math.Round(total / 2, 2);
+            checkoutCashAmount = total - checkoutCardAmount;
+        }
+        else
+        {
+            checkoutCardAmount = 0m;
+            checkoutCashAmount = 0m;
+        }
+        StateHasChanged();
     }
 
     private void CloseCheckoutModal()
@@ -859,11 +925,14 @@
 
     private async Task ConfirmCheckout()
     {
-        if (Bill == null) return;
+        if (Bill == null || !CanConfirmCheckout) return;
         try
         {
             await BillingService.UpdateBillDiscountAsync(BillId, billDiscount);
-            await BillingService.CheckoutAsync(BillId, checkoutPaymentMethod, "Paid", checkoutNotes);
+            var paymentMethod = checkoutPaymentMethod == "CardAndCash" ? "Card & Cash" : checkoutPaymentMethod;
+            decimal? cashAmt = checkoutPaymentMethod == "CardAndCash" ? checkoutCashAmount : null;
+            decimal? cardAmt = checkoutPaymentMethod == "CardAndCash" ? checkoutCardAmount : null;
+            await BillingService.CheckoutAsync(BillId, paymentMethod, "Paid", checkoutNotes, cashAmt, cardAmt);
             CloseCheckoutModal();
             await LoadBill();
         }
