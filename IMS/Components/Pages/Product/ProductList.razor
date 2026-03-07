@@ -64,7 +64,7 @@
                         <th>Tread</th>
                         <th>Size</th>
                         <th>Brand</th>
-                      
+                        <th>Price</th>
                         <th style="width:150px;">Actions</th>
                     </tr>
                 </thead>
@@ -102,6 +102,7 @@
                             <td>@GetUnitName(item.Unit)</td>
                             <td>@GetThreadName(item.ThreadId)</td>
                             <td>@item.Brand</td>
+                            <td>@FormatPrice(item.SellingPrice)</td>
                             <td>
                                 <i class="bi bi-eye text-info fs-5 me-3 cursor-pointer"
                                    title="View"

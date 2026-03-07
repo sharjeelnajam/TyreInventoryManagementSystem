@@ -477,7 +477,8 @@ namespace Infrastructure.Services
             {
                 container.Page(page =>
                 {
-                    page.Margin(0);
+                    page.MarginHorizontal(60); // left & right space
+                    page.MarginVertical(20);
 
                     // Optional background image
                     var backgroundPath = ResolveWwwRootPath("uploads", "logo", "backgroundImage.png");
@@ -574,29 +575,45 @@ namespace Infrastructure.Services
                             paymentCol.Item().Text($"Payment Method: {sale.PaymentMethod ?? "N/A"}").FontSize(14);
                         });
 
-                        // Thank you – centered
-                        contentCol.Item().PaddingTop(30).AlignCenter().Column(thankYouCol =>
-                        {
-                            thankYouCol.Item().PaddingVertical(10).Text("Thank you for your business!").Italic().FontSize(20);
-                        });
                     });
 
-                    // 🧾 FOOTER
-                    page.Footer().Row(row =>
+                    // 🧾 FOOTER – company address, name, VAT/Company No., phone
+                    page.Footer().Column(col =>
                     {
-                        // Left
-                        row.RelativeItem().PaddingLeft(10).AlignLeft().Text("© Location").FontSize(12);
+                        // THANK YOU MESSAGE (bottom center above footer)
+                        col.Item().AlignCenter().PaddingBottom(10)
+                            .Text("Thank you for your business!")
+                            .Italic()
+                            .FontSize(20);
 
-                        // Center
-                        row.RelativeItem().AlignCenter().Column(centerCol =>
-                        {
-                            centerCol.Item().Text("H&H").Bold().FontSize(10);
-                            centerCol.Item().Text("123 Business Street, London, UK, WC1A 1AB").FontSize(9);
-                            centerCol.Item().Text("A company of London Holdings Ltd, Vehicle Solutions Company Inc.").FontSize(9);
-                        });
+                        // FOOTER LINE
+                        col.Item()
+                            .BorderTop(0.5f)
+                            .BorderColor(QuestPDF.Helpers.Colors.Grey.Medium)
+                            .PaddingTop(6)
+                            .Row(row =>
+                            {
+                                // Left
+                                row.RelativeItem().AlignLeft().Column(leftCol =>
+                                {
+                                    leftCol.Item().Text("15 Davidson Street").FontSize(10);
+                                    leftCol.Item().Text("G40 4NS Glasgow").FontSize(10);
+                                });
 
-                        // Right
-                        row.RelativeItem().PaddingRight(20).AlignRight().Text("Phone: +44 20 1234 5678").FontSize(12);
+                                // Center
+                                row.RelativeItem().AlignCenter().Column(centerCol =>
+                                {
+                                    centerCol.Item().Text("H&H").Bold().FontSize(12);
+                                    centerCol.Item().Text("A company of EcoTrack Holdings").FontSize(9);
+                                    centerCol.Item().Text("Ltd, Vat No. 456042895 & Company No. SC789723").FontSize(9);
+                                });
+
+                                // Right
+                                row.RelativeItem().AlignRight().Column(rightCol =>
+                                {
+                                    rightCol.Item().Text("Tel: 0141 554 0516").FontSize(10);
+                                });
+                            });
                     });
                 });
             });

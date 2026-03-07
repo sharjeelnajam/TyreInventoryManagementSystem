@@ -1,11 +1,13 @@
 using Domain;
 using Domain.DTO;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -16,12 +18,14 @@ namespace Infrastructure.Services
         private readonly ApplicationDbContext _context; 
         private readonly ITenantProvider _tenantProvider;
         private readonly IPurchaseService _purchaseService;
+        private readonly AuthenticationStateProvider _authStateProvider;
 
-        public ProductService(ApplicationDbContext context, ITenantProvider tenantProvider, IPurchaseService purchaseService)
+        public ProductService(ApplicationDbContext context, ITenantProvider tenantProvider, IPurchaseService purchaseService, AuthenticationStateProvider authStateProvider)
         {
             _context = context;
             _tenantProvider = tenantProvider;
             _purchaseService = purchaseService;
+            _authStateProvider = authStateProvider;
         }
         public async Task<Product> AddAsync(ProductDto productDto)
         {
@@ -346,7 +350,39 @@ namespace Infrastructure.Services
                     }
                 }
 
-                // 5️⃣ SAVE CHANGES
+                // 5️⃣ SYNC STOCK: when quantity changes, update StockHistory so displayed stock matches product quantity
+                var latestStock = await _context.StockHistories
+                    .Where(s => s.ProductId == dto.Id)
+                    .OrderByDescending(s => s.ActionDate)
+                    .ThenByDescending(s => s.Id)
+                    .FirstOrDefaultAsync();
+
+                int currentStockLevel = latestStock?.NewStockLevel ?? 0;
+                if (dto.Quantity != currentStockLevel)
+                {
+                    var authState = await _authStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+                    var currentUser = authState.User;
+                    var performedBy = currentUser.FindFirst(ClaimTypes.Name)?.Value
+                        ?? currentUser.FindFirst("name")?.Value
+                        ?? currentUser.Identity?.Name;
+
+                    var adjustment = new StockHistory
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = dto.Id,
+                        ActionType = "Adjustment",
+                        PreviousStockLevel = currentStockLevel,
+                        NewStockLevel = dto.Quantity,
+                        QuantityChanged = dto.Quantity - currentStockLevel,
+                        ActionDate = DateTime.UtcNow,
+                        ReferenceNumber = "Product quantity update",
+                        PerformedBy = performedBy,
+                        TenantId = _tenantProvider.TenantId
+                    };
+                    await _context.StockHistories.AddAsync(adjustment);
+                }
+
+                // 6️⃣ SAVE CHANGES
                 await _context.SaveChangesAsync();
 
                 return await EntityToDto(existing);

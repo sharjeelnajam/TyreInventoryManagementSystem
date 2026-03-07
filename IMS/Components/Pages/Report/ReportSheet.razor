@@ -2,27 +2,29 @@
 
 @using Infrastructure.Services
 @using Domain.DTO
+@using System.Linq
 @inject IReportService ReportService
 @rendermode InteractiveServer
 
+<h3 class="mb-2">📅 Daily Report</h3>
+<p class="text-muted small mb-3">
+    @(FromDate == ToDate && FromDate.HasValue
+        ? $"Whole day: {FromDate.Value:dd MMM yyyy}"
+        : FromDate.HasValue && ToDate.HasValue
+            ? $"From {FromDate.Value:dd MMM yyyy} to {ToDate.Value:dd MMM yyyy}"
+            : "Select date range")
+</p>
 
-<h3>📅 Daily Report (Today)</h3>
-
-<div class="row mt-4">
+<div class="row mt-3 align-items-end">
     <div class="col-md-2">
-        <label class="form-label fw-bold">Report Type</label>
+        <label class="form-label fw-bold">Filter</label>
         <select class="form-select"
                 value="@SelectedReport"
                 @onchange="OnReportTypeChanged">
-            <option value="All">All</option>
-            <option value="Purchase">Purchase</option>
-            <option value="Sale">Sale</option>
-            <option value="Stock">Stock</option>
+            <option value="Selling">Selling</option>
+            <option value="Purchasing">Purchasing</option>
         </select>
-
-
     </div>
-
     <div class="col-md-2">
         <label class="form-label fw-bold">From Date</label>
         <InputDate TValue="DateTime?"
@@ -30,9 +32,7 @@
                    Value="FromDate"
                    ValueExpression="@(() => FromDate)"
                    ValueChanged="OnFromDateChanged" />
-
     </div>
-
     <div class="col-md-2">
         <label class="form-label fw-bold">To Date</label>
         <InputDate TValue="DateTime?"
@@ -40,20 +40,20 @@
                    Value="ToDate"
                    ValueExpression="@(() => ToDate)"
                    ValueChanged="OnToDateChanged" />
-
     </div>
-
- 
 </div>
 
-
-
-@if (SelectedReport == "All" || SelectedReport == "Purchase")
+@* Purchasing section – whole day purchases for selected date range *@
+@if (SelectedReport == "Purchasing")
 {
     <div class="mt-4 mb-5">
         <h4>
-            🛒 Today Purchases
+            🛒 Purchasing
             <span class="badge bg-primary">@PurchaseCount</span>
+            @if (PurchaseCount > 0)
+            {
+                <span class="ms-2 text-muted fw-normal fs-6">Total: @TotalPurchaseAmount.ToString("N2")</span>
+            }
         </h4>
         <table class="table table-striped">
             <thead>
@@ -73,24 +73,27 @@
                         <td>@p.SupplierName</td>
                         <td>@p.ProductName</td>
                         <td>@p.Quantity</td>
-                        <td>@p.UnitPrice</td>
-                        <td>@p.TotalPrice</td>
+                        <td>@p.UnitPrice.ToString("N2")</td>
+                        <td>@p.TotalPrice.ToString("N2")</td>
                         <td>@p.PurchaseDate.ToShortDateString()</td>
                     </tr>
                 }
             </tbody>
         </table>
-
     </div>
 }
 
-
-@if (SelectedReport == "All" || SelectedReport == "Sale")
+@* Selling section – whole day sales for selected date range *@
+@if (SelectedReport == "Selling")
 {
     <div class="mt-4 mb-5">
         <h4>
-            £ Today Sales
+            💰 Selling
             <span class="badge bg-success">@SaleCount</span>
+            @if (SaleCount > 0)
+            {
+                <span class="ms-2 text-muted fw-normal fs-6">Total: @TotalSaleAmount.ToString("N2")</span>
+            }
         </h4>
         <table class="table table-striped">
             <thead>
@@ -110,19 +113,19 @@
                         <td>@s.CustomerName</td>
                         <td>@s.ProductName</td>
                         <td>@s.Quantity</td>
-                        <td>@s.UnitPrice</td>
-                        <td>@s.TotalPrice</td>
+                        <td>@s.UnitPrice.ToString("N2")</td>
+                        <td>@s.TotalPrice.ToString("N2")</td>
                         <td>@s.SaleDate.ToShortDateString()</td>
                     </tr>
                 }
             </tbody>
         </table>
-
     </div>
 }
 
 
-@if (SelectedReport == "All" || SelectedReport == "Stock")
+@* Available Stock – commented out, not shown on Daily Report
+@if (SelectedReport == "Stock")
 {
     <div class="mt-4 mb-5">
         <h4>
@@ -148,22 +151,26 @@
         </table>
     </div>
 }
+*@
 
 
 @code {
 
     List<TodayPurchaseReportDto> TodayPurchases = new();
     List<TodaySaleReportDto> TodaySales = new();
-    List<AvailableStockDto> Stock = new();
+    // List<AvailableStockDto> Stock = new(); // commented out – Available Stock not shown on Daily Report
 
-    string SelectedReport = "All";
+    string SelectedReport = "Selling";
 
     DateTime? FromDate = DateTime.Today;
     DateTime? ToDate = DateTime.Today;
 
     int PurchaseCount => TodayPurchases.Count;
     int SaleCount => TodaySales.Count;
-    int StockCount => Stock.Count;
+    // int StockCount => Stock.Count; // commented out – Available Stock not shown
+
+    decimal TotalPurchaseAmount => TodayPurchases.Sum(p => p.TotalPrice);
+    decimal TotalSaleAmount => TodaySales.Sum(s => s.TotalPrice);
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,7 +191,7 @@
 
     async Task OnReportTypeChanged(ChangeEventArgs e)
     {
-        SelectedReport = e.Value?.ToString() ?? "All";
+        SelectedReport = e.Value?.ToString() ?? "Selling";
         await LoadReport();
     }
 
@@ -199,7 +206,7 @@
         TodaySales = await ReportService
             .GetSalesByDateRange(FromDate.Value, ToDate.Value);
 
-        Stock = await ReportService.GetAvailableStock();
+        // Stock = await ReportService.GetAvailableStock(); // commented out – not shown on Daily Report
     }
 }
 

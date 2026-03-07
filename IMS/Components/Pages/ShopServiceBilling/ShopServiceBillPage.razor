@@ -60,47 +60,54 @@
             </div>
         </div>
 
-        <!-- Bill to: Customer or Wholesaler toggle -->
+        <!-- Bill to: Customer type selection -->
         <div class="card mb-3">
             <div class="card-body">
                 @if (Bill.Status == ShopServiceBillStatus.Open)
                 {
-                    <div class="form-check form-switch mb-3">
-                        <input type="checkbox" class="form-check-input" id="billToWholesaler" @bind="isWholesalerMode" @bind:after="OnBillToChanged" />
-                        <label class="form-check-label fw-semibold" for="billToWholesaler">Bill to Wholesaler</label>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-sm-4 col-md-3">
+                            <label class="form-label small fw-semibold">Customer type</label>
+                            <select class="form-select" @onchange="OnCustomerTypeChanged">
+                                <option value="Customer" selected="@(!isWholesalerMode)">Customer</option>
+                                <option value="Wholesaler" selected="@(isWholesalerMode)">Wholesaler</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-8 col-md-9">
+                            @if (!isWholesalerMode)
+                            {
+                                <label class="form-label small fw-semibold">Customer</label>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <select class="form-select" style="max-width: 300px;" @bind="selectedCustomerId" @bind:after="OnCustomerSelectedThenSave">
+                                        <option value="">Walk-in (no customer)</option>
+                                        @foreach (var c in Customers)
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => OpenAddCustomerModal()" title="Add new customer">
+                                        <i class="bi bi-person-plus"></i> New
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <label class="form-label small fw-semibold">Wholesaler</label>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <select class="form-select" style="max-width: 300px;" @bind="selectedWholesalerCustomerId" @bind:after="OnWholesalerCustomerSelectedThenSave">
+                                        <option value="">-- Select Wholesaler --</option>
+                                        @foreach (var w in WholesalerCustomers)
+                                        {
+                                            <option value="@w.Id">@w.Name</option>
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenAddWholesalerModal" title="Add new wholesaler">
+                                        <i class="bi bi-person-plus"></i> New
+                                    </button>
+                                </div>
+                            }
+                        </div>
                     </div>
-                    @if (!isWholesalerMode)
-                    {
-                        <label class="form-label small fw-semibold">Customer</label>
-                        <div class="d-flex gap-2 align-items-center">
-                            <select class="form-select" style="max-width: 300px;" @bind="selectedCustomerId" @bind:after="OnCustomerSelectedThenSave">
-                                <option value="">Walk-in (no customer)</option>
-                                @foreach (var c in Customers)
-                                {
-                                    <option value="@c.Id">@c.Name</option>
-                                }
-                            </select>
-                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => OpenAddCustomerModal()" title="Add new customer">
-                                <i class="bi bi-person-plus"></i> New
-                            </button>
-                        </div>
-                    }
-                    else
-                    {
-                        <label class="form-label small fw-semibold">Wholesaler</label>
-                        <div class="d-flex gap-2 align-items-center">
-                            <select class="form-select" style="max-width: 300px;" @bind="selectedWholesalerCustomerId" @bind:after="OnWholesalerCustomerSelectedThenSave">
-                                <option value="">-- Select Wholesaler --</option>
-                                @foreach (var w in WholesalerCustomers)
-                                {
-                                    <option value="@w.Id">@w.Name</option>
-                                }
-                            </select>
-                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="OpenAddWholesalerModal" title="Add new wholesaler">
-                                <i class="bi bi-person-plus"></i> New
-                            </button>
-                        </div>
-                    }
                 }
                 else
                 {
@@ -596,6 +603,20 @@
             selectedCustomerId = Bill?.CustomerId;
             _ = SaveCustomer(Customers.FirstOrDefault(x => x.Id == selectedCustomerId)?.Name);
         }
+    }
+
+    private void OnCustomerTypeChanged(ChangeEventArgs e)
+    {
+        var selectedType = e.Value?.ToString();
+        var newIsWholesaler = string.Equals(selectedType, "Wholesaler", StringComparison.OrdinalIgnoreCase);
+
+        if (newIsWholesaler == isWholesalerMode)
+        {
+            return;
+        }
+
+        isWholesalerMode = newIsWholesaler;
+        OnBillToChanged();
     }
 
     private async Task OpenAddCustomerModal()

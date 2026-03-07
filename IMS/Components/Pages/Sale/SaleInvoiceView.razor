@@ -6,6 +6,13 @@
 @rendermode InteractiveServer
 
 <h4 class="mb-3">🧾 Invoice Details</h4>
+@if (sale?.ShopServiceBillId != null)
+{
+    <p class="text-muted small mb-2">
+        <span class="badge bg-secondary">Shop Billing</span>
+        <a href="/shop-billing/bill/@sale.ShopServiceBillId">View original bill</a>
+    </p>
+}
 
 @if (sale == null)
 {
@@ -95,7 +102,9 @@ else
                 else
                 {
                     <tr>
-                        <td colspan="5" class="text-center text-muted">No sale details found.</td>
+                        <td colspan="5" class="text-center text-muted">
+                            @(sale.ShopServiceBillId != null ? "Service bill — see original bill above for line items." : "No sale details found.")
+                        </td>
                     </tr>
                 }
             </tbody>

@@ -1,15 +1,17 @@
 /* ===============================
-   MAIN POS LAYOUT
+   MAIN POS LAYOUT – viewport-aware, fits any screen
 ================================= */
 
 .pos-container {
     flex: 1 1 0;
     min-height: 0;
     height: 100%;
+    max-height: 100%;
     display: flex;
     flex-direction: column;
     background-color: #f8f9fa;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 /* Header */
@@ -20,12 +22,18 @@
     flex-shrink: 0;
 }
 
-/* Body */
+.pos-search-input {
+    max-width: min(400px, 100%);
+    min-width: 0;
+}
+
+/* Body – flex row that adapts to width */
 .pos-body {
     display: flex;
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
+    width: 100%;
 }
 
 /* ===============================
@@ -145,27 +153,28 @@
 
 /* ===============================
    CART PANEL (RIGHT SIDE)
-   - Uses flex-basis so it grows with screen width
-   - Keeps a sensible min/max width
+   - Flexible width: adapts to screen (clamp), no overflow
 ================================= */
 
 .cart-panel {
-    flex: 0 0 32%;
+    flex: 0 0 min(32%, 430px);
+    width: min(32%, 430px);
+    min-width: min(280px, 90vw);
     max-width: 430px;
-    min-width: 320px;
     background: white;
     border-left: 1px solid #dee2e6;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .cart-header,
 .cart-item {
     display: grid;
-    /* QTY | NAME | PRICE | TOTAL | REMOVE */
-    grid-template-columns: 55px 1fr 95px 90px 32px;
-    gap: 6px;
+    /* QTY | NAME | PRICE | TOTAL | REMOVE – minmax so columns shrink on small width */
+    grid-template-columns: minmax(40px, 55px) 1fr minmax(70px, 95px) minmax(70px, 90px) 32px;
+    gap: 4px;
     align-items: center;
     padding: 0.4rem 0.5rem;
 }
@@ -255,16 +264,17 @@
     inset: 0;
     background: rgba(0,0,0,0.55);
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    overflow-y: auto;
+    overflow: hidden;
     z-index: 1050;
-    padding: 2rem 1rem;
+    padding: 1rem;
 }
 
 .checkout-modal-box {
-    width: 700px;
-    max-width: 95%;
+    width: 900px;
+    max-width: 98%;
+    max-height: 90vh;
     background: #fff;
     border-radius: 14px;
     display: flex;
@@ -412,22 +422,73 @@
 }
 
 /* ===============================
-   RESPONSIVE
+   RESPONSIVE – auto-adjust for different screen sizes
 ================================= */
+
+@media (max-width: 1200px) {
+    .cart-panel {
+        flex: 0 0 min(38%, 400px);
+        width: min(38%, 400px);
+        min-width: min(260px, 85vw);
+    }
+}
 
 @media (max-width: 992px) {
     .pos-body {
         flex-direction: column;
     }
 
+    .products-panel {
+        flex: 1 1 0;
+        min-height: 50%;
+        max-height: 55vh;
+    }
+
     .cart-panel {
+        flex: 0 0 auto;
         width: 100%;
         min-width: 100%;
+        max-width: 100%;
         max-height: 45vh;
+        min-height: 280px;
+        border-left: none;
+        border-top: 1px solid #dee2e6;
+    }
+
+    .cart-header,
+    .cart-item {
+        grid-template-columns: 50px 1fr 80px 80px 32px;
     }
 }
 
 @media (max-width: 576px) {
+    .products-panel {
+        padding: 0.35rem 0.5rem;
+    }
+
+    .product-row {
+        padding: 0.5rem 0.5rem;
+    }
+
+    .product-thumb {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+    }
+
+    .cart-panel {
+        max-height: 50vh;
+        min-height: 240px;
+    }
+
+    .cart-header,
+    .cart-item {
+        grid-template-columns: 44px 1fr 68px 68px 28px;
+        gap: 3px;
+        padding: 0.3rem 0.4rem;
+        font-size: 0.75rem;
+    }
+
     .checkout-payment-row {
         grid-template-columns: 1fr;
     }

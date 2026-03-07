@@ -54,6 +54,9 @@ namespace Domain
         public string? SalespersonName { get; set; }
         public int? WarehouseId { get; set; }
 
+        /// <summary>When set, this sale was created from a closed Shop Billing bill.</summary>
+        public Guid? ShopServiceBillId { get; set; }
+
         public ICollection<SaleDetail> SaleDetails { get; set; }
     }
 }

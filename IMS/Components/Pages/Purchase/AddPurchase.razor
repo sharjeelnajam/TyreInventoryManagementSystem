@@ -1,4 +1,4 @@
-﻿@using Domain
+@using Domain
 @using Domain.DTO
 @using Infrastructure.Services
 @inject ISupplierService SupplierService
@@ -171,48 +171,54 @@
 
     <hr class="mt-4" />
 
-    <!-- Moved Discount and Tax to Bottom -->
+    <!-- Pricing Section -->
     <div class="row mt-4 border-top pt-3">
-        <div class="col-md-6"></div>
+        <div class="col-12 d-flex justify-content-end">
 
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
+            <div class="purchase-pricing-card card shadow-sm">
                 <div class="card-body">
-                    <div class="row g-3 align-items-center">
 
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Discount</label>
+                    <div class="row g-3 align-items-end text-end">
+
+                        <div class="col-3">
+                            <label class="form-label form-label-sm fw-semibold">Discount</label>
                             <InputNumber TValue="decimal?"
                                          Value="Purchase.Discount"
                                          ValueChanged="OnDiscountChanged"
                                          ValueExpression="@(() => Purchase.Discount)"
-                                         class="form-control" />
+                                         class="form-control form-control-sm text-end" />
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Tax (%)</label>
+                        <div class="col-3">
+                            <label class="form-label form-label-sm fw-semibold">Tax (%)</label>
                             <InputNumber TValue="decimal?"
                                          Value="Purchase.TaxAmount"
                                          ValueChanged="OnTaxChanged"
                                          ValueExpression="@(() => Purchase.TaxAmount)"
-                                         class="form-control" />
+                                         class="form-control form-control-sm text-end" />
                         </div>
 
-                        <div class="col-md-2 text-end">
-                            <label class="form-label fw-semibold mb-0">Total</label>
-                            <div class="fw-bold fs-5">@Purchase.TotalAmount.ToString("N2")</div>
+                        <div class="col-3">
+                            <label class="form-label form-label-sm fw-semibold mb-0">Total</label>
+                            <div class="fw-bold purchase-pricing-value">
+                                @Purchase.TotalAmount.ToString("N2")
+                            </div>
                         </div>
 
-                        <div class="col-md-2 text-end">
-                            <label class="form-label fw-semibold mb-0">Net</label>
-                            <div class="fw-bold fs-5">@Purchase.NetAmount.ToString("N2")</div>
+                        <div class="col-3">
+                            <label class="form-label form-label-sm fw-semibold mb-0">Net</label>
+                            <div class="fw-bold purchase-pricing-value text-success">
+                                @Purchase.NetAmount.ToString("N2")
+                            </div>
                         </div>
+
                     </div>
+
                 </div>
             </div>
+
         </div>
     </div>
-
     <!-- Buttons -->
     <div class="d-flex justify-content-end mt-4">
         <button class="btn btn-success me-2 px-4" type="submit">
@@ -366,7 +372,29 @@
     </div>
 }
 
+<style>
+  
+    /* Pricing Card Improved Layout */
 
+    .purchase-pricing-card {
+        width: 100%;
+        max-width: 720px;
+    }
+
+        .purchase-pricing-card .card-body {
+            padding: 12px 18px;
+        }
+
+        .purchase-pricing-card .form-label-sm {
+            font-size: 13px;
+        }
+
+    .purchase-pricing-value {
+        font-size: 20px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+</style>
 
 @code {
     [Parameter] public Guid? PurchaseId { get; set; }
@@ -769,17 +797,22 @@
 
     private void RecalculateTotals()
     {
-        if (Purchase.PurchaseDetails == null)
+        if (Purchase.PurchaseDetails == null || !Purchase.PurchaseDetails.Any())
         {
             Purchase.TotalAmount = 0;
             Purchase.NetAmount = 0;
             return;
         }
-        var total = Purchase.PurchaseDetails.Sum(d => d.Quantity * d.UnitPrice);
-        Purchase.TotalAmount = total > 0 ? total - Purchase.Discount ?? 0 : 0;
-        Purchase.NetAmount = total > 0 ? total - (Purchase.Discount ?? 0) + (Purchase.TaxAmount ?? 0) : 0;
-    }
 
+        decimal itemsTotal = Purchase.PurchaseDetails.Sum(d => d.Quantity * d.UnitPrice);
+
+        Purchase.TotalAmount = itemsTotal;
+
+        decimal discount = Purchase.Discount ?? 0;
+        decimal tax = Purchase.TaxAmount ?? 0;
+
+        Purchase.NetAmount = itemsTotal - discount + tax;
+    }
     private async Task Close()
     {
         await OnClose.InvokeAsync();

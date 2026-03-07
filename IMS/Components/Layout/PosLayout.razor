@@ -33,12 +33,15 @@
 </div>
 
 <style>
-    /* Full-screen: remove body margin when POS is active */
+    /* Full-screen: lock to viewport so POS fits any screen resolution */
     html:has(.pos-layout), body:has(.pos-layout) {
         margin: 0 !important;
         padding: 0 !important;
         overflow: hidden !important;
-        height: 100% !important;
+        height: 100vh !important;
+        height: 100dvh !important; /* dynamic viewport (mobile address bar) */
+        min-height: 100vh !important;
+        width: 100% !important;
     }
 
     .pos-layout {
@@ -48,12 +51,17 @@
         right: 0;
         bottom: 0;
         width: 100%;
-        height: 100%;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 100vh;
+        max-height: 100vh;
+        max-height: 100dvh;
         display: flex;
         flex-direction: column;
         overflow: hidden;
         margin: 0;
         padding: 0;
+        box-sizing: border-box;
     }
 
     .pos-top-bar {
@@ -73,19 +81,20 @@
     }
 
     .pos-content {
-        flex: 1;
+        flex: 1 1 0;
         min-height: 0;
         overflow: hidden;
         display: flex;
         flex-direction: column;
     }
 
-    /* Ensure page content fills remaining space */
+    /* Ensure page content fills remaining space and adapts to viewport */
     .pos-content ::deep > * {
         flex: 1 1 0;
         min-height: 0;
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        max-height: 100%;
     }
 </style>

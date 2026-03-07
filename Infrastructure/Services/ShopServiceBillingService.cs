@@ -9,11 +9,13 @@ namespace Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly ITenantProvider _tenantProvider;
+        private readonly ISaleService _saleService;
 
-        public ShopServiceBillingService(ApplicationDbContext context, ITenantProvider tenantProvider)
+        public ShopServiceBillingService(ApplicationDbContext context, ITenantProvider tenantProvider, ISaleService saleService)
         {
             _context = context;
             _tenantProvider = tenantProvider;
+            _saleService = saleService;
         }
 
         public async Task<ShopServiceBill> StartBillAsync(Guid? customerId = null, string? customerName = null)
@@ -151,6 +153,26 @@ namespace Infrastructure.Services
             bill.PaymentStatus = paymentStatus;
             bill.Notes = notes;
             await _context.SaveChangesAsync();
+
+            // Create a Sale record so the closed bill appears in the Sales list
+            var sale = new Sale
+            {
+                SaleNumber = bill.BillNumber,
+                SaleDate = bill.ClosedAt.Value,
+                CustomerId = bill.CustomerId,
+                CustomerName = bill.CustomerName,
+                TotalAmount = bill.TotalAmount,
+                Discount = bill.Discount,
+                TaxAmount = 0,
+                NetAmount = bill.TotalAmount,
+                PaymentMethod = paymentMethod ?? "Cash",
+                PaymentStatus = paymentStatus ?? "Paid",
+                IsApproved = true,
+                Notes = notes,
+                ShopServiceBillId = bill.Id,
+                SaleDetails = new List<SaleDetail>()
+            };
+            await _saleService.AddAsync(sale);
         }
     }
 }

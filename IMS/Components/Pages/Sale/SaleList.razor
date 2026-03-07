@@ -29,7 +29,13 @@
             @foreach (var sale in sales)
             {
                 <tr>
-                    <td>@sale.SaleNumber</td>
+                    <td>
+                        @sale.SaleNumber
+                        @if (sale.ShopServiceBillId.HasValue)
+                        {
+                            <span class="badge bg-secondary ms-1" title="From Shop Billing">Shop</span>
+                        }
+                    </td>
                     <td>@sale.Customer?.Name</td>
                     <td>@sale.TotalAmount</td>
                     <td>@sale.NetAmount</td>
@@ -65,7 +71,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        sales = await SaleService.GetAllAsync();
+        sales = (await SaleService.GetAllAsync())
+            .OrderByDescending(s => s.SaleDate)
+            .ToList();
     }
 
     // private void OpenAddSale()
@@ -100,7 +108,9 @@
 
     private async Task ReloadSales()
     {
-        sales = await SaleService.GetAllAsync();
+        sales = (await SaleService.GetAllAsync())
+            .OrderByDescending(s => s.SaleDate)
+            .ToList();
         StateHasChanged();
     }
 
