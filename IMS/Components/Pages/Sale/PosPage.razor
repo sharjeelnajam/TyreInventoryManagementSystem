@@ -245,6 +245,35 @@
 {
     <div class="checkout-modal-backdrop" @onclick="CloseCheckoutModal">
         <div class="checkout-modal-box" @onclick:stopPropagation="true">
+            @if (checkoutSuccessSaleId.HasValue)
+            {
+                <div class="checkout-modal-header">
+                    <h5 class="checkout-modal-title text-success"><i class="bi bi-check-circle-fill me-2"></i>Payment complete</h5>
+                    <button type="button" class="checkout-modal-close" aria-label="Close" @onclick="CloseCheckoutModal">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="checkout-modal-body">
+                    <p class="mb-3">Sale recorded successfully. You can view or download the receipt.</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-outline-primary" @onclick="ViewReceipt" disabled="@receiptLoading">
+                            <i class="bi bi-eye me-1"></i> View Receipt
+                        </button>
+                        <button type="button" class="btn btn-outline-success" @onclick="DownloadReceipt" disabled="@receiptLoading">
+                            <i class="bi bi-download me-1"></i> Download Receipt
+                        </button>
+                        @if (receiptLoading)
+                        {
+                            <span class="align-self-center small text-muted"><span class="spinner-border spinner-border-sm"></span> Preparing…</span>
+                        }
+                    </div>
+                </div>
+                <div class="checkout-modal-footer">
+                    <button type="button" class="btn btn-checkout-submit" @onclick="CloseCheckoutModal">Done</button>
+                </div>
+            }
+            else
+            {
             <div class="checkout-modal-header">
                 <h5 class="checkout-modal-title">Checkout Order @Sale.SaleNumber</h5>
                 <div class="checkout-amount-block">
@@ -395,6 +424,7 @@
                     <i class="bi bi-credit-card-2-front"></i> Process Payment
                 </button>
             </div>
+            }
         </div>
     </div>
 }
@@ -461,6 +491,8 @@
     private List<ListManagement> _customerTypes = new();
     private bool showOutOfStockModal = false;
     private bool showCheckoutModal = false;
+    private Guid? checkoutSuccessSaleId;
+    private bool receiptLoading;
     private string cashierName = "";
 
     private decimal? CustomerCustomPrice { get; set; }
@@ -566,7 +598,21 @@
     private void CloseCheckoutModal()
     {
         showCheckoutModal = false;
+        checkoutSuccessSaleId = null;
+        ResetCartForNewSale();
         StateHasChanged();
+    }
+
+    private void ResetCartForNewSale()
+    {
+        Sale = new Sale
+        {
+            SaleDate = DateTime.Now,
+            SaleNumber = $"SO-{DateTime.Now:yyyyMMddHHmmss}",
+            SaleDetails = new List<SaleDetail>(),
+            Discount = 0,
+            TaxAmount = 0
+        };
     }
 
     private void OnCheckoutBillToChanged()
@@ -672,8 +718,17 @@
             Sale.CardAmount = _checkoutPaymentMethod == "Card" ? Sale.NetAmount : 0m;
         }
 
-        showCheckoutModal = false;
-        await HandleValidSubmit();
+        var success = await SaleService.AddAsync(Sale);
+        if (success)
+        {
+            checkoutSuccessSaleId = Sale.Id;
+            StateHasChanged();
+        }
+        else
+        {
+            showCheckoutModal = false;
+            Nav.NavigateTo("/pos", forceLoad: true);
+        }
     }
 
     protected async Task HandleValidSubmit()
@@ -971,5 +1026,43 @@
     protected void CloseWholesalerModal()
     {
         showWholesalerModal = false;
+    }
+
+    private async Task ViewReceipt()
+    {
+        if (!checkoutSuccessSaleId.HasValue) return;
+        receiptLoading = true;
+        StateHasChanged();
+        try
+        {
+            var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(checkoutSuccessSaleId.Value);
+            var base64 = Convert.ToBase64String(pdfBytes);
+            await JSRuntime.InvokeVoidAsync("openPdfInNewTab", base64);
+        }
+        finally
+        {
+            receiptLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadReceipt()
+    {
+        if (!checkoutSuccessSaleId.HasValue) return;
+        receiptLoading = true;
+        StateHasChanged();
+        try
+        {
+            var sale = await SaleService.GetByIdAsync(checkoutSuccessSaleId.Value);
+            if (sale == null) return;
+            var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(checkoutSuccessSaleId.Value);
+            var base64 = Convert.ToBase64String(pdfBytes);
+            await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber}.pdf", base64);
+        }
+        finally
+        {
+            receiptLoading = false;
+            StateHasChanged();
+        }
     }
 }

@@ -161,10 +161,13 @@ namespace Infrastructure.Services
                             .FirstOrDefaultAsync();
                         var product = await _context.Products.FindAsync(detail.ProductId);
 
+                        int previousLevel;
+                        int newStockLevel;
                         if (stockProduct != null)
                         {
-                            var previousLevel = stockProduct.NewStockLevel;
-                            stockProduct.NewStockLevel = stockProduct.NewStockLevel - detail.Quantity;
+                            previousLevel = stockProduct.NewStockLevel;
+                            newStockLevel = previousLevel - detail.Quantity;
+                            stockProduct.NewStockLevel = newStockLevel;
                             stockProduct.QuantityChanged = -detail.Quantity;
                             stockProduct.ActionDate = DateTime.UtcNow;
                             stockProduct.PerformedBy = performedBy;
@@ -174,7 +177,6 @@ namespace Infrastructure.Services
                             stockProduct.PreviousStockLevel = previousLevel;
                             _context.Update(stockProduct);
 
-                            // Add a new StockHistory row for this sale (audit trail)
                             var saleStockHistory = new StockHistory
                             {
                                 Id = Guid.NewGuid(),
@@ -182,7 +184,7 @@ namespace Infrastructure.Services
                                 ActionType = "Sale",
                                 QuantityChanged = -detail.Quantity,
                                 PreviousStockLevel = previousLevel,
-                                NewStockLevel = stockProduct.NewStockLevel,
+                                NewStockLevel = newStockLevel,
                                 ActionDate = DateTime.UtcNow,
                                 ReferenceId = sale.Id,
                                 ReferenceNumber = sale.SaleNumber,
@@ -190,6 +192,26 @@ namespace Infrastructure.Services
                                 TenantId = _tenantProvider.TenantId
                             };
                             await _context.StockHistories.AddAsync(saleStockHistory);
+                        }
+                        else
+                        {
+                            previousLevel = 0;
+                            newStockLevel = Math.Max(0, previousLevel - detail.Quantity);
+                            var newStockHistory = new StockHistory
+                            {
+                                Id = Guid.NewGuid(),
+                                ProductId = detail.ProductId,
+                                ActionType = "Sale",
+                                QuantityChanged = -detail.Quantity,
+                                PreviousStockLevel = previousLevel,
+                                NewStockLevel = newStockLevel,
+                                ActionDate = DateTime.UtcNow,
+                                ReferenceId = sale.Id,
+                                ReferenceNumber = sale.SaleNumber,
+                                PerformedBy = performedBy,
+                                TenantId = _tenantProvider.TenantId
+                            };
+                            await _context.StockHistories.AddAsync(newStockHistory);
                         }
 
                         // NEW: Add ProfitHistory record
@@ -637,6 +659,125 @@ namespace Infrastructure.Services
                                     rightCol.Item().Text("Tel: 0141 554 0516").FontSize(10);
                                 });
                             });
+                    });
+                });
+            });
+
+            using var ms = new MemoryStream();
+            document.GeneratePdf(ms);
+            return ms.ToArray();
+        }
+
+        /// <summary>Thermal-style receipt: narrow, long format with Description | Price, Total, Cash, Thank you.</summary>
+        public async Task<byte[]> GenerateThermalReceiptPdfAsync(Guid saleId)
+        {
+            var sale = await _context.Sale
+                .Include(x => x.SaleDetails)
+                .ThenInclude(x => x.Product)
+                .FirstOrDefaultAsync(x => x.Id == saleId);
+            await HydrateSaleWithCustomer(sale);
+
+            if (sale == null)
+                return Array.Empty<byte>();
+
+            List<(string desc, int qty, decimal unit, decimal total)> lineItems;
+            if (sale.ShopServiceBillId.HasValue)
+            {
+                var bill = await _context.ShopServiceBills
+                    .Include(b => b.Items)
+                    .FirstOrDefaultAsync(b => b.Id == sale.ShopServiceBillId.Value);
+                lineItems = bill?.Items?.Select(i => (i.ServiceName, i.Quantity, i.UnitPrice, i.TotalPrice)).ToList()
+                    ?? new List<(string, int, decimal, decimal)>();
+            }
+            else
+            {
+                lineItems = (sale.SaleDetails ?? new List<SaleDetail>())
+                    .Select(d => (d.Product?.ProductName ?? "N/A", d.Quantity, d.UnitPrice, d.TotalPrice)).ToList();
+            }
+
+            const float receiptWidthPt = 227f;   // 80mm thermal width
+            const float receiptHeightPt = 1400f; // long receipt
+            const string separator = "********************************";
+            const string shopName = "H&H";
+            const string address = "15 Davidson Street, G40 4NS Glasgow";
+            const string tel = "Tel: 0141 554 0516";
+
+            QuestPDF.Settings.License = LicenseType.Community;
+
+            var document = QuestPDF.Fluent.Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(receiptWidthPt, receiptHeightPt);
+                    page.Margin(12);
+
+                    page.Content().Column(col =>
+                    {
+                        // 1. Label (shop name) on top
+                        col.Item().AlignCenter().Text(shopName).Bold().FontSize(14);
+                        col.Item().PaddingTop(8).AlignCenter().Text(separator).FontSize(8);
+                        col.Item().AlignCenter().PaddingTop(4).Text("CASH RECEIPT").Bold().FontSize(12);
+                        col.Item().AlignCenter().PaddingBottom(4).Text(separator).FontSize(8);
+                        // 2. Reference number after CASH RECEIPT
+                        col.Item().PaddingTop(4).Row(r =>
+                        {
+                            r.RelativeItem().Text("Ref").FontSize(8);
+                            r.RelativeItem().AlignRight().Text($"#{sale.SaleNumber ?? sale.Id.ToString("N")?.Substring(0, 8)}").FontSize(8);
+                        });
+                        col.Item().PaddingTop(4).AlignCenter().Text(separator).FontSize(8);
+
+                        // Two columns: Description | Price
+                        col.Item().PaddingTop(6).Row(r =>
+                        {
+                            r.RelativeItem().Text("Description").Bold().FontSize(9);
+                            r.RelativeItem().AlignRight().Text("Price").Bold().FontSize(9);
+                        });
+                        foreach (var item in lineItems)
+                        {
+                            var desc = item.desc.Length > 28 ? item.desc.Substring(0, 25) + "..." : item.desc;
+                            col.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text($"{desc} x{item.qty}").FontSize(9);
+                                r.RelativeItem().AlignRight().Text($"£{item.total:0.00}").FontSize(9);
+                            });
+                        }
+
+                        col.Item().PaddingTop(8).AlignCenter().Text(separator).FontSize(8);
+                        // Total, Cash, Card, Change
+                        col.Item().PaddingTop(4).Row(r =>
+                        {
+                            r.RelativeItem().Text("Total").Bold().FontSize(10);
+                            r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").Bold().FontSize(10);
+                        });
+                        col.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text("Cash").FontSize(9);
+                            r.RelativeItem().AlignRight().Text($"£{sale.CashAmount:0.00}").FontSize(9);
+                        });
+                        if (sale.CardAmount > 0)
+                        {
+                            col.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Card").FontSize(9);
+                                r.RelativeItem().AlignRight().Text($"£{sale.CardAmount:0.00}").FontSize(9);
+                            });
+                        }
+                        col.Item().PaddingTop(8).AlignCenter().Text(separator).FontSize(8);
+
+                        // Payment method line
+                        col.Item().PaddingTop(4).Row(r =>
+                        {
+                            r.RelativeItem().Text("Payment").FontSize(8);
+                            r.RelativeItem().AlignRight().Text(sale.PaymentMethod ?? "N/A").FontSize(8);
+                        });
+                        col.Item().PaddingTop(8).AlignCenter().Text(separator).FontSize(8);
+
+                        // Thank you
+                        col.Item().PaddingTop(12).AlignCenter().Text("THANK YOU!").Bold().FontSize(14);
+
+                        // 3. Address at the end
+                        col.Item().PaddingTop(16).AlignCenter().Text($"Address: {address}").FontSize(8);
+                        col.Item().AlignCenter().Text(tel).FontSize(8);
                     });
                 });
             });

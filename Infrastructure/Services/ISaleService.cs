@@ -17,6 +17,8 @@ namespace Infrastructure.Services
         Task<bool> DeleteAsync(Guid id);
         Task<List<SaleDetail>> GetSaleDetailsByProductIdAsync(Guid productId);
         Task<byte[]> GenerateReceiptPdfAsync(Guid saleId);
+        /// <summary>Thermal-style long narrow receipt (Description | Price, Total, Cash, Change, Thank you).</summary>
+        Task<byte[]> GenerateThermalReceiptPdfAsync(Guid saleId);
         Task<List<TopProductDto>> GetTopSellingProductsByDateAsync(DateTime start, DateTime end);
         Task<int> GetTotalInvoicesAsync();
         Task<List<TopCustomerDto>> GetTopCustomersByDateAsync(DateTime start, DateTime end);

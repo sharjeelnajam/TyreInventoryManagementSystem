@@ -121,7 +121,7 @@
             return;
 
         // Call your API endpoint to generate PDF and get it as byte[]
-        var pdfBytes = await SaleService.GenerateReceiptPdfAsync(saleId);
+        var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(saleId);
 
         // Convert to Base64 and trigger JS download
         string base64 = Convert.ToBase64String(pdfBytes);

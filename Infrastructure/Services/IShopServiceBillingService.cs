@@ -11,10 +11,10 @@ namespace Infrastructure.Services
         Task<ShopServiceBill?> GetBillByIdAsync(Guid billId);
         Task UpdateBillCustomerAsync(Guid billId, Guid? customerId, string? customerName);
         Task UpdateBillDiscountAsync(Guid billId, decimal discount);
-        Task<ShopServiceBillItem> AddItemAsync(Guid billId, Guid? serviceId, string serviceName, int quantity, decimal unitPrice, string? remarks = null);
+        Task<ShopServiceBillItem> AddItemAsync(Guid billId, Guid? serviceId, Guid? productId, string serviceName, int quantity, decimal unitPrice, string? remarks = null);
         Task UpdateItemAsync(Guid itemId, int quantity, decimal unitPrice);
         Task RemoveItemAsync(Guid itemId);
         Task SaveBillAsync(Guid billId);
-        Task CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, decimal? cashAmount = null, decimal? cardAmount = null);
+        Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, decimal? cashAmount = null, decimal? cardAmount = null);
     }
 }

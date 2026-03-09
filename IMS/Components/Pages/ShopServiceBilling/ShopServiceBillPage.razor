@@ -5,6 +5,7 @@
 @using Infrastructure.Services
 @using IMS.Components.Pages.Customer
 @inject IShopServiceBillingService BillingService
+@inject ISaleService SaleService
 @inject IListManagementService ListManagementService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
@@ -448,62 +449,90 @@
     <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5)" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Complete checkout (Paid)</h5>
-                    <button type="button" class="btn-close" @onclick="CloseCheckoutModal"></button>
-                </div>
-                <div class="modal-body">
-                    @{
-                        var checkoutSubtotal = Bill?.Items?.Sum(i => i.TotalPrice) ?? 0;
-                        var checkoutTotal = Math.Max(0, checkoutSubtotal - billDiscount);
-                    }
-                    <p class="mb-2">Total amount: <strong>£@checkoutTotal.ToString("N2")</strong></p>
-                    <div class="mb-3">
-                        <label class="form-label">Payment method</label>
-                        <select class="form-select" @bind="checkoutPaymentMethod" @bind:after="OnCheckoutPaymentMethodChanged">
-                            <option value="Cash">Cash</option>
-                            <option value="Card">Card</option>
-                            <option value="CardAndCash">Both Card &amp; Cash</option>
-                            <option value="BankTransfer">Bank Transfer</option>
-                        </select>
+                @if (checkoutSuccessSaleId.HasValue)
+                {
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title text-success"><i class="bi bi-check-circle-fill me-2"></i>Payment complete</h5>
+                        <button type="button" class="btn-close" @onclick="CloseCheckoutModal"></button>
                     </div>
-                    @if (checkoutPaymentMethod == "CardAndCash")
-                    {
-                        <div class="mb-3 d-flex flex-wrap gap-3 align-items-end">
-                            <div style="min-width: 140px;">
-                                <label class="form-label small">Card Amount (£)</label>
-                                <input type="number" class="form-control form-control-sm" step="0.01" min="0"
-                                       @bind="checkoutCardAmount" @bind:after="StateHasChanged" />
-                            </div>
-                            <div style="min-width: 140px;">
-                                <label class="form-label small">Cash Amount (£)</label>
-                                <input type="number" class="form-control form-control-sm" step="0.01" min="0"
-                                       @bind="checkoutCashAmount" @bind:after="StateHasChanged" />
-                            </div>
-                            <div class="small d-flex align-items-center">
-                                @{
-                                    var splitSum = checkoutCardAmount + checkoutCashAmount;
-                                    var splitValid = Math.Abs(splitSum - checkoutTotal) < 0.01m;
-                                }
-                                <span class="@(splitValid ? "text-success" : "text-danger")">
-                                    @(splitValid ? $"Card + Cash = £{splitSum:N2} ✓" : $"Remaining: £{checkoutTotal - splitSum:N2}")
-                                </span>
-                            </div>
+                    <div class="modal-body">
+                        <p class="mb-3">Bill has been closed and the sale is recorded. You can view or download the receipt.</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-outline-primary" @onclick="ViewReceipt" disabled="@receiptLoading">
+                                <i class="bi bi-eye me-1"></i> View Receipt
+                            </button>
+                            <button type="button" class="btn btn-outline-success" @onclick="DownloadReceipt" disabled="@receiptLoading">
+                                <i class="bi bi-download me-1"></i> Download Receipt
+                            </button>
+                            @if (receiptLoading)
+                            {
+                                <span class="align-self-center small text-muted"><span class="spinner-border spinner-border-sm"></span> Preparing…</span>
+                            }
                         </div>
-                    }
-                    <div class="mb-3">
-                        <label class="form-label">Notes (optional)</label>
-                        <textarea class="form-control" rows="2" @bind="checkoutNotes"></textarea>
                     </div>
-                    @if (!string.IsNullOrEmpty(checkoutError))
-                    {
-                        <div class="alert alert-danger py-2">@checkoutError</div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseCheckoutModal">Cancel</button>
-                    <button type="button" class="btn btn-success" disabled="@(!CanConfirmCheckout)" @onclick="ConfirmCheckout">Confirm &amp; close bill (Paid)</button>
-                </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-primary" @onclick="CloseCheckoutModal">Done</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="modal-header">
+                        <h5 class="modal-title">Complete checkout (Paid)</h5>
+                        <button type="button" class="btn-close" @onclick="CloseCheckoutModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        @{
+                            var checkoutSubtotal = Bill?.Items?.Sum(i => i.TotalPrice) ?? 0;
+                            var checkoutTotal = Math.Max(0, checkoutSubtotal - billDiscount);
+                        }
+                        <p class="mb-2">Total amount: <strong>£@checkoutTotal.ToString("N2")</strong></p>
+                        <div class="mb-3">
+                            <label class="form-label">Payment method</label>
+                            <select class="form-select" @bind="checkoutPaymentMethod" @bind:after="OnCheckoutPaymentMethodChanged">
+                                <option value="Cash">Cash</option>
+                                <option value="Card">Card</option>
+                                <option value="CardAndCash">Both Card &amp; Cash</option>
+                                <option value="BankTransfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                        @if (checkoutPaymentMethod == "CardAndCash")
+                        {
+                            <div class="mb-3 d-flex flex-wrap gap-3 align-items-end">
+                                <div style="min-width: 140px;">
+                                    <label class="form-label small">Card Amount (£)</label>
+                                    <input type="number" class="form-control form-control-sm" step="0.01" min="0"
+                                           @bind="checkoutCardAmount" @bind:after="StateHasChanged" />
+                                </div>
+                                <div style="min-width: 140px;">
+                                    <label class="form-label small">Cash Amount (£)</label>
+                                    <input type="number" class="form-control form-control-sm" step="0.01" min="0"
+                                           @bind="checkoutCashAmount" @bind:after="StateHasChanged" />
+                                </div>
+                                <div class="small d-flex align-items-center">
+                                    @{
+                                        var splitSum = checkoutCardAmount + checkoutCashAmount;
+                                        var splitValid = Math.Abs(splitSum - checkoutTotal) < 0.01m;
+                                    }
+                                    <span class="@(splitValid ? "text-success" : "text-danger")">
+                                        @(splitValid ? $"Card + Cash = £{splitSum:N2} ✓" : $"Remaining: £{checkoutTotal - splitSum:N2}")
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <label class="form-label">Notes (optional)</label>
+                            <textarea class="form-control" rows="2" @bind="checkoutNotes"></textarea>
+                        </div>
+                        @if (!string.IsNullOrEmpty(checkoutError))
+                        {
+                            <div class="alert alert-danger py-2">@checkoutError</div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseCheckoutModal">Cancel</button>
+                        <button type="button" class="btn btn-success" disabled="@(!CanConfirmCheckout)" @onclick="ConfirmCheckout">Confirm &amp; close bill (Paid)</button>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -530,6 +559,8 @@
     private string customItemComment = string.Empty;
     private decimal customItemPrice;
     private bool showCheckoutModal;
+    private Guid? checkoutSuccessSaleId;
+    private bool receiptLoading;
     private string checkoutPaymentMethod = "Cash";
     private decimal checkoutCardAmount;
     private decimal checkoutCashAmount;
@@ -741,7 +772,7 @@
             unitPrice = managed.Price;
         try
         {
-            await BillingService.AddItemAsync(BillId, null, product.ProductName ?? "Product", 1, unitPrice);
+            await BillingService.AddItemAsync(BillId, null, product.Id, product.ProductName ?? "Product", 1, unitPrice);
             await LoadBill();
         }
         catch (Exception ex)
@@ -759,7 +790,7 @@
         var price = addUnitPrice > 0 ? addUnitPrice : (service?.DefaultPrice ?? 0);
         try
         {
-            await BillingService.AddItemAsync(BillId, selectedServiceId.Value, name, 1, price);
+            await BillingService.AddItemAsync(BillId, selectedServiceId.Value, null, name, 1, price);
             await LoadBill();
             addUnitPrice = service?.DefaultPrice ?? 0;
         }
@@ -800,7 +831,7 @@
         StateHasChanged();
         try
         {
-            await BillingService.AddItemAsync(BillId, null, comment, 1, price);
+            await BillingService.AddItemAsync(BillId, null, null, comment, 1, price);
             await LoadBill();
         }
         catch (Exception ex)
@@ -920,6 +951,7 @@
     private void CloseCheckoutModal()
     {
         showCheckoutModal = false;
+        checkoutSuccessSaleId = null;
         checkoutError = null;
     }
 
@@ -932,13 +964,52 @@
             var paymentMethod = checkoutPaymentMethod == "CardAndCash" ? "Card & Cash" : checkoutPaymentMethod;
             decimal? cashAmt = checkoutPaymentMethod == "CardAndCash" ? checkoutCashAmount : null;
             decimal? cardAmt = checkoutPaymentMethod == "CardAndCash" ? checkoutCardAmount : null;
-            await BillingService.CheckoutAsync(BillId, paymentMethod, "Paid", checkoutNotes, cashAmt, cardAmt);
-            CloseCheckoutModal();
+            var saleId = await BillingService.CheckoutAsync(BillId, paymentMethod, "Paid", checkoutNotes, cashAmt, cardAmt);
+            checkoutSuccessSaleId = saleId;
             await LoadBill();
+            StateHasChanged();
         }
         catch (Exception ex)
         {
             checkoutError = ex.Message;
+        }
+    }
+
+    private async Task ViewReceipt()
+    {
+        if (!checkoutSuccessSaleId.HasValue) return;
+        receiptLoading = true;
+        StateHasChanged();
+        try
+        {
+            var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(checkoutSuccessSaleId.Value);
+            var base64 = Convert.ToBase64String(pdfBytes);
+            await JS.InvokeVoidAsync("openPdfInNewTab", base64);
+        }
+        finally
+        {
+            receiptLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadReceipt()
+    {
+        if (!checkoutSuccessSaleId.HasValue) return;
+        receiptLoading = true;
+        StateHasChanged();
+        try
+        {
+            var sale = await SaleService.GetByIdAsync(checkoutSuccessSaleId.Value);
+            if (sale == null) return;
+            var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(checkoutSuccessSaleId.Value);
+            var base64 = Convert.ToBase64String(pdfBytes);
+            await JS.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber}.pdf", base64);
+        }
+        finally
+        {
+            receiptLoading = false;
+            StateHasChanged();
         }
     }
 }

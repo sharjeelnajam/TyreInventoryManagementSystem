@@ -80,7 +80,7 @@ namespace Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<ShopServiceBillItem> AddItemAsync(Guid billId, Guid? serviceId, string serviceName, int quantity, decimal unitPrice, string? remarks = null)
+        public async Task<ShopServiceBillItem> AddItemAsync(Guid billId, Guid? serviceId, Guid? productId, string serviceName, int quantity, decimal unitPrice, string? remarks = null)
         {
             var bill = await _context.ShopServiceBills.FindAsync(billId);
             if (bill == null || bill.Status != ShopServiceBillStatus.Open)
@@ -92,6 +92,7 @@ namespace Infrastructure.Services
                 Id = Guid.NewGuid(),
                 ShopServiceBillId = billId,
                 ServiceId = serviceId,
+                ProductId = productId,
                 ServiceName = serviceName,
                 Quantity = quantity,
                 UnitPrice = unitPrice,
@@ -138,7 +139,7 @@ namespace Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, decimal? cashAmount = null, decimal? cardAmount = null)
+        public async Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, decimal? cashAmount = null, decimal? cardAmount = null)
         {
             var bill = await _context.ShopServiceBills
                 .Include(b => b.Items)
@@ -164,7 +165,27 @@ namespace Infrastructure.Services
             bill.Notes = notes;
             await _context.SaveChangesAsync();
 
-            // Create a Sale record so the closed bill appears in the Sales list
+            // Build SaleDetails from bill items that are products (for stock update)
+            var saleDetails = new List<SaleDetail>();
+            foreach (var item in bill.Items)
+            {
+                if (item.ProductId.HasValue && item.ProductId != Guid.Empty)
+                {
+                    var product = await _context.Products.FindAsync(item.ProductId.Value);
+                    var costPrice = product?.AverageCostPrice ?? 0;
+                    saleDetails.Add(new SaleDetail
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = item.ProductId.Value,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.UnitPrice,
+                        TotalPrice = item.TotalPrice,
+                        CostPrice = costPrice,
+                        ProfitAmount = Math.Round((item.UnitPrice - costPrice) * item.Quantity, 2)
+                    });
+                }
+            }
+
             var sale = new Sale
             {
                 SaleNumber = bill.BillNumber,
@@ -182,9 +203,10 @@ namespace Infrastructure.Services
                 IsApproved = true,
                 Notes = notes,
                 ShopServiceBillId = bill.Id,
-                SaleDetails = new List<SaleDetail>()
+                SaleDetails = saleDetails
             };
             await _saleService.AddAsync(sale);
+            return sale.Id;
         }
     }
 }
