@@ -62,7 +62,7 @@ namespace Infrastructure.Services
                 var start = fromDate.Date;
                 var end = toDate.Date.AddDays(1); // exclusive: whole day(s)
 
-                // POS sales (from SaleDetail - product sales)
+                // POS sales (from SaleDetail - product sales); NetPrice = proportional share of sale net after discount
                 var posSales = await (
                     from sd in _context.SaleDetail
                     join s in _context.Sale on sd.SaleId equals s.Id
@@ -81,11 +81,12 @@ namespace Infrastructure.Services
                         ProductName = sd.Product.ProductName,
                         Quantity = sd.Quantity,
                         TotalPrice = sd.TotalPrice,
+                        NetPrice = s.TotalAmount != 0 ? sd.TotalPrice * s.NetAmount / s.TotalAmount : sd.TotalPrice,
                         SaleDate = s.SaleDate
                     }
                 ).ToListAsync();
 
-                // Shop Service sales (from ShopServiceBillItem - service bills)
+                // Shop Service sales (from ShopServiceBillItem - service bills); NetPrice = proportional share of sale net after discount
                 var shopSales = await (
                     from s in _context.Sale
                     join bill in _context.ShopServiceBills on s.ShopServiceBillId equals bill.Id
@@ -102,6 +103,7 @@ namespace Infrastructure.Services
                         ProductName = item.ServiceName,
                         Quantity = item.Quantity,
                         TotalPrice = item.TotalPrice,
+                        NetPrice = s.TotalAmount != 0 ? item.TotalPrice * s.NetAmount / s.TotalAmount : item.TotalPrice,
                         SaleDate = s.SaleDate
                     }
                 ).ToListAsync();

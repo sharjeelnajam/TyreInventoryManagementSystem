@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using QuestPDF.Fluent;
+using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Shared.MultiTenancy;
 using System.Security.Claims;
@@ -668,7 +669,7 @@ namespace Infrastructure.Services
             return ms.ToArray();
         }
 
-        /// <summary>Thermal-style receipt: narrow, long format with Description | Price, Total, Cash, Thank you.</summary>
+        /// <summary>Full-page receipt with Date, line items, Discount, Net, Total, and payment info.</summary>
         public async Task<byte[]> GenerateThermalReceiptPdfAsync(Guid saleId)
         {
             var sale = await _context.Sale
@@ -695,12 +696,11 @@ namespace Infrastructure.Services
                     .Select(d => (d.Product?.ProductName ?? "N/A", d.Quantity, d.UnitPrice, d.TotalPrice)).ToList();
             }
 
-            const float receiptWidthPt = 227f;   // 80mm thermal width
-            const float receiptHeightPt = 1400f; // long receipt
             const string separator = "********************************";
             const string shopName = "H&H";
             const string address = "15 Davidson Street, G40 4NS Glasgow";
             const string tel = "Tel: 0141 554 0516";
+            var receiptDate = sale.SaleDate.ToString("dd MMM yyyy HH:mm");
 
             QuestPDF.Settings.License = LicenseType.Community;
 
@@ -708,76 +708,89 @@ namespace Infrastructure.Services
             {
                 container.Page(page =>
                 {
-                    page.Size(receiptWidthPt, receiptHeightPt);
-                    page.Margin(12);
+                    page.Size(PageSizes.A4);
+                    page.Margin(24);
 
+                    const float receiptBodyWidth = 320f;
+                    const float labelWidth = 58f;
+
+                    // Main content: full-width header, then centered receipt body
                     page.Content().Column(col =>
                     {
-                        // 1. Label (shop name) on top
-                        col.Item().AlignCenter().Text(shopName).Bold().FontSize(14);
-                        col.Item().PaddingTop(8).AlignCenter().Text(separator).FontSize(8);
-                        col.Item().AlignCenter().PaddingTop(4).Text("CASH RECEIPT").Bold().FontSize(12);
-                        col.Item().AlignCenter().PaddingBottom(4).Text(separator).FontSize(8);
-                        // 2. Reference number after CASH RECEIPT
-                        col.Item().PaddingTop(4).Row(r =>
-                        {
-                            r.RelativeItem().Text("Ref").FontSize(8);
-                            r.RelativeItem().AlignRight().Text($"#{sale.SaleNumber ?? sale.Id.ToString("N")?.Substring(0, 8)}").FontSize(8);
-                        });
-                        col.Item().PaddingTop(4).AlignCenter().Text(separator).FontSize(8);
-
-                        // Two columns: Description | Price
-                        col.Item().PaddingTop(6).Row(r =>
-                        {
-                            r.RelativeItem().Text("Description").Bold().FontSize(9);
-                            r.RelativeItem().AlignRight().Text("Price").Bold().FontSize(9);
-                        });
-                        foreach (var item in lineItems)
-                        {
-                            var desc = item.desc.Length > 28 ? item.desc.Substring(0, 25) + "..." : item.desc;
-                            col.Item().Row(r =>
-                            {
-                                r.RelativeItem().Text($"{desc} x{item.qty}").FontSize(9);
-                                r.RelativeItem().AlignRight().Text($"£{item.total:0.00}").FontSize(9);
-                            });
-                        }
-
-                        col.Item().PaddingTop(8).AlignCenter().Text(separator).FontSize(8);
-                        // Total, Cash, Card, Change
-                        col.Item().PaddingTop(4).Row(r =>
-                        {
-                            r.RelativeItem().Text("Total").Bold().FontSize(10);
-                            r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").Bold().FontSize(10);
-                        });
+                        // Date at top right corner
                         col.Item().Row(r =>
                         {
-                            r.RelativeItem().Text("Cash").FontSize(9);
-                            r.RelativeItem().AlignRight().Text($"£{sale.CashAmount:0.00}").FontSize(9);
+                            r.RelativeItem();
+                            r.ConstantItem(140).AlignRight().Text(receiptDate).FontSize(9);
                         });
-                        if (sale.CardAmount > 0)
+                        col.Item().PaddingTop(2);
+
+                        // Shop name and title – centered
+                        col.Item().AlignCenter().Text(shopName).Bold().FontSize(14);
+                        col.Item().PaddingTop(4).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
+                        col.Item().PaddingTop(2).Row(r => r.RelativeItem().AlignCenter().Text("CASH RECEIPT").Bold().FontSize(12));
+                        col.Item().PaddingBottom(2).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
+
+                        // Centered receipt body (Ref, Description, items, totals)
+                        col.Item().Row(outer =>
                         {
-                            col.Item().Row(r =>
+                            outer.RelativeItem();
+                            outer.ConstantItem(receiptBodyWidth).Column(body =>
                             {
-                                r.RelativeItem().Text("Card").FontSize(9);
-                                r.RelativeItem().AlignRight().Text($"£{sale.CardAmount:0.00}").FontSize(9);
+                                body.Item().PaddingTop(2).Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Ref").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text($"#{sale.SaleNumber ?? sale.Id.ToString("N")?.Substring(0, 8)}").FontSize(8);
+                                });
+                                body.Item().PaddingTop(2).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
+                                body.Item().PaddingTop(4).Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Description").Bold().FontSize(9);
+                                    r.RelativeItem().AlignRight().Text("Price").Bold().FontSize(9);
+                                });
+                                foreach (var item in lineItems)
+                                {
+                                    var desc = item.desc.Length > 50 ? item.desc.Substring(0, 47) + "..." : item.desc;
+                                    body.Item().Row(r =>
+                                    {
+                                        r.RelativeItem().Text($"{desc} x{item.qty}").FontSize(9);
+                                        r.RelativeItem().AlignRight().Text($"£{item.total:0.00}").FontSize(9);
+                                    });
+                                }
+                                body.Item().PaddingTop(4).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
+                                body.Item().PaddingTop(2).Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Subtotal").FontSize(9);
+                                    r.RelativeItem().AlignRight().Text($"£{sale.TotalAmount:0.00}").FontSize(9);
+                                });
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Discount").FontSize(9);
+                                    var discountAmt = sale.Discount ?? 0;
+                                    r.RelativeItem().AlignRight().Text(discountAmt > 0 ? $"-£{discountAmt:0.00}" : $"£{discountAmt:0.00}").FontSize(9);
+                                });
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Net").FontSize(9);
+                                    r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").FontSize(9);
+                                });
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Total").Bold().FontSize(10);
+                                    r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").Bold().FontSize(10);
+                                });
+                                body.Item().PaddingTop(4).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
                             });
-                        }
-                        col.Item().PaddingTop(8).AlignCenter().Text(separator).FontSize(8);
-
-                        // Payment method line
-                        col.Item().PaddingTop(4).Row(r =>
-                        {
-                            r.RelativeItem().Text("Payment").FontSize(8);
-                            r.RelativeItem().AlignRight().Text(sale.PaymentMethod ?? "N/A").FontSize(8);
+                            outer.RelativeItem();
                         });
-                        col.Item().PaddingTop(8).AlignCenter().Text(separator).FontSize(8);
+                    });
 
-                        // Thank you
-                        col.Item().PaddingTop(12).AlignCenter().Text("THANK YOU!").Bold().FontSize(14);
-
-                        // 3. Address at the end
-                        col.Item().PaddingTop(16).AlignCenter().Text($"Address: {address}").FontSize(8);
-                        col.Item().AlignCenter().Text(tel).FontSize(8);
+                    // Thank You and address at bottom of page (footer = always end of page)
+                    page.Footer().Column(f =>
+                    {
+                        f.Item().AlignCenter().Text("THANK YOU!").Bold().FontSize(14);
+                        f.Item().PaddingTop(6).AlignCenter().Text($"Address: {address}").FontSize(8);
+                        f.Item().AlignCenter().Text(tel).FontSize(8);
                     });
                 });
             });

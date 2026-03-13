@@ -147,17 +147,18 @@ namespace Infrastructure.Services
             if (bill == null || bill.Status != ShopServiceBillStatus.Open)
                 throw new InvalidOperationException("Bill not found or already closed.");
 
-            var totalAmount = Math.Max(0, bill.Items.Sum(i => i.TotalPrice) - bill.Discount);
+            var subtotal = bill.Items.Sum(i => i.TotalPrice);
+            var netAmount = Math.Max(0, subtotal - bill.Discount);
 
             // Validate split payment: Card + Cash must equal total when using "Card & Cash"
             if (string.Equals(paymentMethod, "Card & Cash", StringComparison.OrdinalIgnoreCase))
             {
                 var sum = (cashAmount ?? 0) + (cardAmount ?? 0);
-                if (Math.Abs(sum - totalAmount) > 0.01m)
-                    throw new InvalidOperationException($"Split payment invalid: Card (£{(cardAmount ?? 0):N2}) + Cash (£{(cashAmount ?? 0):N2}) = £{sum:N2} must equal Total £{totalAmount:N2}. Checkout not allowed.");
+                if (Math.Abs(sum - netAmount) > 0.01m)
+                    throw new InvalidOperationException($"Split payment invalid: Card (£{(cardAmount ?? 0):N2}) + Cash (£{(cashAmount ?? 0):N2}) = £{sum:N2} must equal Total £{netAmount:N2}. Checkout not allowed.");
             }
 
-            bill.TotalAmount = totalAmount;
+            bill.TotalAmount = netAmount;
             bill.ClosedAt = DateTime.UtcNow;
             bill.Status = ShopServiceBillStatus.Closed;
             bill.PaymentMethod = paymentMethod;
@@ -192,14 +193,14 @@ namespace Infrastructure.Services
                 SaleDate = bill.ClosedAt.Value,
                 CustomerId = bill.CustomerId,
                 CustomerName = bill.CustomerName,
-                TotalAmount = bill.TotalAmount,
-                Discount = bill.Discount,
+                TotalAmount = subtotal,
+                Discount = bill.Discount > 0 ? bill.Discount : null,
                 TaxAmount = 0,
-                NetAmount = bill.TotalAmount,
+                NetAmount = netAmount,
                 PaymentMethod = paymentMethod ?? "Cash",
                 PaymentStatus = paymentStatus ?? "Paid",
-                CashAmount = cashAmount ?? (paymentMethod == "Cash" ? totalAmount : 0),
-                CardAmount = cardAmount ?? (paymentMethod == "Card" ? totalAmount : 0),
+                CashAmount = cashAmount ?? (paymentMethod == "Cash" ? netAmount : 0),
+                CardAmount = cardAmount ?? (paymentMethod == "Card" ? netAmount : 0),
                 IsApproved = true,
                 Notes = notes,
                 ShopServiceBillId = bill.Id,

@@ -56,7 +56,7 @@ else
             </div>
         </div>
 
-        <!-- Totals -->
+        <!-- Totals: Total (subtotal), Net, Invoice Total -->
         <div class="row mt-2">
             <div class="col-md-4">
                 <label>Total</label>
@@ -67,6 +67,12 @@ else
                 <input class="form-control" value="@sale.NetAmount.ToString("N2")" readonly />
             </div>
             <div class="col-md-4">
+                <label>Invoice Total</label>
+                <input class="form-control fw-bold" value="@sale.NetAmount.ToString("N2")" readonly />
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-12">
                 <label>Notes</label>
                 <input class="form-control" value="@sale.Notes" readonly />
             </div>

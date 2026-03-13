@@ -100,6 +100,7 @@
                     <th>Product</th>
                     <th>Qty</th>
                     <th>Price</th>
+                    <th>Net Price (after discount)</th>
                     <th>Date</th>
                 </tr>
             </thead>
@@ -111,6 +112,7 @@
                         <td>@s.ProductName</td>
                         <td>@s.Quantity</td>
                         <td>@s.TotalPrice.ToString("N2")</td>
+                        <td>@s.NetPrice.ToString("N2")</td>
                         <td>@s.SaleDate.ToShortDateString()</td>
                     </tr>
                 }
@@ -166,7 +168,7 @@
     // int StockCount => Stock.Count; // commented out – Available Stock not shown
 
     decimal TotalPurchaseAmount => TodayPurchases.Sum(p => p.TotalPrice);
-    decimal TotalSaleAmount => TodaySales.Sum(s => s.TotalPrice);
+    decimal TotalSaleAmount => TodaySales.Sum(s => s.NetPrice);
 
     protected override async Task OnInitializedAsync()
     {
