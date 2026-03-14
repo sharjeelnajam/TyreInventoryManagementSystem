@@ -46,10 +46,13 @@
                                   @onclick="() => ViewPurchase(purchase)">
                                 <i class="bi bi-eye fs-5"></i>
                             </span>
-                            <span role="button" title="Delete" class="text-danger"
-                                  @onclick="() => DeletePurchase(purchase.Id)">
-                                <i class="bi bi-trash fs-5"></i>
-                            </span>
+                            @if (isSuperAdmin)
+                            {
+                                <span role="button" title="Delete" class="text-danger"
+                                      @onclick="() => DeletePurchase(purchase.Id)">
+                                    <i class="bi bi-trash fs-5"></i>
+                                </span>
+                            }
                         </td>
                     }
                 </tr>
@@ -76,13 +79,14 @@
     private bool showForm = false;
     private Guid? selectedPurchaseId;
     private bool isStaff = false;
+    private bool isSuperAdmin = false;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         isStaff = user.IsInRole("Staff");
-
+        isSuperAdmin = user.IsInRole("SuperAdmin");
         purchases = await PurchaseService.GetAllPurchasesAsync();
     }
 

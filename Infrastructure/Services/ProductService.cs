@@ -81,9 +81,13 @@ namespace Infrastructure.Services
         {
             try
             {
-                List<ProductDto> productList = [.. _context.Products
-                   .Where(p => p.TenantId == _tenantProvider.TenantId)
+                var tenantId = _tenantProvider.TenantId;
+                var query = _context.Products
                    .Include(p => p.PurchaseDetails)
+                   .AsQueryable();
+                if (tenantId != Guid.Empty)
+                    query = query.Where(p => p.TenantId == tenantId);
+                List<ProductDto> productList = [.. query
                    .Select(product => new ProductDto
                    {
                        Id = product.Id,
@@ -215,8 +219,11 @@ namespace Infrastructure.Services
 
                 //return await _context.Products.AsNoTracking().Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id && p.TenantId == _tenantProvider.TenantId);
 
-                var product = await _context.Products.AsNoTracking().Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id && p.TenantId == _tenantProvider.TenantId);
-               return await EntityToDto(product);
+                var tenantId = _tenantProvider.TenantId;
+                var product = tenantId != Guid.Empty
+                    ? await _context.Products.AsNoTracking().Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId)
+                    : await _context.Products.AsNoTracking().Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id);
+                return await EntityToDto(product);
             }
 
 

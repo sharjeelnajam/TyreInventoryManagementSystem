@@ -30,20 +30,16 @@ namespace Infrastructure.Services
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    var sales = await _context.Sale
-                        .Where(s => s.TenantId == _tenantProvider.TenantId)
-                   .Include(s => s.SaleDetails)
-                       .ThenInclude(sd => sd.Product)
-                   .ToListAsync();
-
-                    // Manually load and attach customers
-                    await HydrateSalesWithCustomers(sales);
-
-                    return sales ?? new List<Sale>();
-                }
-                else return new List<Sale>();
+                var tenantId = _tenantProvider.TenantId;
+                var query = _context.Sale
+                    .Include(s => s.SaleDetails)
+                    .ThenInclude(sd => sd.Product)
+                    .AsQueryable();
+                if (tenantId != Guid.Empty)
+                    query = query.Where(s => s.TenantId == tenantId);
+                var sales = await query.ToListAsync();
+                await HydrateSalesWithCustomers(sales);
+                return sales ?? new List<Sale>();
                
             }
             catch (Exception ex)
@@ -59,23 +55,17 @@ namespace Infrastructure.Services
 
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    var sale = await _context.Sale
-                           .Include(s => s.SaleDetails)
-                               .ThenInclude(sd => sd.Product)
-                           .AsNoTracking()
-                           .FirstOrDefaultAsync(s => s.Id == id);
-
-                    if (sale == null) return null;
-
-                    // Manually load and attach customer
-                    await HydrateSaleWithCustomer(sale);
-
-                    return sale;
-
-                }
-                else return new Sale();
+                var sale = await _context.Sale
+                    .Include(s => s.SaleDetails)
+                    .ThenInclude(sd => sd.Product)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == id);
+                if (sale == null) return null;
+                var tenantId = _tenantProvider.TenantId;
+                if (tenantId != Guid.Empty && sale.TenantId != tenantId)
+                    return null;
+                await HydrateSaleWithCustomer(sale);
+                return sale;
                 
             }
             catch (Exception ex)

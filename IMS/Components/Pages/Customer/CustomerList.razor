@@ -82,14 +82,13 @@
                         @onclick="() => ViewCustomer(c.Id)">
                             <i class="bi bi-eye fs-5"></i>
                         </span>
-                        @if (!isStaff)
+                        @if (isSuperAdmin)
                         {
                             <!-- Edit -->
                             <span role="button" title="Edit" class="text-warning me-2"
                                   @onclick="() => OpenModal(c)">
                                 <i class="bi bi-pencil-square fs-5"></i>
                             </span>
-
                             <!-- Delete -->
                             <span role="button" title="Delete" class="text-danger"
                                   @onclick="() => DeleteCustomer(c.Id)">
@@ -130,12 +129,14 @@
     private Dictionary<Guid, string> customerTypesLookup = new();
     private List<ListManagement> listManagementsList = new List<ListManagement>();
     private bool isStaff = false;
+    private bool isSuperAdmin = false;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         isStaff = user.IsInRole("Staff");
+        isSuperAdmin = user.IsInRole("SuperAdmin");
 
         await LoadCustomers();
      

@@ -18,7 +18,7 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="fw-bold"><i class="bi bi-box-seam me-2"></i> Product Management</h3>
-        @if (!isSuperAdmin)
+        @if (!isStaff && !isSupplier)
         {
             <button class="btn btn-primary" @onclick="AddProduct">
                 <i class="bi bi-plus-circle me-1"></i> Add
@@ -108,20 +108,19 @@
                                    title="View"
                                    @onclick="() => ViewProduct(item.Id)"></i>
 
-                                @if (!isSuperAdmin && !isStaff && !isSupplier)
+                                @if (isSuperAdmin)
                                 {
                                     <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
                                        title="Edit"
                                        @onclick="() => EditProduct(item.Id)"></i>
-
-                                    <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                    <i class="bi bi-trash text-danger fs-5 me-3 cursor-pointer"
                                        title="Delete"
                                        @onclick="() => DeleteProduct(item.Id)"></i>
                                 }
-                                else if (isSuperAdmin)
+                                @if (isSuperAdmin)
                                 {
-                                    <button class="btn btn-sm btn-success" @onclick="() => OpenPricePopup(item)">
-                                        Manage Selling Price
+                                    <button class="btn btn-success btn-sm text-nowrap ms-2" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;" title="Manage Selling Price" @onclick="() => OpenPricePopup(item)">
+                                        Manage Price
                                     </button>
                                 }
                             </td>
@@ -238,21 +237,12 @@
         isStaff = user.IsInRole("Staff");
         isSupplier = user.IsInRole("Supplier");
 
-        if (isSuperAdmin)
-        {
-            products = await ProductService.GetAllBranchesProducts();
-            filteredProducts = products;
-        }
-        else
-        {
-            products = await ProductService.GetAllAsync();
-            filteredProducts = products;
-
-           units = await ListManagementService.GetByTypeAsync(ListType.Tread);
-           Threads = await ListManagementService.GetByTypeAsync(ListType.Size);
-            unitsLookup = units.ToDictionary(c => c.Id, c => c.Name);
-            ThreadsLookup = Threads.ToDictionary(c => c.Id, c => c.Name);
-        }
+        products = await ProductService.GetAllAsync();
+        filteredProducts = products;
+        units = await ListManagementService.GetByTypeAsync(ListType.Tread);
+        Threads = await ListManagementService.GetByTypeAsync(ListType.Size);
+        unitsLookup = units?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<Guid, string>();
+        ThreadsLookup = Threads?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<Guid, string>();
        
     }
 

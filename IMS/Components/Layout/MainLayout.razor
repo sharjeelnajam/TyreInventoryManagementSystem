@@ -1,4 +1,9 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@using Shared.MultiTenancy
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Navigation
+@inject ISuperAdminBranchService SuperAdminBranchService
+@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="page">
     <div class="sidebar">
@@ -8,26 +13,16 @@
     <main>
         <AuthorizeView>
             <Authorized>
-                 <div class="top-row px-4">
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Manage">
-                        <span class="bi bi-person-fill-nav-menu me-0" aria-hidden="true"></span>   @context.User.Identity?.Name
-                    </NavLink>
+                 <div class="top-row px-4 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <SuperAdminBranchDropdown />
                 </div>
-                @*                 <div class="nav-item px-3">
-                    <form action="Account/Logout" method="post">
-                        <AntiforgeryToken />
-                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                        <button type="submit" class="nav-link">
-                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
-                        </button>
-                    </form>
-                </div> *@
-
-
-                <div class="nav-item px-3">
-                    <a class="nav-link" href="/Account/Logout">
-                        <span class="bi bi-arrow-bar-left-nav-menu"></span> Logout
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <NavLink class="nav-link py-0" href="Account/Manage">
+                        <span class="bi bi-person-fill-nav-menu me-1" aria-hidden="true"></span>@context.User.Identity?.Name
+                    </NavLink>
+                    <a class="nav-link py-0" href="/Account/Logout">
+                        <span class="bi bi-arrow-bar-left-nav-menu me-1"></span>Logout
                     </a>
                 </div>
                 </div>
@@ -45,4 +40,34 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.IsInRole("SuperAdmin"))
+        {
+            var branchId = GetBranchFromUri(Navigation.Uri);
+            SuperAdminBranchService.SelectedBranchId = branchId;
+        }
+    }
+
+    private static Guid? GetBranchFromUri(string uri)
+    {
+        try
+        {
+            var query = new Uri(uri).Query;
+            if (string.IsNullOrEmpty(query)) return null;
+            var idx = query.IndexOf("branch=", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return null;
+            var start = idx + 7;
+            var end = query.IndexOf('&', start);
+            var val = end < 0 ? query[start..] : query[start..end];
+            if (!string.IsNullOrWhiteSpace(val) && Guid.TryParse(val.Trim(), out var id))
+                return id;
+        }
+        catch { }
+        return null;
+    }
+}
 

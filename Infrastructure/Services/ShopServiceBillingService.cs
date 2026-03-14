@@ -194,7 +194,7 @@ namespace Infrastructure.Services
                 CustomerId = bill.CustomerId,
                 CustomerName = bill.CustomerName,
                 TotalAmount = subtotal,
-                Discount = bill.Discount > 0 ? bill.Discount : null,
+                Discount = bill.Discount,
                 TaxAmount = 0,
                 NetAmount = netAmount,
                 PaymentMethod = paymentMethod ?? "Cash",

@@ -1,9 +1,11 @@
 @page "/sales"
 @using Domain
 @using Infrastructure.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject ISaleService SaleService
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 @rendermode InteractiveServer
 <PageTitle>Sales</PageTitle>
 
@@ -50,11 +52,18 @@
                         <i class="bi bi-eye text-primary fs-5 ms-2 cursor-pointer"
                            title="View Invoice"
                            @onclick="() => GoToViewSale(sale.Id)"></i>
-
-                        @*     <span role="button" title="Delete" class="text-danger"
-                              @onclick="() => DeleteSale(sale.Id)">
-                            <i class="bi bi-trash fs-5"></i>
-                        </span> *@
+                        @if (canEditInvoices)
+                        {
+                            <i class="bi bi-pencil-square text-primary fs-5 ms-2 cursor-pointer"
+                               title="Edit Invoice"
+                               @onclick="() => GoToEditSale(sale.Id)"></i>
+                        }
+                        @if (canEditInvoices)
+                        {
+                            <i class="bi bi-trash text-danger fs-5 ms-2 cursor-pointer"
+                               title="Delete Invoice"
+                               @onclick="() => DeleteSale(sale.Id)"></i>
+                        }
                     </td>
                 </tr>
             }
@@ -68,9 +77,12 @@
 
 @code {
     private List<Sale> sales = new();
+    private bool canEditInvoices;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        canEditInvoices = authState.User.IsInRole("SuperAdmin");
         sales = (await SaleService.GetAllAsync())
             .OrderByDescending(s => s.SaleDate)
             .ToList();
@@ -138,4 +150,8 @@
         Nav.NavigateTo($"/sales/view/{id}");
     }
 
+    private void GoToEditSale(Guid id)
+    {
+        Nav.NavigateTo($"/sales/edit/{id}");
+    }
 }

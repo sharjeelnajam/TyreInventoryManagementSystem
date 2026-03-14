@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Microsoft.EntityFrameworkCore;
 using Shared.MultiTenancy;
 using System;
@@ -24,39 +24,31 @@ namespace Infrastructure.Services
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-
-                    return await _context.Expenses.Where(e => e.TenantId == _tenantProvider.TenantId).OrderByDescending(e => e.Date).ToListAsync();
-                    
-                }
-                else return new List<Expense>();
+                var tenantId = _tenantProvider.TenantId;
+                var query = _context.Expenses.AsQueryable();
+                if (tenantId != Guid.Empty)
+                    query = query.Where(e => e.TenantId == tenantId);
+                return await query.OrderByDescending(e => e.Date).ToListAsync();
             }
             catch (Exception)
             {
-
                 throw;
             }
-            
         }
 
         public async Task<Expense> GetByIdAsync(Guid id)
         {
             try
             {
-                if(_tenantProvider.TenantId != Guid.Empty)
-                {
-                    return await _context.Expenses.FirstOrDefaultAsync(e => e.Id == id && e.TenantId == _tenantProvider.TenantId);
-
-                }
-                return new Expense();
+                var tenantId = _tenantProvider.TenantId;
+                if (tenantId != Guid.Empty)
+                    return await _context.Expenses.FirstOrDefaultAsync(e => e.Id == id && e.TenantId == tenantId) ?? new Expense();
+                return await _context.Expenses.FirstOrDefaultAsync(e => e.Id == id) ?? new Expense();
             }
             catch (Exception)
             {
-
                 throw;
             }
-           
         }
 
         public async Task AddAsync(Expense expense)

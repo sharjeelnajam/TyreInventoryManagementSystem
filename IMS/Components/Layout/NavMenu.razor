@@ -148,9 +148,108 @@
             </Authorized>
         </AuthorizeView>
 
-        @* --- SUPER ADMIN --- *@
+        @* --- SUPER ADMIN: all modules (same as Admin) + Supervisor --- *@
         <AuthorizeView Roles="SuperAdmin">
             <Authorized>
+                <div class="nav-section-header" @onclick="ToggleDashboard">
+                    <span class="header-text">Dashboard</span>
+                    <i class="@GetChevronClass(isDashboardOpen)"></i>
+                </div>
+                @if (isDashboardOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/dashboard" Match="NavLinkMatch.All"><i class="fa fa-dashboard me-3"></i> Dashboard</NavLink>
+                        <NavLink class="nav-link" href="/analytics"><i class="fa fa-chart-line me-3"></i> Analytics</NavLink>
+                        <NavLink class="nav-link" href="/daily-report"><i class="fas fa-file-invoice-dollar me-3"></i> Daily Report</NavLink>
+                    </div>
+                }
+                <div class="nav-section-header" @onclick="ToggleSales">
+                    <span class="header-text">Sales</span>
+                    <i class="@GetChevronClass(isSalesOpen)"></i>
+                </div>
+                @if (isSalesOpen)
+                {
+                    <div class="nav-sub-items">
+                        <a class="nav-link" href="/pos" target="_blank"><span class="bi bi-cart-fill me-2"></span> POS</a>
+                        <NavLink class="nav-link" href="/shop-billing"><span class="bi bi-receipt me-2"></span> Shop Billing</NavLink>
+                        <NavLink class="nav-link" href="/sales"><span class="bi bi-file-earmark-text me-2"></span> Invoices</NavLink>
+                    </div>
+                }
+                <div class="nav-section-header" @onclick="ToggleProduct">
+                    <span class="header-text">Product</span>
+                    <i class="@GetChevronClass(isProductOpen)"></i>
+                </div>
+                @if (isProductOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/products"><span class="bi bi-box-fill me-2"></span> Products</NavLink>
+                        <NavLink class="nav-link" href="/stock-history"><span class="bi bi-cart-fill me-2"></span> Stock</NavLink>
+                    </div>
+                }
+                <div class="nav-section-header" @onclick="ToggleAccount">
+                    <span class="header-text">Account</span>
+                    <i class="@GetChevronClass(isAccountOpen)"></i>
+                </div>
+                @if (isAccountOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/purchases"><span class="bi bi-cart-fill me-2"></span> Purchases</NavLink>
+                        <NavLink class="nav-link" href="/expenses"><i class="fas fa-file-invoice-dollar me-2"></i> Expenses</NavLink>
+                    </div>
+                }
+                <div class="nav-section-header" @onclick="ToggleStaff">
+                    <span class="header-text">Staff</span>
+                    <i class="@GetChevronClass(isStaffOpen)"></i>
+                </div>
+                @if (isStaffOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/staff"><span class="bi bi-person me-2"></span> Staff</NavLink>
+                    </div>
+                }
+                <div class="nav-section-header" @onclick="ToggleSuppliers">
+                    <span class="header-text">Suppliers</span>
+                    <i class="@GetChevronClass(isSuppliersOpen)"></i>
+                </div>
+                @if (isSuppliersOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/suppliers"><span class="bi bi-truck me-2"></span> Suppliers</NavLink>
+                    </div>
+                }
+                <div class="nav-section-header" @onclick="TogglePartners">
+                    <span class="header-text">Customers</span>
+                    <i class="@GetChevronClass(isPartnersOpen)"></i>
+                </div>
+                @if (isPartnersOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/customers"><span class="bi bi-person me-2"></span> Customers</NavLink>
+                    </div>
+                }
+                <div class="nav-section-header" @onclick="ToggleProfile">
+                    <span class="header-text">Profile</span>
+                    <i class="@GetChevronClass(isProfileOpen)"></i>
+                </div>
+                @if (isProfileOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/import"><span class="bi bi-file-earmark-excel me-2"></span> Import</NavLink>
+                        <NavLink class="nav-link" href="/profile"><span class="bi bi-person-circle me-2"></span> Profile</NavLink>
+                        <NavLink class="nav-link" href="/listmanagement"><span class="bi bi-gear-fill me-2"></span> Settings</NavLink>
+                    </div>
+                }
+                @* Branches – Super Admin only: grid of all branch records *@
+                <div class="nav-section-header" @onclick="ToggleBranches">
+                    <span class="header-text">Branches</span>
+                    <i class="@GetChevronClass(isBranchesOpen)"></i>
+                </div>
+                @if (isBranchesOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/branches"><span class="bi bi-building me-2"></span> All Branches</NavLink>
+                    </div>
+                }
                 <div class="nav-section-header" @onclick="ToggleSupervisor">
                     <span class="header-text">Supervisor</span>
                     <i class="@GetChevronClass(isSupervisorOpen)"></i>
@@ -158,7 +257,6 @@
                 @if (isSupervisorOpen)
                 {
                     <div class="nav-sub-items">
-                        <NavLink class="nav-link" href="/branches">Branches</NavLink>
                         <NavLink class="nav-link" href="/adminPanal">Admin Panel</NavLink>
                     </div>
                 }
@@ -226,6 +324,7 @@
     private bool isSuppliersOpen;
     private bool isPartnersOpen;
     private bool isProfileOpen;
+    private bool isBranchesOpen;
     private bool isSupervisorOpen;
 
     protected override void OnInitialized()
@@ -246,6 +345,7 @@
     private void ToggleSuppliers() => isSuppliersOpen = !isSuppliersOpen;
     private void TogglePartners() => isPartnersOpen = !isPartnersOpen;
     private void ToggleProfile() => isProfileOpen = !isProfileOpen;
+    private void ToggleBranches() => isBranchesOpen = !isBranchesOpen;
     private void ToggleSupervisor() => isSupervisorOpen = !isSupervisorOpen;
 
     private string GetChevronClass(bool isOpen) =>

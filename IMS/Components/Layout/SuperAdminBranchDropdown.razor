@@ -1,0 +1,89 @@
+@using Infrastructure.Services
+@using Shared.MultiTenancy
+@using Domain
+@using Microsoft.Extensions.DependencyInjection
+@rendermode InteractiveServer
+<AuthorizeView Roles="SuperAdmin">
+    <Authorized>
+        <div class="d-flex align-items-center gap-2">
+            <label class="mb-0 small fw-semibold text-nowrap">Branch:</label>
+            <select class="form-select form-select-sm"
+                    @bind="_selectedId"
+                    @bind:after="OnBranchChanged"
+                    style="min-width: 160px;">
+                <option value="">All branches</option>
+                @foreach (var t in _tenants)
+                {
+                    <option value="@t.Id">@t.Name</option>
+                }
+            </select>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
+    [Inject] private ISuperAdminBranchService SuperAdminBranchService { get; set; } = null!;
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    private List<Tenant> _tenants = new();
+    private string _selectedId = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Set branch from URL first (before any await) so page data loads use the correct tenant
+        var fromQuery = GetBranchFromUri(Navigation.Uri);
+        if (fromQuery.HasValue)
+        {
+            SuperAdminBranchService.SelectedBranchId = fromQuery;
+            _selectedId = fromQuery.Value.ToString();
+        }
+        else
+        {
+            SuperAdminBranchService.SelectedBranchId = null;
+            _selectedId = "";
+        }
+
+        await using var scope = ServiceProvider.CreateAsyncScope();
+        var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
+        _tenants = await tenantService.GetTenantsAsync();
+    }
+
+    private static Guid? GetBranchFromUri(string uri)
+    {
+        try
+        {
+            var query = new Uri(uri).Query;
+            if (string.IsNullOrEmpty(query)) return null;
+            var idx = query.IndexOf("branch=", StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return null;
+            var start = idx + 7;
+            var end = query.IndexOf('&', start);
+            var val = end < 0 ? query[start..] : query[start..end];
+            if (!string.IsNullOrWhiteSpace(val) && Guid.TryParse(val.Trim(), out var id))
+                return id;
+        }
+        catch { }
+        return null;
+    }
+
+    private async Task OnBranchChanged()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedId))
+        {
+            SuperAdminBranchService.SelectedBranchId = null;
+        }
+        else
+        {
+            SuperAdminBranchService.SelectedBranchId = Guid.Parse(_selectedId);
+        }
+        var uri = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var path = string.IsNullOrEmpty(uri) ? "/" : "/" + uri;
+        var basePath = path.Contains("?") ? path.Substring(0, path.IndexOf('?')) : path;
+        var newUri = string.IsNullOrWhiteSpace(_selectedId)
+            ? basePath
+            : basePath + "?branch=" + _selectedId;
+        Navigation.NavigateTo(newUri, forceLoad: true);
+        await Task.CompletedTask;
+    }
+}

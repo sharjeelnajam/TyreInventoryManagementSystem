@@ -1,4 +1,4 @@
-﻿@page "/expenses"
+@page "/expenses"
 @using Domain
 @using Domain.Enums
 @using Infrastructure.Services
@@ -7,6 +7,7 @@
 @inject IJSRuntime jSRuntime
 @rendermode InteractiveServer
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Expenses</PageTitle>
 
@@ -55,11 +56,13 @@
                             <td>@exp.Amount.ToString("N0")</td>
                             <td>@exp.Description</td>
                             <td>
-                                <i class="bi bi-pencil-square text-primary fs-5 me-2 cursor-pointer"
-                                   title="Edit" @onclick="() => AddEditRef.ShowModal(exp)"></i>
-                                <i class="bi bi-trash text-danger fs-5 cursor-pointer"
-                                   title="Delete" @onclick="() => ConfirmDelete(exp.Id)"></i>
-
+                                @if (isSuperAdmin)
+                                {
+                                    <i class="bi bi-pencil-square text-primary fs-5 me-2 cursor-pointer"
+                                       title="Edit" @onclick="() => AddEditRef.ShowModal(exp)"></i>
+                                    <i class="bi bi-trash text-danger fs-5 cursor-pointer"
+                                       title="Delete" @onclick="() => ConfirmDelete(exp.Id)"></i>
+                                }
                                 @if (!string.IsNullOrEmpty(exp.UploadedFile))
                                 {
                                     <i class="bi bi-eye text-success fs-5 ms-2 cursor-pointer"
@@ -83,9 +86,12 @@
     private AddEditExpense? AddEditRef;
     private List<ListManagement>? categories;
     private Dictionary<Guid, string> categoryLookup = new();
+    private bool isSuperAdmin = false;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isSuperAdmin = authState.User.IsInRole("SuperAdmin");
         await ReloadExpenses();
     }
 

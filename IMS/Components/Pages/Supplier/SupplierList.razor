@@ -43,10 +43,7 @@
                         <th>Company</th>
                         <th>Payment Terms</th>
                         <th>Active</th>
-                        @if (!isStaff)
-                        {
-                            <th style="width:150px;">Actions</th>
-                        }
+                        <th style="width:150px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -69,17 +66,17 @@
                                     <span class="badge bg-secondary">No</span>
                                 }
                             </td>
-                            @if (!isStaff)
-                            {
-                                <td>
-                                    <i class="bi bi-eye text-info fs-5 me-3 cursor-pointer"
-                                       title="View" @onclick="() => ViewSupplier(item.Id)"></i>
+                            <td>
+                                <i class="bi bi-eye text-info fs-5 me-3 cursor-pointer"
+                                   title="View" @onclick="() => ViewSupplier(item.Id)"></i>
+                                @if (isSuperAdmin)
+                                {
                                     <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
                                        title="Edit" @onclick="() => EditSupplier(item.Id)"></i>
                                     <i class="bi bi-trash text-danger fs-5 cursor-pointer"
                                        title="Delete" @onclick="() => DeleteSupplier(item.Id)"></i>
-                                </td>
-                            }
+                                }
+                            </td>
                            
                         </tr>
                     }
@@ -103,13 +100,14 @@
     private string modalTitle = "Add Supplier";
     private Supplier supplier = new();
     private bool isStaff = false;
+    private bool isSuperAdmin = false;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         isStaff = user.IsInRole("Staff");
-
+        isSuperAdmin = user.IsInRole("SuperAdmin");
         await LoadSuppliers();
     }
 

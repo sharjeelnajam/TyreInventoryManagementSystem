@@ -26,26 +26,18 @@ namespace Infrastructure.Services
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    var query = _context.Customer.Where(c => c.TenantId == _tenantProvider.TenantId);
-
-                    if (!string.IsNullOrWhiteSpace(name))
-                        query = query.Where(s => s.Name.Contains(name));
-
-                    if (typeId.HasValue && typeId.Value != Guid.Empty)
-                        query = query.Where(c => c.ListManagementId == typeId.Value);
-
-                    var customers = await query.ToListAsync();
-                    return customers;
-                }
-                else return new List<Customer>();
-
-               
+                var tenantId = _tenantProvider.TenantId;
+                var query = _context.Customer.AsQueryable();
+                if (tenantId != Guid.Empty)
+                    query = query.Where(c => c.TenantId == tenantId);
+                if (!string.IsNullOrWhiteSpace(name))
+                    query = query.Where(s => s.Name.Contains(name));
+                if (typeId.HasValue && typeId.Value != Guid.Empty)
+                    query = query.Where(c => c.ListManagementId == typeId.Value);
+                return await query.ToListAsync();
             }
             catch (Exception ex)
             {
-                // Log exception (replace with your logging framework)
                 Console.WriteLine($"Error in GetCustomersAsync: {ex.Message}");
                 return new List<Customer>();
             }
@@ -55,11 +47,10 @@ namespace Infrastructure.Services
         {
             try
             {
-                if (_tenantProvider.TenantId != null)
-                {
-                    return await _context.Customer.FirstOrDefaultAsync(c => c.Id == id && _tenantProvider.TenantId == c.TenantId);
-                }
-                else return new Customer();
+                var tenantId = _tenantProvider.TenantId;
+                if (tenantId != Guid.Empty)
+                    return await _context.Customer.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
+                return await _context.Customer.FirstOrDefaultAsync(c => c.Id == id);
             }
             catch (Exception ex)
             {

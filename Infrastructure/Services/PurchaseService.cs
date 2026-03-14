@@ -28,45 +28,37 @@ namespace Infrastructure.Services
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    return await _context.Purchase
-                         .Where(p => p.TenantId == _tenantProvider.TenantId
-                                     && p.SupplierId != null)   // <<< filter added
-                         .Include(p => p.Supplier)
-                         .Include(p => p.PurchaseDetails)
-                             .ThenInclude(d => d.Product)
-                         .ToListAsync();
-                }
-
-                else return new List<Purchase>();
-                
+                var tenantId = _tenantProvider.TenantId;
+                var query = _context.Purchase
+                    .Where(p => p.SupplierId != null)
+                    .Include(p => p.Supplier)
+                    .Include(p => p.PurchaseDetails)
+                        .ThenInclude(d => d.Product)
+                    .AsQueryable();
+                if (tenantId != Guid.Empty)
+                    query = query.Where(p => p.TenantId == tenantId);
+                return await query.ToListAsync();
             }
             catch (Exception)
             {
-
                 throw;
             }
-         
         }
 
         public async Task<Purchase> GetPurchaseByIdAsync(Guid id)
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    var purchase = await _context.Purchase
-                        .Where(p => p.TenantId == _tenantProvider.TenantId)
-                        .Include(p => p.Supplier)
-                        .Include(p => p.PurchaseDetails)
-                            .ThenInclude(d => d.Product)
-                        .FirstOrDefaultAsync(p => p.Id == id);
-
-                    return purchase ?? new Purchase();
-                }
-
-                return new Purchase();
+                var tenantId = _tenantProvider.TenantId;
+                var query = _context.Purchase
+                    .Include(p => p.Supplier)
+                    .Include(p => p.PurchaseDetails)
+                        .ThenInclude(d => d.Product)
+                    .AsQueryable();
+                if (tenantId != Guid.Empty)
+                    query = query.Where(p => p.TenantId == tenantId);
+                var purchase = await query.FirstOrDefaultAsync(p => p.Id == id);
+                return purchase ?? new Purchase();
             }
             catch (Exception)
             {
@@ -76,11 +68,15 @@ namespace Infrastructure.Services
 
         public async Task<List<Purchase>> GetPurchasesBySupplierIdAsync(Guid supplierId)
         {
-            if (supplierId == Guid.Empty || _tenantProvider.TenantId == Guid.Empty)
+            if (supplierId == Guid.Empty)
                 return new List<Purchase>();
-
-            return await _context.Purchase
-                .Where(p => p.TenantId == _tenantProvider.TenantId && p.SupplierId == supplierId)
+            var tenantId = _tenantProvider.TenantId;
+            var query = _context.Purchase
+                .Where(p => p.SupplierId == supplierId)
+                .AsQueryable();
+            if (tenantId != Guid.Empty)
+                query = query.Where(p => p.TenantId == tenantId);
+            return await query
                 .Include(p => p.Supplier)
                 .Include(p => p.PurchaseDetails)
                     .ThenInclude(d => d.Product)

@@ -905,6 +905,7 @@
         {
             Sale.TotalAmount = 0;
             Sale.NetAmount = 0;
+            Sale.Discount = 0;
             return;
         }
 
@@ -912,6 +913,7 @@
         Sale.TotalAmount = total;
 
         decimal discount = CalculateDiscount();
+        Sale.Discount = discount;
         Sale.NetAmount = total - discount;
 
         if (Sale.TaxAmount.HasValue && Sale.TaxAmount > 0)

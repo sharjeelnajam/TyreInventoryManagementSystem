@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Shared.MultiTenancy;
 using System.Security.Claims;
 
@@ -7,10 +7,12 @@ namespace Infrastructure.Identity
     public class BlazorTenantProvider : ITenantProvider
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ISuperAdminBranchService? _superAdminBranchService;
 
-        public BlazorTenantProvider(IHttpContextAccessor httpContextAccessor)
+        public BlazorTenantProvider(IHttpContextAccessor httpContextAccessor, ISuperAdminBranchService? superAdminBranchService = null)
         {
             _httpContextAccessor = httpContextAccessor;
+            _superAdminBranchService = superAdminBranchService;
         }
 
         public Guid TenantId
@@ -22,7 +24,18 @@ namespace Infrastructure.Identity
                 if (user?.Identity?.IsAuthenticated == true)
                 {
                     if (user.IsInRole("SuperAdmin"))
-                        return Guid.Empty; // SuperAdmin can see all tenants
+                    {
+                        // Branch can come from query string (survives full page reload) or from in-memory service
+                        var queryBranch = _httpContextAccessor.HttpContext?.Request?.Query["branch"].FirstOrDefault();
+                        if (!string.IsNullOrWhiteSpace(queryBranch) && Guid.TryParse(queryBranch, out var branchId))
+                        {
+                            if (_superAdminBranchService != null)
+                                _superAdminBranchService.SelectedBranchId = branchId;
+                            return branchId;
+                        }
+                        var selected = _superAdminBranchService?.SelectedBranchId;
+                        return selected ?? Guid.Empty;
+                    }
 
                     var claimValue = user.FindFirst("TenantId")?.Value;
 

@@ -1,6 +1,8 @@
-﻿@page "/branches"
+@page "/branches"
+@attribute [Authorize(Roles = "SuperAdmin")]
 @using Domain
 @using Infrastructure.Services
+@using Microsoft.AspNetCore.Authorization
 @inject ITenantService TenantService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS

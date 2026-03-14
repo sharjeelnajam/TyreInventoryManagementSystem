@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Domain.DTO;
 using Domain.Identity;
 using Microsoft.AspNetCore.Identity;
@@ -33,15 +33,14 @@ namespace Infrastructure.Services
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    return await _context.Supplier.Where(s => s.TenantId == _tenantProvider.TenantId).OrderBy(x => x.Name).ToListAsync();
-                }
-                return new List<Supplier>();
+                var tenantId = _tenantProvider.TenantId;
+                var query = _context.Supplier.AsQueryable();
+                if (tenantId != Guid.Empty)
+                    query = query.Where(s => s.TenantId == tenantId);
+                return await query.OrderBy(x => x.Name).ToListAsync();
             }
             catch (Exception)
             {
-
                 throw;
             }
         }
@@ -50,19 +49,15 @@ namespace Infrastructure.Services
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    return await _context.Supplier.FirstOrDefaultAsync(x => x.Id == id && x.TenantId == _tenantProvider.TenantId);
-                }
-                return new Supplier();
-               
+                var tenantId = _tenantProvider.TenantId;
+                if (tenantId != Guid.Empty)
+                    return await _context.Supplier.FirstOrDefaultAsync(x => x.Id == id && x.TenantId == tenantId);
+                return await _context.Supplier.FirstOrDefaultAsync(x => x.Id == id);
             }
             catch (Exception)
             {
-
                 throw;
             }
-         
         }
 
         public async Task<bool> CreateAsync(Supplier supplier)

@@ -27,6 +27,8 @@ builder.Services.AddHttpContextAccessor();
 //  Claims Factory (TenantId claim inject karega)
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ApplicationUserClaimsPrincipalFactory>();
 
+//  Super Admin branch selection (must be registered before Tenant Provider)
+builder.Services.AddScoped<Shared.MultiTenancy.ISuperAdminBranchService, Infrastructure.Identity.SuperAdminBranchService>();
 //  Tenant Provider
 builder.Services.AddScoped<ITenantProvider, BlazorTenantProvider>();
 

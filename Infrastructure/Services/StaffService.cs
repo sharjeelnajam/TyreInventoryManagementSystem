@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -73,40 +73,36 @@ namespace Infrastructure.Services
             }
         }
 
-        // READ: Get all staff members (only those who are not deleted)
+        // READ: Get all staff members (only those who are not deleted). When TenantId is Empty (Super Admin "All branches"), return all.
         public async Task<List<Staff>> GetAllStaffAsync()
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    return await _context.Staff.Where(s => s.TenantId == _tenantProvider.TenantId).ToListAsync();
-                }
-                return new List<Staff>();
-              
+                var tenantId = _tenantProvider.TenantId;
+                var query = _context.Staff.AsQueryable();
+                if (tenantId != Guid.Empty)
+                    query = query.Where(s => s.TenantId == tenantId);
+                return await query.ToListAsync();
             }
             catch (Exception)
             {
-                return new List<Staff>(); // Return an empty list in case of error
+                return new List<Staff>();
             }
         }
 
-        // READ: Get a specific staff member by ID
+        // READ: Get a specific staff member by ID. When TenantId is Empty (All branches), allow by id only.
         public async Task<Staff?> GetStaffByIdAsync(Guid staffId)
         {
             try
             {
-                if (_tenantProvider.TenantId != Guid.Empty)
-                {
-                    return await _context.Staff
-                  .Where(s => s.Id == staffId && s.TenantId == _tenantProvider.TenantId)
-                  .FirstOrDefaultAsync();
-                }
-                return new Staff();
+                var tenantId = _tenantProvider.TenantId;
+                if (tenantId != Guid.Empty)
+                    return await _context.Staff.Where(s => s.Id == staffId && s.TenantId == tenantId).FirstOrDefaultAsync();
+                return await _context.Staff.FirstOrDefaultAsync(s => s.Id == staffId);
             }
             catch (Exception)
             {
-                return null; // Return null in case of error
+                return null;
             }
         }
 
