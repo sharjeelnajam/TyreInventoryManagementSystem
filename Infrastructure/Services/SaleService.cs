@@ -482,72 +482,72 @@ namespace Infrastructure.Services
                 .Include(x => x.SaleDetails)
                 .ThenInclude(x => x.Product)
                 .FirstOrDefaultAsync(x => x.Id == saleId);
+
             await HydrateSaleWithCustomer(sale);
 
             if (sale == null)
                 return Array.Empty<byte>();
 
-            // For shop service bills: load bill items; for product sales: use SaleDetails
             List<(string desc, int qty, decimal unit, decimal total)> lineItems;
+
             if (sale.ShopServiceBillId.HasValue)
             {
                 var bill = await _context.ShopServiceBills
                     .Include(b => b.Items)
                     .FirstOrDefaultAsync(b => b.Id == sale.ShopServiceBillId.Value);
-                lineItems = bill?.Items?.Select(i => (i.ServiceName, i.Quantity, i.UnitPrice, i.TotalPrice)).ToList()
+
+                lineItems = bill?.Items?
+                    .Select(i => (i.ServiceName, i.Quantity, i.UnitPrice, i.TotalPrice))
+                    .ToList()
                     ?? new List<(string, int, decimal, decimal)>();
             }
             else
             {
                 lineItems = (sale.SaleDetails ?? new List<SaleDetail>())
-                    .Select(d => (d.Product?.ProductName ?? "N/A", d.Quantity, d.UnitPrice, d.TotalPrice)).ToList();
+                    .Select(d => (d.Product?.ProductName ?? "N/A", d.Quantity, d.UnitPrice, d.TotalPrice))
+                    .ToList();
             }
 
-            // Resolve logo path – try multiple locations (dev run, publish, different working dirs)
             var logoPath = ResolveWwwRootPath("uploads", "logo", "logo.png");
-            byte[]? logoData = !string.IsNullOrEmpty(logoPath) && File.Exists(logoPath) ? await File.ReadAllBytesAsync(logoPath) : null;
+            byte[]? logoData = !string.IsNullOrEmpty(logoPath) && File.Exists(logoPath)
+                ? await File.ReadAllBytesAsync(logoPath)
+                : null;
 
             QuestPDF.Settings.License = LicenseType.Community;
+
+            var subTotal = sale.TotalAmount;
+            var vatAmount = sale.TaxAmount.HasValue && sale.TaxAmount.Value != 0
+                ? sale.TaxAmount.Value
+                : Math.Round(subTotal * 0.20m, 2);
+
+            var totalDue = subTotal + vatAmount - (sale.Discount ?? 0m);
 
             var document = QuestPDF.Fluent.Document.Create(container =>
             {
                 container.Page(page =>
                 {
-                    page.MarginHorizontal(20); // reduced - text closer to sides
+                    page.MarginHorizontal(20);
                     page.MarginVertical(20);
 
-                    // Optional background image
-                    var backgroundPath = ResolveWwwRootPath("uploads", "logo", "backgroundImage.png");
-                    if (!string.IsNullOrEmpty(backgroundPath) && File.Exists(backgroundPath))
-                    {
-                        var bgImage = File.ReadAllBytes(backgroundPath);
-                        page.Background().Image(bgImage).FitWidth().FitHeight();
-                    }
-
-                    // 🧾 HEADER – logo from wwwroot only (no direct OH&H text)
+                    // HEADER
                     page.Header().Column(col =>
                     {
                         if (logoData != null)
                         {
                             col.Item().PaddingTop(20).AlignCenter().Width(200).Image(logoData).FitArea();
                         }
-                        else
-                        {
-                            col.Item().PaddingTop(20).Height(60);
-                        }
 
-                        // Invoice number (bound to sale)
                         col.Item().PaddingTop(24).Column(invoiceCol =>
                         {
                             invoiceCol.Item().Text("Invoice").FontSize(16).Bold();
                             invoiceCol.Item().Text($"Invoice #: {sale.SaleNumber ?? "N/A"}").FontSize(14);
                         });
 
-                        // Date, Sold To: Name, Email (formatted)
                         col.Item().PaddingTop(16).PaddingBottom(24).Column(customerCol =>
                         {
                             customerCol.Item().Text($"Date: {sale.SaleDate:dd MMM yyyy}").FontSize(14);
                             customerCol.Item().PaddingTop(8).Text("Sold To:").Bold().FontSize(14);
+
                             if (sale.Customer != null)
                             {
                                 customerCol.Item().Text($"Name: {sale.Customer.Name ?? "N/A"}").FontSize(14);
@@ -561,10 +561,9 @@ namespace Infrastructure.Services
                         });
                     });
 
-                    // 🧾 CONTENT
+                    // CONTENT
                     page.Content().Column(contentCol =>
                     {
-                        // Table
                         contentCol.Item().Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
@@ -577,77 +576,58 @@ namespace Infrastructure.Services
 
                             table.Header(header =>
                             {
-                                header.Cell().PaddingBottom(5).Text("Description").Bold().FontSize(14);
-                                header.Cell().PaddingBottom(5).Text("Quantity").Bold().FontSize(14);
-                                header.Cell().PaddingBottom(5).Text("Unit Price").Bold().FontSize(14);
-                                header.Cell().PaddingBottom(5).Text("Total").Bold().FontSize(14);
-                                header.Cell().ColumnSpan(4)
-                                             .PaddingTop(4)
-                                             .PaddingBottom(4)
-                                             .LineHorizontal(1)
-                                             .LineColor(QuestPDF.Helpers.Colors.Black);
+                                header.Cell().Text("Description").Bold();
+                                header.Cell().Text("Quantity").Bold();
+                                header.Cell().Text("Unit Price").Bold();
+                                header.Cell().Text("Total").Bold();
                             });
 
                             foreach (var item in lineItems)
                             {
-                                table.Cell().PaddingVertical(3).Text(item.desc).FontSize(14);
-                                table.Cell().PaddingVertical(3).Text(item.qty.ToString()).FontSize(14);
-                                table.Cell().PaddingVertical(3).Text($"£{item.unit:0.00}").FontSize(14);
-                                table.Cell().PaddingVertical(3).Text($"£{item.total:0.00}").FontSize(14);
+                                table.Cell().Text(item.desc);
+                                table.Cell().Text(item.qty.ToString());
+                                table.Cell().Text($"£{item.unit:0.00}");
+                                table.Cell().Text($"£{item.total:0.00}");
                             }
                         });
 
-                        // Totals (no VAT, no Van registration)
-                        contentCol.Item().PaddingTop(24).Column(totalsCol =>
+                        contentCol.Item().PaddingTop(20).Column(totalsCol =>
                         {
-                            totalsCol.Item().AlignLeft().Text($"SubTotal: £{sale.TotalAmount:0.00}").FontSize(14);
-                            totalsCol.Item().AlignLeft().Text($"Total Amount Due: £{sale.NetAmount:0.00}").Bold().FontSize(14);
+                            totalsCol.Item().Text($"SubTotal: £{subTotal:0.00}");
+                            totalsCol.Item().Text($"VAT (20%): £{vatAmount:0.00}");
+                            totalsCol.Item().Text($"Total: £{totalDue:0.00}").Bold();
                         });
-
-                        // Payment Info
-                        contentCol.Item().PaddingTop(40).Column(paymentCol =>
-                        {
-                            paymentCol.Item().Text("Payment Terms: Due on Receipt").FontSize(14);
-                            paymentCol.Item().Text($"Payment Method: {sale.PaymentMethod ?? "N/A"}").FontSize(14);
-                        });
-
                     });
 
-                    // 🧾 FOOTER – company address, name, VAT/Company No., phone
                     page.Footer().Column(col =>
                     {
-                        // THANK YOU MESSAGE (bottom center above footer)
-                        col.Item().AlignCenter().PaddingBottom(10)
+                        col.Item().AlignCenter().PaddingBottom(8)
                             .Text("Thank you for your business!")
                             .Italic()
                             .FontSize(20);
 
-                        // FOOTER ROW (no border line)
-                        col.Item()
-                            .BorderTop(0.5f)
-                            .BorderColor(QuestPDF.Helpers.Colors.Grey.Medium)
-                            .PaddingTop(6)
+                        col.Item().PaddingTop(5)
                             .Row(row =>
                             {
-                                // Left
-                                row.RelativeItem().AlignLeft().Column(leftCol =>
+                                // LEFT (stretch)
+                                row.RelativeItem().AlignMiddle().AlignLeft().Column(left =>
                                 {
-                                    leftCol.Item().Text("15 Davidson Street").FontSize(10);
-                                    leftCol.Item().Text("G40 4NS Glasgow").FontSize(10);
+                                    left.Item().Text("15 Davidson Street").FontSize(10);
+                                    left.Item().Text("G40 4NS Glasgow").FontSize(10);
                                 });
 
-                                // Center
-                                row.RelativeItem().AlignCenter().Column(centerCol =>
+                                // CENTER (auto width + centered in page)
+                                row.ConstantItem(260).AlignMiddle().AlignCenter().Column(center =>
                                 {
-                                    centerCol.Item().Text("H&H").Bold().FontSize(12);
-                                    centerCol.Item().Text("A company of EcoTrack Holdings").FontSize(9);
-                                    centerCol.Item().Text("Ltd, Vat No. 456042895 & Company No. SC789723").FontSize(9);
+                                    center.Item().AlignCenter().Text("H&H").Bold().FontSize(12);
+                                    center.Item().AlignCenter().Text("A company of EcoTrack Holdings").FontSize(9);
+                                    center.Item().AlignCenter().Text("Ltd, Vat No. 456042895 & Company No. SC789723").FontSize(9);
                                 });
 
-                                // Right
-                                row.RelativeItem().AlignRight().Column(rightCol =>
+                                // RIGHT (stretch)
+                                row.RelativeItem().AlignMiddle().AlignRight().Column(right =>
                                 {
-                                    rightCol.Item().Text("Tel: 0141 554 0516").FontSize(10);
+                                    right.Item().Text("Tel: 0141 554 0516").FontSize(10);
                                 });
                             });
                     });
@@ -658,7 +638,6 @@ namespace Infrastructure.Services
             document.GeneratePdf(ms);
             return ms.ToArray();
         }
-
         /// <summary>Full-page receipt with Date, line items, Discount, Net, Total, and payment info.</summary>
         public async Task<byte[]> GenerateThermalReceiptPdfAsync(Guid saleId)
         {

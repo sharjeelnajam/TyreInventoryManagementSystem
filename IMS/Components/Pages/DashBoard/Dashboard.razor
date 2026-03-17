@@ -16,6 +16,7 @@
 @inject IExpenseService expenseService
 @inject ICustomerService customerService
 @inject IProfitReportService ProfitReportService
+@inject IReportService ReportService
 @inject IProductService productService
 @inject ISupplierService supplierService
 @inject IJSRuntime JS
@@ -171,7 +172,7 @@
                     <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
                             <h6 class="fw-bold mb-1 small">Filtered Profit</h6>
-                            <h5 class="fw-bold mb-0">@((MonthlyProfit - MonthlyExpense).ToString("C", new CultureInfo("en-GB")))</h5>
+                            <h5 class="fw-bold mb-0">@MonthlyProfit.ToString("C", new CultureInfo("en-GB"))</h5>
                             <small class="opacity-75">
                                 @(startDate.HasValue && endDate.HasValue
                                                         ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
@@ -408,8 +409,15 @@
     {
         if (startDate.HasValue && endDate.HasValue)
         {
-            MonthlyProfit = await ProfitReportService.GetProfitByDateRangeAsync(startDate.Value, endDate.Value);
+            // Income: Card + Cash from sales in date range (same as Daily Report)
+            var paymentSummary = await ReportService.GetSalePaymentSummaryByDateRange(startDate.Value, endDate.Value);
+
+            // Expense: all expenses in date range
             MonthlyExpense = await expenseService.GetProfitByDateRangeAsync(startDate.Value, endDate.Value);
+
+            // Profit for dashboard = (Card + Cash) - Total Expense
+            MonthlyProfit = (paymentSummary.TotalCash + paymentSummary.TotalCard) - MonthlyExpense;
+
             filterMessage = $"Showing profit from {startDate.Value:MMM dd, yyyy} to {endDate.Value:MMM dd, yyyy}";
             TopCustomers = await saleService.GetTopCustomersByDateAsync(startDate.Value, endDate.Value);
             TopProducts = await saleService.GetTopSellingProductsByDateAsync(startDate.Value, endDate.Value);
@@ -418,13 +426,15 @@
         }
         else
         {
-            MonthlyProfit = await ProfitReportService.GetMonthProfitAsync();
-            MonthlyExpense = await expenseService.GetMonthExpenseAsync();
-            filterMessage = "Showing current month profit";
-
-            // Current month
+            // Current month range
             var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+            var paymentSummary = await ReportService.GetSalePaymentSummaryByDateRange(monthStart, monthEnd);
+            MonthlyExpense = await expenseService.GetProfitByDateRangeAsync(monthStart, monthEnd);
+            MonthlyProfit = (paymentSummary.TotalCash + paymentSummary.TotalCard) - MonthlyExpense;
+
+            filterMessage = "Showing current month profit";
 
             TopCustomers = await saleService.GetTopCustomersByDateAsync(monthStart, monthEnd);
             TopProducts = await saleService.GetTopSellingProductsByDateAsync(monthStart, monthEnd);

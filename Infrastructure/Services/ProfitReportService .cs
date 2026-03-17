@@ -133,18 +133,19 @@ namespace Infrastructure.Services
                     var start = startDate.Date;
                     var adjustedEndDate = endDate.Date.AddDays(1);
 
-                    // Filter by Sale.SaleDate (when sale occurred) so sales profit shows for the correct period
-                    var fromSales = await _context.ProfitHistories
-                        .Where(p => p.SaleId != null && p.TenantId == _tenantProvider.TenantId)
-                        .Join(_context.Sale, ph => ph.SaleId, s => s.Id, (ph, s) => new { ph, s })
-                        .Where(x => x.s.SaleDate >= start && x.s.SaleDate < adjustedEndDate)
-                        .SumAsync(x => x.ph.ProfitAmount);
+                    // Compute profit dynamically from SaleDetail (UnitPrice - CostPrice) * Quantity
+                    // so it works even if ProfitHistories is incomplete on live.
+                    var profitFromDetails = await (
+                        from sd in _context.SaleDetail
+                        join s in _context.Sale on sd.SaleId equals s.Id
+                        where s.SaleDate >= start
+                              && s.SaleDate < adjustedEndDate
+                              && !s.IsReturn
+                              && s.TenantId == _tenantProvider.TenantId
+                        select sd.ProfitAmount
+                    ).SumAsync();
 
-                    var fromOthers = await _context.ProfitHistories
-                        .Where(p => p.SaleId == null && p.RecordedAt >= start && p.RecordedAt < adjustedEndDate && p.TenantId == _tenantProvider.TenantId)
-                        .SumAsync(p => p.ProfitAmount);
-
-                    return fromSales + fromOthers;
+                    return profitFromDetails;
                 }
                 else return 0m;
                

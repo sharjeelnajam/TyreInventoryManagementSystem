@@ -8,8 +8,7 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
-<EditForm Model="CustomerModel" OnValidSubmit="HandleValidSubmit">
-    <DataAnnotationsValidator />
+<EditForm Model="CustomerModel" OnSubmit="HandleValidSubmit">
 
     <div class="p-3 shadow-lg border-0" style="border-radius:12px; background:white; max-width:700px;">
 
@@ -21,21 +20,21 @@
         <div class="row g-2">
 
             <div class="col-md-6">
-                <label class="form-label fw-semibold">Name *</label>
+                <label class="form-label fw-semibold">Name</label>
                 <InputText @bind-Value="CustomerModel.Name"
                 class="form-control shadow-sm" />
                 <ValidationMessage For="@(() => CustomerModel.Name)" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label fw-semibold">Phone *</label>
+                <label class="form-label fw-semibold">Phone</label>
                 <InputText @bind-Value="CustomerModel.Phone"
                 class="form-control shadow-sm" />
                 <ValidationMessage For="@(() => CustomerModel.Phone)" />
             </div>
 
             <div class="col-md-6">
-                <label class="form-label fw-semibold">Email *</label>
+                <label class="form-label fw-semibold">Email</label>
                 <InputText @bind-Value="CustomerModel.Email" class="form-control shadow-sm" />
                 <ValidationMessage For="@(() => CustomerModel.Email)" />
             </div>
@@ -59,7 +58,7 @@
             </div>
 
             <div class="col-md-6">
-                <label class="form-label fw-semibold">Customer Type *</label>
+                <label class="form-label fw-semibold">Customer Type</label>
 
                 <InputSelect @bind-Value="CustomerModel.ListManagementId"
                              class="form-select shadow-sm">

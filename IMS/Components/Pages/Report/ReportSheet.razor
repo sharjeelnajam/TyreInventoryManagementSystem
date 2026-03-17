@@ -19,7 +19,7 @@
 <div class="row mt-2 align-items-start justify-content-between">
     <!-- Left: summary cards (Selling only) -->
     <div class="col-lg-6 col-md-7">
-        @if (SelectedReport == "Selling" && SaleCount > 0)
+        @if (SelectedReport == "Selling")
         {
             <div class="d-flex gap-3">
                 <div class="card shadow-sm border-0 text-start flex-fill">
@@ -99,14 +99,25 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var p in TodayPurchases)
+                @if (TodayPurchases.Any())
+                {
+                    foreach (var p in TodayPurchases)
+                    {
+                        <tr>
+                            <td>@p.ReferenceNumber</td>
+                            <td>@p.ProductName</td>
+                            <td>@p.Quantity</td>
+                            <td>@p.TotalPrice.ToString("N2")</td>
+                            <td>@p.PurchaseDate.ToShortDateString()</td>
+                        </tr>
+                    }
+                }
+                else
                 {
                     <tr>
-                        <td>@p.ReferenceNumber</td>
-                        <td>@p.ProductName</td>
-                        <td>@p.Quantity</td>
-                        <td>@p.TotalPrice.ToString("N2")</td>
-                        <td>@p.PurchaseDate.ToShortDateString()</td>
+                        <td colspan="5" class="text-center text-muted">
+                            No records found for the selected date range.
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -135,16 +146,27 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var s in TodaySales)
+                @if (TodaySales.Any())
+                {
+                    foreach (var s in TodaySales)
+                    {
+                        <tr>
+                            <td>@s.ReferenceNumber</td>
+                            <td>@s.PaymentMethod</td>
+                            <td>@s.ProductName</td>
+                            <td>@s.Quantity</td>
+                            <td>@s.TotalPrice.ToString("N2")</td>
+                            <td>@s.NetPrice.ToString("N2")</td>
+                            <td>@s.SaleDate.ToShortDateString()</td>
+                        </tr>
+                    }
+                }
+                else
                 {
                     <tr>
-                        <td>@s.ReferenceNumber</td>
-                        <td>@s.PaymentMethod</td>
-                        <td>@s.ProductName</td>
-                        <td>@s.Quantity</td>
-                        <td>@s.TotalPrice.ToString("N2")</td>
-                        <td>@s.NetPrice.ToString("N2")</td>
-                        <td>@s.SaleDate.ToShortDateString()</td>
+                        <td colspan="7" class="text-center text-muted">
+                            No records found for the selected date range.
+                        </td>
                     </tr>
                 }
             </tbody>
