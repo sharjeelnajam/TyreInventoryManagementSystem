@@ -77,6 +77,7 @@ namespace Infrastructure.Services
                     select new TodaySaleReportDto
                     {
                         ReferenceNumber = s.SaleNumber ?? "",
+                        PaymentMethod = s.PaymentMethod ?? string.Empty,
                         CustomerName = c != null ? c.Name : (s.CustomerName ?? "Walk-in Customer"),
                         ProductName = sd.Product.ProductName,
                         Quantity = sd.Quantity,
@@ -99,6 +100,7 @@ namespace Infrastructure.Services
                     select new TodaySaleReportDto
                     {
                         ReferenceNumber = s.SaleNumber ?? bill.BillNumber ?? "",
+                        PaymentMethod = s.PaymentMethod ?? bill.PaymentMethod ?? string.Empty,
                         CustomerName = s.CustomerName ?? bill.CustomerName ?? "Walk-in Customer",
                         ProductName = item.ServiceName,
                         Quantity = item.Quantity,
@@ -109,6 +111,35 @@ namespace Infrastructure.Services
                 ).ToListAsync();
 
                 return posSales.Concat(shopSales).OrderBy(x => x.SaleDate).ToList();
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        public async Task<SalePaymentSummaryDto> GetSalePaymentSummaryByDateRange(DateTime fromDate, DateTime toDate)
+        {
+            try
+            {
+                var start = fromDate.Date;
+                var end = toDate.Date.AddDays(1); // exclusive: whole day(s)
+
+                var query = _context.Sale
+                    .Where(s =>
+                        s.SaleDate >= start &&
+                        s.SaleDate < end &&
+                        !s.IsReturn &&
+                        (TenantId == null || s.TenantId == TenantId));
+
+                var totalCash = await query.SumAsync(s => s.CashAmount);
+                var totalCard = await query.SumAsync(s => s.CardAmount);
+
+                return new SalePaymentSummaryDto
+                {
+                    TotalCash = totalCash,
+                    TotalCard = totalCard
+                };
             }
             catch
             {

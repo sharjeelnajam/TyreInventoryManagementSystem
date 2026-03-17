@@ -1,4 +1,4 @@
-﻿using Domain.DTO;
+using Domain.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +11,7 @@ namespace Infrastructure.Services
     {
         Task<List<TodayPurchaseReportDto>> GetPurchasesByDateRange(DateTime from, DateTime to);
         Task<List<TodaySaleReportDto>> GetSalesByDateRange(DateTime from, DateTime to);
+        Task<SalePaymentSummaryDto> GetSalePaymentSummaryByDateRange(DateTime from, DateTime to);
 
         Task<List<AvailableStockDto>> GetAvailableStock();
     }

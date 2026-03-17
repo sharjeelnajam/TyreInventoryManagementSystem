@@ -412,7 +412,7 @@
                         </div>
                     }
                     <div class="checkout-summary-row checkout-total-row">
-                        <span class="checkout-heading">Total (after discount)</span>
+                        <span class="checkout-heading">Total</span>
                         <span>£@Sale.NetAmount.ToString("0.00")</span>
                     </div>
                 </div>
@@ -721,6 +721,9 @@
         var success = await SaleService.AddAsync(Sale);
         if (success)
         {
+            // Reload latest stock and product quantities after successful sale
+            products = await ProductService.GetAllAsync();
+
             checkoutSuccessSaleId = Sale.Id;
             StateHasChanged();
         }

@@ -687,9 +687,6 @@ namespace Infrastructure.Services
             }
 
             const string separator = "********************************";
-            const string shopName = "H&H";
-            const string address = "15 Davidson Street, G40 4NS Glasgow";
-            const string tel = "Tel: 0141 554 0516";
             var receiptDate = sale.SaleDate.ToString("dd MMM yyyy HH:mm");
 
             QuestPDF.Settings.License = LicenseType.Community;
@@ -707,18 +704,9 @@ namespace Infrastructure.Services
                     // Main content: full-width header, then centered receipt body
                     page.Content().Column(col =>
                     {
-                        // Date at top right corner
-                        col.Item().Row(r =>
-                        {
-                            r.RelativeItem();
-                            r.ConstantItem(140).AlignRight().Text(receiptDate).FontSize(9);
-                        });
-                        col.Item().PaddingTop(2);
-
-                        // Shop name and title – centered
-                        col.Item().AlignCenter().Text(shopName).Bold().FontSize(14);
+                        // Title – centered (no shop name on receipt)
                         col.Item().PaddingTop(4).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
-                        col.Item().PaddingTop(2).Row(r => r.RelativeItem().AlignCenter().Text("CASH RECEIPT").Bold().FontSize(12));
+                        col.Item().PaddingTop(2).Row(r => r.RelativeItem().AlignCenter().Text("PAYMENT RECEIPT").Bold().FontSize(12));
                         col.Item().PaddingBottom(2).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
 
                         // Centered receipt body (Ref, Description, items, totals)
@@ -731,6 +719,11 @@ namespace Infrastructure.Services
                                 {
                                     r.ConstantItem(labelWidth).Text("Ref").FontSize(8);
                                     r.RelativeItem().AlignRight().Text($"#{sale.SaleNumber ?? sale.Id.ToString("N")?.Substring(0, 8)}").FontSize(8);
+                                });
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Date").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text(receiptDate).FontSize(8);
                                 });
                                 body.Item().PaddingTop(2).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
                                 body.Item().PaddingTop(4).Row(r =>
@@ -755,32 +748,31 @@ namespace Infrastructure.Services
                                 });
                                 body.Item().Row(r =>
                                 {
+                                    r.ConstantItem(labelWidth).Text("Total").Bold().FontSize(10);
+                                    r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").Bold().FontSize(10);
+                                });
+                                body.Item().Row(r =>
+                                {
                                     r.ConstantItem(labelWidth).Text("Discount").FontSize(9);
                                     var discountAmt = sale.Discount ?? 0;
                                     r.RelativeItem().AlignRight().Text(discountAmt > 0 ? $"-£{discountAmt:0.00}" : $"£{discountAmt:0.00}").FontSize(9);
                                 });
                                 body.Item().Row(r =>
                                 {
-                                    r.ConstantItem(labelWidth).Text("Net").FontSize(9);
+                                    r.ConstantItem(labelWidth).Text("Net Pay").FontSize(9);
                                     r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").FontSize(9);
                                 });
+                                var paymentDisplay = string.IsNullOrWhiteSpace(sale.PaymentMethod) ? "N/A" : sale.PaymentMethod;
                                 body.Item().Row(r =>
                                 {
-                                    r.ConstantItem(labelWidth).Text("Total").Bold().FontSize(10);
-                                    r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").Bold().FontSize(10);
+                                    r.ConstantItem(labelWidth).Text("Payment").FontSize(9);
+                                    r.RelativeItem().AlignRight().Text(paymentDisplay).FontSize(9);
                                 });
                                 body.Item().PaddingTop(4).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
+                                body.Item().PaddingTop(6).AlignCenter().Text("THANK YOU!").Bold().FontSize(14);
                             });
                             outer.RelativeItem();
                         });
-                    });
-
-                    // Thank You and address at bottom of page (footer = always end of page)
-                    page.Footer().Column(f =>
-                    {
-                        f.Item().AlignCenter().Text("THANK YOU!").Bold().FontSize(14);
-                        f.Item().PaddingTop(6).AlignCenter().Text($"Address: {address}").FontSize(8);
-                        f.Item().AlignCenter().Text(tel).FontSize(8);
                     });
                 });
             });
@@ -909,6 +901,29 @@ namespace Infrastructure.Services
                 throw;
             }
           
+        }
+
+        public async Task<int> GetInvoiceCountByDateRangeAsync(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                if (_tenantProvider.TenantId == Guid.Empty)
+                    return 0;
+
+                var start = startDate.Date;
+                var end = endDate.Date.AddDays(1); // inclusive end date
+
+                return await _context.Sale
+                    .Where(s =>
+                        s.TenantId == _tenantProvider.TenantId &&
+                        s.SaleDate >= start &&
+                        s.SaleDate < end)
+                    .CountAsync();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         public async Task<List<Sale>> GetSalesByCustomerIdAsync(Guid customerId)

@@ -3,6 +3,7 @@
 @using Infrastructure.Services
 @using Domain.DTO
 @using System.Linq
+@using System.Globalization
 @inject IReportService ReportService
 @rendermode InteractiveServer
 
@@ -15,31 +16,63 @@
             : "Select date range")
 </p>
 
-<div class="row mt-3 align-items-end">
-    <div class="col-md-2">
-        <label class="form-label fw-bold">Filter</label>
-        <select class="form-select"
-                value="@SelectedReport"
-                @onchange="OnReportTypeChanged">
-            <option value="Selling">Selling</option>
-            <option value="Purchasing">Purchasing</option>
-        </select>
+<div class="row mt-2 align-items-start justify-content-between">
+    <!-- Left: summary cards (Selling only) -->
+    <div class="col-lg-6 col-md-7">
+        @if (SelectedReport == "Selling" && SaleCount > 0)
+        {
+            <div class="d-flex gap-3">
+                <div class="card shadow-sm border-0 text-start flex-fill">
+                    <div class="card-body py-2 px-3">
+                        <div class="text-muted small fw-bold">Cash Received</div>
+                        <div class="fw-normal">@TotalCashPayments.ToString("C", new CultureInfo("en-GB"))</div>
+                    </div>
+                </div>
+                <div class="card shadow-sm border-0 text-start flex-fill">
+                    <div class="card-body py-2 px-3">
+                        <div class="text-muted small fw-bold">Card Received</div>
+                        <div class="fw-normal">@TotalCardPayments.ToString("C", new CultureInfo("en-GB"))</div>
+                    </div>
+                </div>
+                <div class="card shadow-sm border-0 text-start flex-fill">
+                    <div class="card-body py-2 px-3">
+                        <div class="text-muted small fw-bold">Total Sales</div>
+                        <div class="fw-normal">@TotalSaleAmount.ToString("C", new CultureInfo("en-GB"))</div>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
-    <div class="col-md-2">
-        <label class="form-label fw-bold">From Date</label>
-        <InputDate TValue="DateTime?"
-                   class="form-control"
-                   Value="FromDate"
-                   ValueExpression="@(() => FromDate)"
-                   ValueChanged="OnFromDateChanged" />
-    </div>
-    <div class="col-md-2">
-        <label class="form-label fw-bold">To Date</label>
-        <InputDate TValue="DateTime?"
-                   class="form-control"
-                   Value="ToDate"
-                   ValueExpression="@(() => ToDate)"
-                   ValueChanged="OnToDateChanged" />
+
+    <!-- Right: filter controls (Filter, From Date, To Date) -->
+    <div class="col-lg-4 col-md-5">
+        <div class="row g-1 justify-content-end">
+            <div class="col-4">
+                <label class="form-label fw-bold">Filter</label>
+                <select class="form-select"
+                        value="@SelectedReport"
+                        @onchange="OnReportTypeChanged">
+                    <option value="Selling">Selling</option>
+                    <option value="Purchasing">Purchasing</option>
+                </select>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-bold">From Date</label>
+                <InputDate TValue="DateTime?"
+                           class="form-control"
+                           Value="FromDate"
+                           ValueExpression="@(() => FromDate)"
+                           ValueChanged="OnFromDateChanged" />
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-bold">To Date</label>
+                <InputDate TValue="DateTime?"
+                           class="form-control"
+                           Value="ToDate"
+                           ValueExpression="@(() => ToDate)"
+                           ValueChanged="OnToDateChanged" />
+            </div>
+        </div>
     </div>
 </div>
 
@@ -84,23 +117,20 @@
 @* Selling section – whole day sales for selected date range *@
 @if (SelectedReport == "Selling")
 {
-    <div class="mt-4 mb-5">
-        <h4>
+    <div class="mt-3 mb-5">
+        <h4 class="mb-2">
             💰 Selling
             <span class="badge bg-success">@SaleCount</span>
-            @if (SaleCount > 0)
-            {
-                <span class="ms-2 text-muted fw-normal fs-6">Total: @TotalSaleAmount.ToString("N2")</span>
-            }
         </h4>
         <table class="table table-striped">
             <thead>
                 <tr>
                     <th>Reference #</th>
+                    <th>Payment</th>
                     <th>Product</th>
                     <th>Qty</th>
                     <th>Price</th>
-                    <th>Net Price (after discount)</th>
+                    <th>Net Price</th>
                     <th>Date</th>
                 </tr>
             </thead>
@@ -109,6 +139,7 @@
                 {
                     <tr>
                         <td>@s.ReferenceNumber</td>
+                        <td>@s.PaymentMethod</td>
                         <td>@s.ProductName</td>
                         <td>@s.Quantity</td>
                         <td>@s.TotalPrice.ToString("N2")</td>
@@ -169,6 +200,8 @@
 
     decimal TotalPurchaseAmount => TodayPurchases.Sum(p => p.TotalPrice);
     decimal TotalSaleAmount => TodaySales.Sum(s => s.NetPrice);
+    decimal TotalCashPayments { get; set; }
+    decimal TotalCardPayments { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -203,6 +236,12 @@
 
         TodaySales = await ReportService
             .GetSalesByDateRange(FromDate.Value, ToDate.Value);
+
+        var paymentSummary = await ReportService
+            .GetSalePaymentSummaryByDateRange(FromDate.Value, ToDate.Value);
+
+        TotalCashPayments = paymentSummary.TotalCash;
+        TotalCardPayments = paymentSummary.TotalCard;
 
         // Stock = await ReportService.GetAvailableStock(); // commented out – not shown on Daily Report
     }

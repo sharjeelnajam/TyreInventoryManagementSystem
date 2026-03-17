@@ -12,6 +12,9 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="fw-bold">Sales</h3>
+        <button class="btn btn-warning btn-sm fw-bold text-dark" @onclick="RefreshPage">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+        </button>
     </div>
 
     <!-- Table of Sales -->
@@ -44,8 +47,8 @@
                     <td>@sale.PaymentMethod</td>
                     <td>@sale.SaleDate.ToShortDateString()</td>
                     <td>
-                        <span role="button" title="Download Receipt" class="text-success me-2"
-                        @onclick="() => DownloadReceipt(sale.Id)">
+                        <span role="button" title="Download Invoice" class="text-success me-2"
+                        @onclick="() => DownloadInvoice(sale.Id)">
                             <i class="bi bi-download fs-5"></i>
                         </span>
 
@@ -126,18 +129,22 @@
         StateHasChanged();
     }
 
-    private async Task DownloadReceipt(Guid saleId)
+    private async Task RefreshPage()
+    {
+        await ReloadSales();
+    }
+
+    private async Task DownloadInvoice(Guid saleId)
     {
         var sale = await SaleService.GetByIdAsync(saleId);
         if (sale == null)
             return;
 
-        // Call your API endpoint to generate PDF and get it as byte[]
-        var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(saleId);
+        // Full invoice PDF (logo, background, customer, table, footer)
+        var pdfBytes = await SaleService.GenerateReceiptPdfAsync(saleId);
 
-        // Convert to Base64 and trigger JS download
         string base64 = Convert.ToBase64String(pdfBytes);
-        await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber}.pdf", base64);
+        await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Invoice_{sale.SaleNumber}.pdf", base64);
     }
 
     private void GoToAddSale()

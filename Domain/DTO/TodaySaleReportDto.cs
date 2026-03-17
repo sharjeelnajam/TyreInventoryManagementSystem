@@ -9,6 +9,7 @@ namespace Domain.DTO
     public class TodaySaleReportDto
     {
         public string ReferenceNumber { get; set; } = string.Empty;
+        public string PaymentMethod { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
         public string ProductName { get; set; } = string.Empty;
         public int Quantity { get; set; }

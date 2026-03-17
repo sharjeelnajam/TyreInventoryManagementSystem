@@ -171,7 +171,7 @@
                     <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
                             <h6 class="fw-bold mb-1 small">Filtered Profit</h6>
-                            <h5 class="fw-bold mb-0">@MonthlyProfit.ToString("C", new CultureInfo("en-GB"))</h5>
+                            <h5 class="fw-bold mb-0">@((MonthlyProfit - MonthlyExpense).ToString("C", new CultureInfo("en-GB")))</h5>
                             <small class="opacity-75">
                                 @(startDate.HasValue && endDate.HasValue
                                                         ? $"{startDate.Value:MMM dd, yyyy} - {endDate.Value:MMM dd, yyyy}"
@@ -256,7 +256,10 @@
                     <div class="card-body d-flex justify-content-between align-items-center p-3">
                         <div>
                             <h6 class="fw-bold mb-1 small">Total Invoices</h6>
-                            <h5 class="fw-bold mb-0">@TotalInvoices</h5>
+                            <h5 class="fw-bold mb-0">@FilteredInvoices</h5>
+                            <small class="opacity-75">
+                                @filterMessage
+                            </small>
                         </div>
                         <i class="bi bi-receipt fs-3 opacity-75"></i>
                     </div>
@@ -373,6 +376,7 @@
     private int srNo = 0;
     private string? DateError { get; set; }
     int TotalInvoices = 0;
+    int FilteredInvoices = 0;
     List<TopProductDto> TopProducts = new();
     private bool _isFirstRender = true;
     bool chartLoaded = false;
@@ -410,6 +414,7 @@
             TopCustomers = await saleService.GetTopCustomersByDateAsync(startDate.Value, endDate.Value);
             TopProducts = await saleService.GetTopSellingProductsByDateAsync(startDate.Value, endDate.Value);
             TopSuppliers = await supplierService.GetTopSuppliersByDateAsync(startDate.Value, endDate.Value);
+            FilteredInvoices = await saleService.GetInvoiceCountByDateRangeAsync(startDate.Value, endDate.Value);
         }
         else
         {
@@ -424,6 +429,7 @@
             TopCustomers = await saleService.GetTopCustomersByDateAsync(monthStart, monthEnd);
             TopProducts = await saleService.GetTopSellingProductsByDateAsync(monthStart, monthEnd);
             TopSuppliers = await supplierService.GetTopSuppliersByDateAsync(monthStart, monthEnd);
+            FilteredInvoices = await saleService.GetInvoiceCountByDateRangeAsync(monthStart, monthEnd);
         }
 
         TotalInvoices = await saleService.GetTotalInvoicesAsync();

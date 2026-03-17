@@ -21,6 +21,7 @@ namespace Infrastructure.Services
         Task<byte[]> GenerateThermalReceiptPdfAsync(Guid saleId);
         Task<List<TopProductDto>> GetTopSellingProductsByDateAsync(DateTime start, DateTime end);
         Task<int> GetTotalInvoicesAsync();
+        Task<int> GetInvoiceCountByDateRangeAsync(DateTime start, DateTime end);
         Task<List<TopCustomerDto>> GetTopCustomersByDateAsync(DateTime start, DateTime end);
         Task<List<TopProductDetailDto>> GetTopProductsByDateAsync(DateTime start, DateTime end);
         Task<List<Sale>> GetSalesByCustomerIdAsync(Guid customerId);
