@@ -243,7 +243,7 @@
 <!-- Checkout Modal - Full checkout popup -->
 @if (showCheckoutModal)
 {
-    <div class="checkout-modal-backdrop" @onclick="CloseCheckoutModal">
+    <div class="checkout-modal-backdrop">
         <div class="checkout-modal-box" @onclick:stopPropagation="true">
             @if (checkoutSuccessSaleId.HasValue)
             {

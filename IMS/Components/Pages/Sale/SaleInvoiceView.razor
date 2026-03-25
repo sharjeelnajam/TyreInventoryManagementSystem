@@ -55,6 +55,19 @@ else
                 <input class="form-control" value="@sale.TaxAmount?.ToString("N2")" readonly />
             </div>
         </div>
+        @if (IsSplitPayment(sale.PaymentMethod))
+        {
+            <div class="row mt-2">
+                <div class="col-md-3">
+                    <label>Cash Amount</label>
+                    <input class="form-control" value="@sale.CashAmount.ToString("N2")" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label>Card Amount</label>
+                    <input class="form-control" value="@sale.CardAmount.ToString("N2")" readonly />
+                </div>
+            </div>
+        }
 
         <!-- Totals: Total (subtotal), Net, Invoice Total -->
         <div class="row mt-2">
@@ -132,9 +145,11 @@ else
         sale = await SaleService.GetByIdAsync(SaleId);
     }
 
-    private void GoBack()
-    {
-        Navigation.NavigateTo("/sales");
-    }
+    private static bool IsSplitPayment(string? paymentMethod) =>
+        !string.IsNullOrWhiteSpace(paymentMethod) &&
+        paymentMethod.Contains("card", StringComparison.OrdinalIgnoreCase) &&
+        paymentMethod.Contains("cash", StringComparison.OrdinalIgnoreCase);
+
+    private void GoBack() => Navigation.NavigateTo("/sales");
 }
 

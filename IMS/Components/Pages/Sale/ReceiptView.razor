@@ -1,0 +1,245 @@
+@page "/receipts/view/{SaleId:guid}"
+@using Domain
+@using Infrastructure.Services
+@using Microsoft.EntityFrameworkCore
+@inject ISaleService SaleService
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Receipt</PageTitle>
+
+<div class="receipt-screen">
+    @if (sale == null)
+    {
+        <div class="receipt-paper text-center py-5">
+            @if (loadFailed)
+            {
+                <p class="text-danger mb-0">Receipt not found.</p>
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-3" @onclick="GoBack">Back</button>
+            }
+            else
+            {
+                <p class="text-muted mb-0"><em>Loading…</em></p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="receipt-paper">
+            <div class="receipt-dash">* * * * * * * * * * * * * * * *</div>
+            <div class="receipt-store">@(storeName ?? "Store")</div>
+            @if (!string.IsNullOrWhiteSpace(storePhone))
+            {
+                <div class="receipt-store-sub">@storePhone</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(storeAddress))
+            {
+                <div class="receipt-store-sub">@storeAddress</div>
+            }
+
+            <div class="receipt-dash mt-2">********************************</div>
+            <div class="receipt-title">PAYMENT RECEIPT</div>
+            <div class="receipt-dash">********************************</div>
+
+            <div class="receipt-kv">
+                <span>Ref</span>
+                <span>@sale.SaleNumber</span>
+            </div>
+            <div class="receipt-kv">
+                <span>Date</span>
+                <span>@sale.SaleDate.ToString("dd MMM yyyy HH:mm")</span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(CustomerDisplay))
+            {
+                <div class="receipt-kv">
+                    <span>Customer</span>
+                    <span>@CustomerDisplay</span>
+                </div>
+            }
+
+            <div class="receipt-dash my-2">********************************</div>
+
+            <div class="receipt-lines-head">
+                <span>Item</span>
+                <span>Amt</span>
+            </div>
+
+            @foreach (var line in lines)
+            {
+                <div class="receipt-line">
+                    <div class="receipt-line-desc">
+                        @line.Description
+                        @if (!string.IsNullOrWhiteSpace(line.Remarks))
+                        {
+                            <span class="receipt-line-note"> — @line.Remarks</span>
+                        }
+                    </div>
+                    <div class="receipt-line-meta">x@line.Qty @@ @line.UnitPrice.ToString("N2")</div>
+                    <div class="receipt-line-total">@line.Total.ToString("N2")</div>
+                </div>
+            }
+
+            @if (!lines.Any())
+            {
+                <div class="receipt-empty">No line items on file.</div>
+            }
+
+            <div class="receipt-dash my-2">********************************</div>
+
+            <div class="receipt-kv">
+                <span>Subtotal</span>
+                <span>@sale.TotalAmount.ToString("N2")</span>
+            </div>
+            @if (sale.Discount is decimal d && d > 0)
+            {
+                <div class="receipt-kv">
+                    <span>Discount</span>
+                    <span>-@d.ToString("N2")</span>
+                </div>
+            }
+            @if (sale.TaxAmount is decimal tx && tx > 0)
+            {
+                <div class="receipt-kv">
+                    <span>Tax</span>
+                    <span>@tx.ToString("N2")</span>
+                </div>
+            }
+            <div class="receipt-kv receipt-total-row">
+                <span>TOTAL</span>
+                <span>@sale.NetAmount.ToString("N2")</span>
+            </div>
+
+            @if (IsSplitPayment(sale.PaymentMethod))
+            {
+                <div class="receipt-kv receipt-muted">
+                    <span>Cash</span>
+                    <span>@sale.CashAmount.ToString("N2")</span>
+                </div>
+                <div class="receipt-kv receipt-muted">
+                    <span>Card</span>
+                    <span>@sale.CardAmount.ToString("N2")</span>
+                </div>
+            }
+            <div class="receipt-kv">
+                <span>Payment</span>
+                <span>@sale.PaymentMethod</span>
+            </div>
+            <div class="receipt-kv receipt-muted">
+                <span>Status</span>
+                <span>@sale.PaymentStatus</span>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(sale.Notes))
+            {
+                <div class="receipt-notes">Note: @sale.Notes</div>
+            }
+
+            @if (sale.ShopServiceBillId is Guid billId)
+            {
+                <div class="receipt-link-bar">
+                    <a class="receipt-link" href="/shop-billing/bill/@billId">View shop bill</a>
+                </div>
+            }
+
+            <div class="receipt-dash my-3">********************************</div>
+            <div class="receipt-thanks">THANK YOU</div>
+            <div class="receipt-dash">* * * * * * * * * * * * * * * *</div>
+
+            <div class="receipt-actions">
+                <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="GoBack">← Back</button>
+                <button type="button" class="btn btn-dark btn-sm" @onclick="DownloadThermal">
+                    <i class="bi bi-download me-1"></i>Download receipt PDF
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid SaleId { get; set; }
+
+    private Sale? sale;
+    private bool loadFailed;
+    private string? storeName;
+    private string? storePhone;
+    private string? storeAddress;
+
+    private readonly List<ReceiptLine> lines = new();
+
+    private string? CustomerDisplay =>
+        !string.IsNullOrWhiteSpace(sale?.Customer?.Name) ? sale!.Customer!.Name
+        : !string.IsNullOrWhiteSpace(sale?.CustomerName) ? sale!.CustomerName
+        : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sale = await SaleService.GetByIdAsync(SaleId);
+        if (sale == null)
+        {
+            loadFailed = true;
+            return;
+        }
+
+        if (sale.TenantId is { } tid)
+        {
+            var tenant = await Db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tid);
+            if (tenant != null)
+            {
+                storeName = tenant.Name;
+                storePhone = tenant.PhoneNumber;
+                var addr = string.Join(", ", new[] { tenant.Address, tenant.City }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                storeAddress = string.IsNullOrWhiteSpace(addr) ? null : addr;
+            }
+        }
+
+        if (sale.ShopServiceBillId is Guid billId)
+        {
+            var billItems = await Db.ShopServiceBillItems
+                .AsNoTracking()
+                .Where(i => i.ShopServiceBillId == billId)
+                .OrderBy(i => i.CreatedAt)
+                .ToListAsync();
+
+            foreach (var i in billItems)
+            {
+                lines.Add(new ReceiptLine(
+                    string.IsNullOrWhiteSpace(i.ServiceName) ? "Service" : i.ServiceName,
+                    i.Quantity,
+                    i.UnitPrice,
+                    i.TotalPrice,
+                    i.Remarks));
+            }
+        }
+        else if (sale.SaleDetails != null)
+        {
+            foreach (var d in sale.SaleDetails.OrderBy(x => x.CreatedAt))
+            {
+                var name = d.Product?.ProductName ?? "Item";
+                var brand = d.Brand ?? d.Product?.Brand;
+                var desc = string.IsNullOrWhiteSpace(brand) ? name : $"{name} ({brand})";
+                lines.Add(new ReceiptLine(desc, d.Quantity, d.UnitPrice, d.TotalPrice, null));
+            }
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/receipts");
+
+    private static bool IsSplitPayment(string? paymentMethod) =>
+        !string.IsNullOrWhiteSpace(paymentMethod) &&
+        paymentMethod.Contains("card", StringComparison.OrdinalIgnoreCase) &&
+        paymentMethod.Contains("cash", StringComparison.OrdinalIgnoreCase);
+
+    private async Task DownloadThermal()
+    {
+        if (sale == null) return;
+        var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(SaleId);
+        if (pdfBytes.Length == 0) return;
+        var base64 = Convert.ToBase64String(pdfBytes);
+        var name = $"Receipt_{sale.SaleNumber ?? SaleId.ToString("N")[..8]}.pdf";
+        await JS.InvokeVoidAsync("downloadFileFromBytes", name, base64);
+    }
+
+    private sealed record ReceiptLine(string Description, int Qty, decimal UnitPrice, decimal Total, string? Remarks);
+}

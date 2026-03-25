@@ -1,0 +1,187 @@
+@page "/receipts"
+@using Domain
+@using Infrastructure.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ISaleService SaleService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+<PageTitle>Receipts</PageTitle>
+
+<div class="receipts-page container-fluid py-4">
+    <div class="receipts-header mb-2">
+        <h2 class="receipts-title mb-1">Receipts</h2>
+        <p class="receipts-sub text-muted small mb-0">Sale slips — tap a card to open the receipt view.</p>
+    </div>
+
+    <div class="receipts-toolbar">
+        <div class="receipts-toolbar-search">
+            <label class="form-label">Invoice #</label>
+            <input type="search" class="form-control form-control-sm" @bind="invoiceSearch" @bind:event="oninput" placeholder="Search invoice number..." autocomplete="off" />
+        </div>
+        <div class="receipts-toolbar-actions">
+            <div class="receipts-date-compact">
+                <label class="form-label">From Date</label>
+                <InputDate @bind-Value="fromDate" class="form-control form-control-sm" />
+            </div>
+            <div class="receipts-date-compact">
+                <label class="form-label">To Date</label>
+                <InputDate @bind-Value="toDate" class="form-control form-control-sm" />
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">Clear</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="RefreshPage">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    @if (!sales.Any())
+    {
+        <div class="receipts-empty text-center text-muted py-5 rounded-3 border border-dashed">
+            No receipts yet.
+        </div>
+    }
+    else if (!FilteredSales.Any())
+    {
+        <div class="receipts-empty text-center text-muted py-5 rounded-3 border border-dashed">
+            No receipts match your filters. Try adjusting dates or the invoice search.
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var sale in FilteredSales)
+            {
+                var customerLabel = string.IsNullOrWhiteSpace(sale.Customer?.Name) && string.IsNullOrWhiteSpace(sale.CustomerName)
+                    ? "Walk-in"
+                    : (sale.Customer?.Name ?? sale.CustomerName);
+
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="receipt-card h-100" role="button" tabindex="0"
+                         @onclick="() => GoToViewReceipt(sale.Id)"
+                         @onkeydown="e => OnCardKeyDown(e, sale.Id)">
+                        <div class="receipt-card-inner">
+                            <div class="receipt-card-top">
+                                <div class="receipt-card-date">
+                                    <span class="receipt-card-day">@sale.SaleDate.ToString("dd")</span>
+                                    <span class="receipt-card-mon">@sale.SaleDate.ToString("MMM yyyy")</span>
+                                </div>
+                                <div class="receipt-card-ref text-end">
+                                    <span class="receipt-ref-label">Ref</span>
+                                    <div class="receipt-ref-value">@sale.SaleNumber</div>
+                                    @if (sale.ShopServiceBillId.HasValue)
+                                    {
+                                        <span class="receipt-chip receipt-chip-shop">Shop</span>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="receipt-card-amount">@sale.NetAmount.ToString("N2")</div>
+                            <div class="receipt-card-customer text-truncate" title="@customerLabel">@customerLabel</div>
+
+                            <div class="receipt-card-bottom">
+                                <span class="receipt-chip receipt-chip-pay">@sale.PaymentMethod</span>
+                                <div class="receipt-card-actions" @onclick:stopPropagation="true">
+                                    <button type="button" class="btn btn-link btn-sm p-1 receipt-action" title="Download PDF"
+                                            @onclick="() => DownloadReceiptPdf(sale.Id)">
+                                        <i class="bi bi-download"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-link btn-sm p-1 receipt-action text-primary" title="View receipt"
+                                            @onclick="() => GoToViewReceipt(sale.Id)">
+                                        <i class="bi bi-receipt"></i>
+                                    </button>
+                                    @if (canEditInvoices)
+                                    {
+                                        <button type="button" class="btn btn-link btn-sm p-1 receipt-action" title="Edit"
+                                                @onclick="() => GoToEditSale(sale.Id)">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-link btn-sm p-1 receipt-action text-danger" title="Delete"
+                                                @onclick="() => DeleteSale(sale.Id)">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="receipt-card-perf">************</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Sale> sales = new();
+    private bool canEditInvoices;
+    private DateTime? fromDate;
+    private DateTime? toDate;
+    private string invoiceSearch = string.Empty;
+
+    private IEnumerable<Sale> FilteredSales =>
+        sales
+            .Where(s => !fromDate.HasValue || s.SaleDate.Date >= fromDate.Value.Date)
+            .Where(s => !toDate.HasValue || s.SaleDate.Date <= toDate.Value.Date)
+            .Where(s => string.IsNullOrWhiteSpace(invoiceSearch) ||
+                        (s.SaleNumber?.Contains(invoiceSearch, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        canEditInvoices = authState.User.IsInRole("SuperAdmin");
+        await ReloadSales();
+    }
+
+    private async Task DeleteSale(Guid id)
+    {
+        bool confirm = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this receipt?");
+        if (confirm)
+        {
+            await SaleService.DeleteAsync(id);
+            await ReloadSales();
+        }
+    }
+
+    private async Task ReloadSales()
+    {
+        sales = (await SaleService.GetAllAsync())
+            .OrderByDescending(s => s.SaleDate)
+            .ToList();
+        StateHasChanged();
+    }
+
+    private async Task RefreshPage() => await ReloadSales();
+
+    private void ClearFilters()
+    {
+        fromDate = null;
+        toDate = null;
+        invoiceSearch = string.Empty;
+    }
+
+    private async Task DownloadReceiptPdf(Guid saleId)
+    {
+        var sale = await SaleService.GetByIdAsync(saleId);
+        if (sale == null)
+            return;
+
+        var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(saleId);
+        if (pdfBytes.Length == 0)
+            return;
+
+        var base64 = Convert.ToBase64String(pdfBytes);
+        await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber ?? saleId.ToString("N")[..8]}.pdf", base64);
+    }
+
+    private void GoToViewReceipt(Guid id) => Nav.NavigateTo($"/receipts/view/{id}");
+
+    private void GoToEditSale(Guid id) => Nav.NavigateTo($"/sales/edit/{id}");
+
+    private void OnCardKeyDown(KeyboardEventArgs e, Guid id)
+    {
+        if (e.Code is "Enter" or "NumpadEnter" or "Space")
+            GoToViewReceipt(id);
+    }
+}

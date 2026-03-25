@@ -1,0 +1,178 @@
+.receipt-screen {
+    min-height: calc(100vh - 6rem);
+    background: linear-gradient(180deg, #eceff1 0%, #cfd8dc 100%);
+    margin: -1rem -1.5rem 0;
+    padding: 1.5rem 1rem 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.receipt-paper {
+    width: 100%;
+    max-width: 22rem;
+    background: #fafafa;
+    border: 1px dashed #90a4ae;
+    border-radius: 2px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
+    padding: 1.25rem 1.1rem 1rem;
+    font-family: "Segoe UI", ui-monospace, "Cascadia Mono", "Consolas", monospace;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: #212121;
+}
+
+.receipt-dash {
+    text-align: center;
+    font-size: 0.65rem;
+    letter-spacing: 0.02em;
+    color: #78909c;
+    user-select: none;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.receipt-store {
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.35rem;
+}
+
+.receipt-store-sub {
+    text-align: center;
+    font-size: 0.72rem;
+    color: #546e7a;
+    margin-top: 0.15rem;
+}
+
+.receipt-title {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.12em;
+    margin: 0.35rem 0;
+}
+
+.receipt-kv {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+}
+
+    .receipt-kv span:first-child {
+        color: #607d8b;
+        flex-shrink: 0;
+    }
+
+    .receipt-kv span:last-child {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+
+.receipt-total-row {
+    margin-top: 0.4rem;
+    padding-top: 0.35rem;
+    border-top: 1px dashed #b0bec5;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.receipt-muted {
+    font-size: 0.74rem;
+    color: #607d8b;
+}
+
+.receipt-lines-head {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 0.78rem;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #455a64;
+}
+
+.receipt-line {
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px dotted #cfd8dc;
+}
+
+    .receipt-line:last-of-type {
+        border-bottom: none;
+        margin-bottom: 0.25rem;
+        padding-bottom: 0;
+    }
+
+.receipt-line-desc {
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.receipt-line-note {
+    font-weight: 400;
+    color: #757575;
+    font-size: 0.74rem;
+}
+
+.receipt-line-meta {
+    font-size: 0.72rem;
+    color: #78909c;
+    margin-top: 0.1rem;
+}
+
+.receipt-line-total {
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-top: 0.15rem;
+}
+
+.receipt-empty {
+    text-align: center;
+    color: #90a4ae;
+    font-style: italic;
+    padding: 0.5rem 0;
+    font-size: 0.78rem;
+}
+
+.receipt-notes {
+    margin-top: 0.75rem;
+    font-size: 0.72rem;
+    color: #5d4037;
+    word-break: break-word;
+}
+
+.receipt-link-bar {
+    text-align: center;
+    margin-top: 0.75rem;
+}
+
+.receipt-link {
+    font-size: 0.72rem;
+}
+
+.receipt-thanks {
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.15em;
+    margin: 0.35rem 0;
+}
+
+.receipt-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #cfd8dc;
+}
