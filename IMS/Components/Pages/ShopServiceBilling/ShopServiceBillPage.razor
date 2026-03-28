@@ -119,19 +119,19 @@
 
         @if (Bill.Status == ShopServiceBillStatus.Open)
         {
-            <div class="row">
-                <!-- LEFT: Product list -->
-                <div class="col-lg-5 mb-3">
-                    <div class="card mb-3">
-                        <div class="card-header bg-light">
+            <div class="row align-items-stretch">
+                <!-- LEFT: Product list (card stretches to match Items on bill) -->
+                <div class="col-lg-5 mb-3 d-flex flex-column">
+                    <div class="card flex-grow-1 d-flex flex-column mb-0">
+                        <div class="card-header bg-light flex-shrink-0">
                             <strong>Products</strong>
                         </div>
-                        <div class="card-body p-2">
-                            <input class="form-control form-control-sm mb-2"
+                        <div class="card-body p-2 d-flex flex-column flex-grow-1" style="min-height: 0;">
+                            <input class="form-control form-control-sm mb-2 flex-shrink-0"
                                    placeholder="Search by name, size, brand, tread..."
                                    @bind="productSearchText"
                                    @bind:event="oninput" />
-                            <div class="border rounded p-2" style="max-height: 280px; overflow-y: auto;">
+                            <div class="border rounded p-2 flex-grow-1 overflow-auto" style="min-height: 0;">
                                 @{
                                     var filteredProducts = products
                                         .Where(p => string.IsNullOrWhiteSpace(productSearchText) ||
@@ -164,7 +164,7 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Service: separate box -->
+                    @* Service box commented out — use custom items or products only
                     <div class="card">
                         <div class="card-header bg-light">
                             <strong>Service</strong>
@@ -185,18 +185,19 @@
                             </div>
                         </div>
                     </div>
+                    *@
                 </div>
 
                 <!-- RIGHT: Line items + totals -->
-                <div class="col-lg-7 mb-3">
-                    <div class="card h-100">
-                        <div class="card-header bg-light">
+                <div class="col-lg-7 mb-3 d-flex flex-column">
+                    <div class="card flex-grow-1 d-flex flex-column mb-0">
+                        <div class="card-header bg-light flex-shrink-0">
                             <strong>Items on bill</strong>
                         </div>
-                        <div class="card-body p-0">
+                        <div class="card-body p-0 d-flex flex-column flex-grow-1" style="min-height: 0;">
                             @if (Bill.Items == null || !Bill.Items.Any())
                             {
-                                <p class="text-muted p-3 mb-0">No items yet. Add products or services from the left.</p>
+                                <p class="text-muted p-3 mb-0">No items yet. Add products from the left.</p>
                                 @if (Bill.Status == ShopServiceBillStatus.Open)
                                 {
                                     <div class="p-3 border-top border-secondary bg-white">
@@ -978,19 +979,8 @@
     private async Task ViewReceipt()
     {
         if (!checkoutSuccessSaleId.HasValue) return;
-        receiptLoading = true;
-        StateHasChanged();
-        try
-        {
-            var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(checkoutSuccessSaleId.Value);
-            var base64 = Convert.ToBase64String(pdfBytes);
-            await JS.InvokeVoidAsync("openPdfInNewTab", base64);
-        }
-        finally
-        {
-            receiptLoading = false;
-            StateHasChanged();
-        }
+        var url = Nav.ToAbsoluteUri($"receipts/view/{checkoutSuccessSaleId.Value}").ToString();
+        await JS.InvokeVoidAsync("window.open", url, "_blank");
     }
 
     private async Task DownloadReceipt()

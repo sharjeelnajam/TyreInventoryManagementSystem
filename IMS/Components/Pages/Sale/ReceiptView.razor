@@ -29,15 +29,6 @@
     {
         <div class="receipt-paper">
             <div class="receipt-dash">* * * * * * * * * * * * * * * *</div>
-            <div class="receipt-store">@(storeName ?? "Store")</div>
-            @if (!string.IsNullOrWhiteSpace(storePhone))
-            {
-                <div class="receipt-store-sub">@storePhone</div>
-            }
-            @if (!string.IsNullOrWhiteSpace(storeAddress))
-            {
-                <div class="receipt-store-sub">@storeAddress</div>
-            }
 
             <div class="receipt-dash mt-2">********************************</div>
             <div class="receipt-title">PAYMENT RECEIPT</div>
@@ -76,7 +67,7 @@
                             <span class="receipt-line-note"> — @line.Remarks</span>
                         }
                     </div>
-                    <div class="receipt-line-meta">x@line.Qty @@ @line.UnitPrice.ToString("N2")</div>
+                    <div class="receipt-line-meta">@($"x{line.Qty} @ {line.UnitPrice:N2}")</div>
                     <div class="receipt-line-total">@line.Total.ToString("N2")</div>
                 </div>
             }
@@ -162,9 +153,6 @@
 
     private Sale? sale;
     private bool loadFailed;
-    private string? storeName;
-    private string? storePhone;
-    private string? storeAddress;
 
     private readonly List<ReceiptLine> lines = new();
 
@@ -180,18 +168,6 @@
         {
             loadFailed = true;
             return;
-        }
-
-        if (sale.TenantId is { } tid)
-        {
-            var tenant = await Db.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tid);
-            if (tenant != null)
-            {
-                storeName = tenant.Name;
-                storePhone = tenant.PhoneNumber;
-                var addr = string.Join(", ", new[] { tenant.Address, tenant.City }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                storeAddress = string.IsNullOrWhiteSpace(addr) ? null : addr;
-            }
         }
 
         if (sale.ShopServiceBillId is Guid billId)

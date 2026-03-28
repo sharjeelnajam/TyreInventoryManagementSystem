@@ -638,7 +638,7 @@ namespace Infrastructure.Services
             document.GeneratePdf(ms);
             return ms.ToArray();
         }
-        /// <summary>Full-page receipt with Date, line items, Discount, Net, Total, and payment info.</summary>
+        /// <summary>Thermal-style PDF aligned with the on-screen receipt at <c>/receipts/view/</c> (ReceiptView).</summary>
         public async Task<byte[]> GenerateThermalReceiptPdfAsync(Guid saleId)
         {
             var sale = await _context.Sale
@@ -650,23 +650,40 @@ namespace Infrastructure.Services
             if (sale == null)
                 return Array.Empty<byte>();
 
-            List<(string desc, int qty, decimal unit, decimal total)> lineItems;
+            var thermalLines = new List<(string Desc, string? Remarks, int Qty, decimal Unit, decimal Total)>();
             if (sale.ShopServiceBillId.HasValue)
             {
-                var bill = await _context.ShopServiceBills
-                    .Include(b => b.Items)
-                    .FirstOrDefaultAsync(b => b.Id == sale.ShopServiceBillId.Value);
-                lineItems = bill?.Items?.Select(i => (i.ServiceName, i.Quantity, i.UnitPrice, i.TotalPrice)).ToList()
-                    ?? new List<(string, int, decimal, decimal)>();
+                var billItems = await _context.ShopServiceBillItems
+                    .AsNoTracking()
+                    .Where(i => i.ShopServiceBillId == sale.ShopServiceBillId.Value)
+                    .OrderBy(i => i.CreatedAt)
+                    .ToListAsync();
+                foreach (var i in billItems)
+                {
+                    var desc = string.IsNullOrWhiteSpace(i.ServiceName) ? "Service" : i.ServiceName;
+                    thermalLines.Add((desc, i.Remarks, i.Quantity, i.UnitPrice, i.TotalPrice));
+                }
             }
             else
             {
-                lineItems = (sale.SaleDetails ?? new List<SaleDetail>())
-                    .Select(d => (d.Product?.ProductName ?? "N/A", d.Quantity, d.UnitPrice, d.TotalPrice)).ToList();
+                foreach (var d in (sale.SaleDetails ?? new List<SaleDetail>()).OrderBy(x => x.CreatedAt))
+                {
+                    var name = d.Product?.ProductName ?? "Item";
+                    var brand = d.Brand ?? d.Product?.Brand;
+                    var desc = string.IsNullOrWhiteSpace(brand) ? name : $"{name} ({brand})";
+                    thermalLines.Add((desc, null, d.Quantity, d.UnitPrice, d.TotalPrice));
+                }
             }
 
-            const string separator = "********************************";
+            var customerDisplay =
+                !string.IsNullOrWhiteSpace(sale.Customer?.Name) ? sale.Customer!.Name
+                : !string.IsNullOrWhiteSpace(sale.CustomerName) ? sale.CustomerName
+                : null;
+
+            const string sepShort = "* * * * * * * * * * * * * * * *";
+            const string sep = "********************************";
             var receiptDate = sale.SaleDate.ToString("dd MMM yyyy HH:mm");
+            var refText = sale.SaleNumber ?? sale.Id.ToString("N")[..8];
 
             QuestPDF.Settings.License = LicenseType.Community;
 
@@ -678,80 +695,126 @@ namespace Infrastructure.Services
                     page.Margin(24);
 
                     const float receiptBodyWidth = 320f;
-                    const float labelWidth = 58f;
+                    const float labelWidth = 72f;
+                    var muted = Colors.Grey.Medium;
 
-                    // Main content: full-width header, then centered receipt body
-                    page.Content().Column(col =>
+                    page.Content().Row(outer =>
                     {
-                        // Title – centered (no shop name on receipt)
-                        col.Item().PaddingTop(4).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
-                        col.Item().PaddingTop(2).Row(r => r.RelativeItem().AlignCenter().Text("PAYMENT RECEIPT").Bold().FontSize(12));
-                        col.Item().PaddingBottom(2).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
-
-                        // Centered receipt body (Ref, Description, items, totals)
-                        col.Item().Row(outer =>
+                        outer.RelativeItem();
+                        outer.ConstantItem(receiptBodyWidth).Column(body =>
                         {
-                            outer.RelativeItem();
-                            outer.ConstantItem(receiptBodyWidth).Column(body =>
+                            body.Item().AlignCenter().Text(sepShort).FontSize(7);
+                            body.Item().PaddingTop(4).AlignCenter().Text(sep).FontSize(7);
+                            body.Item().PaddingTop(2).AlignCenter().Text("PAYMENT RECEIPT").Bold().FontSize(11);
+                            body.Item().PaddingBottom(2).AlignCenter().Text(sep).FontSize(7);
+
+                            body.Item().Row(r =>
                             {
-                                body.Item().PaddingTop(2).Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Ref").FontSize(8);
-                                    r.RelativeItem().AlignRight().Text($"#{sale.SaleNumber ?? sale.Id.ToString("N")?.Substring(0, 8)}").FontSize(8);
-                                });
-                                body.Item().Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Date").FontSize(8);
-                                    r.RelativeItem().AlignRight().Text(receiptDate).FontSize(8);
-                                });
-                                body.Item().PaddingTop(2).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
-                                body.Item().PaddingTop(4).Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Description").Bold().FontSize(9);
-                                    r.RelativeItem().AlignRight().Text("Price").Bold().FontSize(9);
-                                });
-                                foreach (var item in lineItems)
-                                {
-                                    var desc = item.desc.Length > 50 ? item.desc.Substring(0, 47) + "..." : item.desc;
-                                    body.Item().Row(r =>
-                                    {
-                                        r.RelativeItem().Text($"{desc} x{item.qty}").FontSize(9);
-                                        r.RelativeItem().AlignRight().Text($"£{item.total:0.00}").FontSize(9);
-                                    });
-                                }
-                                body.Item().PaddingTop(4).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
-                                body.Item().PaddingTop(2).Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Subtotal").FontSize(9);
-                                    r.RelativeItem().AlignRight().Text($"£{sale.TotalAmount:0.00}").FontSize(9);
-                                });
-                                body.Item().Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Total").Bold().FontSize(10);
-                                    r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").Bold().FontSize(10);
-                                });
-                                body.Item().Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Discount").FontSize(9);
-                                    var discountAmt = sale.Discount ?? 0;
-                                    r.RelativeItem().AlignRight().Text(discountAmt > 0 ? $"-£{discountAmt:0.00}" : $"£{discountAmt:0.00}").FontSize(9);
-                                });
-                                body.Item().Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Net Pay").FontSize(9);
-                                    r.RelativeItem().AlignRight().Text($"£{sale.NetAmount:0.00}").FontSize(9);
-                                });
-                                var paymentDisplay = string.IsNullOrWhiteSpace(sale.PaymentMethod) ? "N/A" : sale.PaymentMethod;
-                                body.Item().Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Payment").FontSize(9);
-                                    r.RelativeItem().AlignRight().Text(paymentDisplay).FontSize(9);
-                                });
-                                body.Item().PaddingTop(4).Row(r => r.RelativeItem().AlignCenter().Text(separator).FontSize(8));
-                                body.Item().PaddingTop(6).AlignCenter().Text("THANK YOU!").Bold().FontSize(14);
+                                r.ConstantItem(labelWidth).Text("Ref").FontSize(8);
+                                r.RelativeItem().AlignRight().Text(refText).FontSize(8);
                             });
-                            outer.RelativeItem();
+                            body.Item().Row(r =>
+                            {
+                                r.ConstantItem(labelWidth).Text("Date").FontSize(8);
+                                r.RelativeItem().AlignRight().Text(receiptDate).FontSize(8);
+                            });
+                            if (!string.IsNullOrWhiteSpace(customerDisplay))
+                            {
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Customer").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text(customerDisplay).FontSize(8);
+                                });
+                            }
+
+                            body.Item().PaddingTop(4).AlignCenter().Text(sep).FontSize(7);
+
+                            body.Item().PaddingTop(2).Row(r =>
+                            {
+                                r.RelativeItem().Text("ITEM").Bold().FontSize(8);
+                                r.ConstantItem(52).AlignRight().Text("AMT").Bold().FontSize(8);
+                            });
+
+                            if (!thermalLines.Any())
+                                body.Item().PaddingTop(6).AlignCenter().Text("No line items on file.").Italic().FontSize(8).FontColor(muted);
+
+                            foreach (var line in thermalLines)
+                            {
+                                body.Item().PaddingTop(4).Column(block =>
+                                {
+                                    block.Item().Text(line.Desc).Bold().FontSize(9);
+                                    if (!string.IsNullOrWhiteSpace(line.Remarks))
+                                        block.Item().Text($" — {line.Remarks}").FontSize(8).FontColor(muted);
+                                    block.Item().Row(r =>
+                                    {
+                                        r.RelativeItem().Text($"x{line.Qty} @ {line.Unit:N2}").FontSize(7).FontColor(muted);
+                                        r.ConstantItem(55).AlignRight().Text(line.Total.ToString("N2")).Bold().FontSize(9);
+                                    });
+                                });
+                            }
+
+                            body.Item().PaddingTop(6).AlignCenter().Text(sep).FontSize(7);
+
+                            body.Item().Row(r =>
+                            {
+                                r.ConstantItem(labelWidth).Text("Subtotal").FontSize(8);
+                                r.RelativeItem().AlignRight().Text(sale.TotalAmount.ToString("N2")).FontSize(8);
+                            });
+                            if (sale.Discount is decimal disc && disc > 0)
+                            {
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Discount").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text($"-{disc:N2}").FontSize(8);
+                                });
+                            }
+                            if (sale.TaxAmount is decimal tx && tx > 0)
+                            {
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Tax").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text(tx.ToString("N2")).FontSize(8);
+                                });
+                            }
+                            body.Item().PaddingTop(2).Row(r =>
+                            {
+                                r.ConstantItem(labelWidth).Text("TOTAL").Bold().FontSize(10);
+                                r.RelativeItem().AlignRight().Text(sale.NetAmount.ToString("N2")).Bold().FontSize(10);
+                            });
+
+                            if (IsSplitPaymentThermal(sale.PaymentMethod))
+                            {
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Cash").FontSize(7).FontColor(muted);
+                                    r.RelativeItem().AlignRight().Text(sale.CashAmount.ToString("N2")).FontSize(7).FontColor(muted);
+                                });
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Card").FontSize(7).FontColor(muted);
+                                    r.RelativeItem().AlignRight().Text(sale.CardAmount.ToString("N2")).FontSize(7).FontColor(muted);
+                                });
+                            }
+
+                            body.Item().Row(r =>
+                            {
+                                r.ConstantItem(labelWidth).Text("Payment").FontSize(8);
+                                r.RelativeItem().AlignRight().Text(string.IsNullOrWhiteSpace(sale.PaymentMethod) ? "N/A" : sale.PaymentMethod).FontSize(8);
+                            });
+                            body.Item().Row(r =>
+                            {
+                                r.ConstantItem(labelWidth).Text("Status").FontSize(7).FontColor(muted);
+                                r.RelativeItem().AlignRight().Text(sale.PaymentStatus ?? "").FontSize(7).FontColor(muted);
+                            });
+
+                            if (!string.IsNullOrWhiteSpace(sale.Notes))
+                                body.Item().PaddingTop(6).Text($"Note: {sale.Notes}").FontSize(7);
+
+                            body.Item().PaddingTop(8).AlignCenter().Text(sep).FontSize(7);
+                            body.Item().PaddingTop(6).AlignCenter().Text("THANK YOU").Bold().FontSize(12);
+                            body.Item().PaddingTop(4).AlignCenter().Text(sepShort).FontSize(7);
                         });
+                        outer.RelativeItem();
                     });
                 });
             });
@@ -760,6 +823,11 @@ namespace Infrastructure.Services
             document.GeneratePdf(ms);
             return ms.ToArray();
         }
+
+        private static bool IsSplitPaymentThermal(string? paymentMethod) =>
+            !string.IsNullOrWhiteSpace(paymentMethod) &&
+            paymentMethod.Contains("card", StringComparison.OrdinalIgnoreCase) &&
+            paymentMethod.Contains("cash", StringComparison.OrdinalIgnoreCase);
 
         public async Task<List<TopProductDto>> GetTopSellingProductsByDateAsync(DateTime start, DateTime end)
         {

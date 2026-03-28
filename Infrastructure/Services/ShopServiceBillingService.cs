@@ -1,3 +1,5 @@
+using System.Data;
+using System.Globalization;
 using Domain;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -20,19 +22,47 @@ namespace Infrastructure.Services
 
         public async Task<ShopServiceBill> StartBillAsync(Guid? customerId = null, string? customerName = null)
         {
-            var bill = new ShopServiceBill
+            var tenantId = _tenantProvider.TenantId;
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                Id = Guid.NewGuid(),
-                BillNumber = $"SB-{DateTime.UtcNow:yyyyMMdd-HHmmss}",
-                Status = ShopServiceBillStatus.Open,
-                CustomerId = customerId,
-                CustomerName = customerName,
-                OpenedAt = DateTime.UtcNow,
-                TotalAmount = 0
-            };
-            _context.ShopServiceBills.Add(bill);
-            await _context.SaveChangesAsync();
-            return bill;
+                await using var tx = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                try
+                {
+                    var query = _context.ShopServiceBills.AsQueryable();
+                    if (tenantId != Guid.Empty)
+                        query = query.Where(b => b.TenantId == tenantId);
+
+                    var numbers = await query.Select(b => b.BillNumber).ToListAsync();
+                    var maxSeq = 0;
+                    foreach (var bn in numbers)
+                    {
+                        if (int.TryParse(bn, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && n > maxSeq)
+                            maxSeq = n;
+                    }
+
+                    var next = maxSeq + 1;
+                    var bill = new ShopServiceBill
+                    {
+                        Id = Guid.NewGuid(),
+                        BillNumber = next.ToString("D5", CultureInfo.InvariantCulture),
+                        Status = ShopServiceBillStatus.Open,
+                        CustomerId = customerId,
+                        CustomerName = customerName,
+                        OpenedAt = DateTime.UtcNow,
+                        TotalAmount = 0
+                    };
+                    _context.ShopServiceBills.Add(bill);
+                    await _context.SaveChangesAsync();
+                    await tx.CommitAsync();
+                    return bill;
+                }
+                catch
+                {
+                    await tx.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task<List<ShopServiceBill>> GetOpenBillsAsync()
