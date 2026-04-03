@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Domain
 {
@@ -8,13 +9,12 @@ namespace Domain
         [Required(ErrorMessage = "Customer name is required.")]
         public string Name { get; set; }
 
-        public string Phone { get; set; }
+        public string? Phone { get; set; }
 
-        [Required(ErrorMessage = "Email is required")]
         [EmailAddress(ErrorMessage = "Invalid email format")]
-        public string Email { get; set; }
+        public string? Email { get; set; }
 
-        public string? Address { get; set; }
+        public string? SpecialNote { get; set; }
         public string? City { get; set; }
 
         public string? VehicleNumber { get; set; }

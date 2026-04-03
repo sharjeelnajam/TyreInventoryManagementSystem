@@ -377,7 +377,7 @@ namespace Infrastructure.Services
                     CreatedAt = DateTime.UtcNow,
                     Name = name.Trim(),
                     Phone = colPhone > 0 ? GetCellString(row, colPhone) ?? string.Empty : string.Empty,
-                    Address = colAddress > 0 ? GetCellString(row, colAddress) : null,
+                    SpecialNote = colAddress > 0 ? GetCellString(row, colAddress) : null,
                     City = colCity > 0 ? GetCellString(row, colCity) : null,
                     VehicleNumber = colVehicleNumber > 0 ? GetCellString(row, colVehicleNumber) : null,
                     CreditLimit = creditLimit,

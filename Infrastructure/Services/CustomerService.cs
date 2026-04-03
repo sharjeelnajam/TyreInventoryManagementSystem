@@ -86,7 +86,7 @@ namespace Infrastructure.Services
                 existingCustomer.Name = customer.Name;
                 existingCustomer.Phone = customer.Phone;
                 existingCustomer.Email = customer.Email;
-                existingCustomer.Address = customer.Address;
+                existingCustomer.SpecialNote = customer.SpecialNote;
                 existingCustomer.City = customer.City;
                 existingCustomer.VehicleNumber = customer.VehicleNumber;
                 existingCustomer.CreditLimit = customer.CreditLimit;
