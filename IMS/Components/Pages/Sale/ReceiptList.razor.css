@@ -145,18 +145,32 @@
     word-break: break-all;
 }
 
+.receipt-card-name {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #263238;
+    margin-bottom: 0.15rem;
+}
+
+.receipt-card-vehicle {
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #37474f;
+    margin-bottom: 0.45rem;
+}
+
+.receipt-card-vehicle-empty {
+    font-weight: 500;
+    color: #b0bec5;
+}
+
 .receipt-card-amount {
     font-size: 1.55rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: #1b5e20;
-    margin-bottom: 0.2rem;
-}
-
-.receipt-card-customer {
-    font-size: 0.82rem;
-    color: #546e7a;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.65rem;
 }
 
 .receipt-card-bottom {

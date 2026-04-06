@@ -17,8 +17,8 @@
 
     <div class="receipts-toolbar">
         <div class="receipts-toolbar-search">
-            <label class="form-label">Invoice #</label>
-            <input type="search" class="form-control form-control-sm" @bind="invoiceSearch" @bind:event="oninput" placeholder="Search invoice number..." autocomplete="off" />
+            <label class="form-label">Search</label>
+            <input type="search" class="form-control form-control-sm" @bind="searchText" @bind:event="oninput" placeholder="Invoice #, customer name, registration..." autocomplete="off" />
         </div>
         <div class="receipts-toolbar-actions">
             <div class="receipts-date-compact">
@@ -45,7 +45,7 @@
     else if (!FilteredSales.Any())
     {
         <div class="receipts-empty text-center text-muted py-5 rounded-3 border border-dashed">
-            No receipts match your filters. Try adjusting dates or the invoice search.
+            No receipts match your filters. Try adjusting dates or the search.
         </div>
     }
     else
@@ -53,9 +53,11 @@
         <div class="row g-3">
             @foreach (var sale in FilteredSales)
             {
-                var customerLabel = string.IsNullOrWhiteSpace(sale.Customer?.Name) && string.IsNullOrWhiteSpace(sale.CustomerName)
+                var displayName = string.IsNullOrWhiteSpace(sale.Customer?.Name) && string.IsNullOrWhiteSpace(sale.CustomerName)
                     ? "Walk-in"
                     : (sale.Customer?.Name ?? sale.CustomerName);
+                var displayVehicle = sale.VehicleNumber ?? sale.Customer?.VehicleNumber;
+                var vehicleLine = string.IsNullOrWhiteSpace(displayVehicle) ? "—" : displayVehicle;
 
                 <div class="col-12 col-md-6 col-xl-4">
                     <div class="receipt-card h-100" role="button" tabindex="0"
@@ -77,8 +79,9 @@
                                 </div>
                             </div>
 
+                            <div class="receipt-card-name text-truncate" title="@displayName">@displayName</div>
+                            <div class="@($"receipt-card-vehicle text-truncate{(string.IsNullOrWhiteSpace(displayVehicle) ? " receipt-card-vehicle-empty" : "")}")" title="@(displayVehicle ?? "")">@vehicleLine</div>
                             <div class="receipt-card-amount">@sale.NetAmount.ToString("N2")</div>
-                            <div class="receipt-card-customer text-truncate" title="@customerLabel">@customerLabel</div>
 
                             <div class="receipt-card-bottom">
                                 <span class="receipt-chip receipt-chip-pay">@sale.PaymentMethod</span>
@@ -118,14 +121,25 @@
     private bool canEditInvoices;
     private DateTime? fromDate;
     private DateTime? toDate;
-    private string invoiceSearch = string.Empty;
+    private string searchText = string.Empty;
 
     private IEnumerable<Sale> FilteredSales =>
         sales
             .Where(s => !fromDate.HasValue || s.SaleDate.Date >= fromDate.Value.Date)
             .Where(s => !toDate.HasValue || s.SaleDate.Date <= toDate.Value.Date)
-            .Where(s => string.IsNullOrWhiteSpace(invoiceSearch) ||
-                        (s.SaleNumber?.Contains(invoiceSearch, StringComparison.OrdinalIgnoreCase) ?? false));
+            .Where(MatchesSearch);
+
+    private bool MatchesSearch(Sale s)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return true;
+        var q = searchText.Trim();
+        return (s.SaleNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (s.CustomerName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (s.Customer?.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (s.VehicleNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (s.Customer?.VehicleNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -158,7 +172,7 @@
     {
         fromDate = null;
         toDate = null;
-        invoiceSearch = string.Empty;
+        searchText = string.Empty;
     }
 
     private async Task DownloadReceiptPdf(Guid saleId)

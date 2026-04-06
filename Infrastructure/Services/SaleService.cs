@@ -86,6 +86,8 @@ namespace Infrastructure.Services
                 if (sale.CustomerId == Guid.Empty)
                     sale.CustomerId = null;
 
+                await ApplyVehicleNumberFromCustomerIfEmptyAsync(_context, sale);
+
                 // Validate split payment: Card + Cash must equal NetAmount when using "Card & Cash"
                 if (string.Equals(sale.PaymentMethod, "Card & Cash", StringComparison.OrdinalIgnoreCase))
                 {
@@ -248,6 +250,8 @@ namespace Infrastructure.Services
 
                 if (existingSales == null)
                     throw new Exception("Purchase not found in DB");
+
+                await ApplyVehicleNumberFromCustomerIfEmptyAsync(ctx, sale);
 
                 // Update fields
                 existingSales.SaleNumber = sale.SaleNumber;
@@ -989,6 +993,25 @@ namespace Infrastructure.Services
 
             await HydrateSalesWithCustomers(sales);
             return sales;
+        }
+
+        /// <summary>
+        /// Checkout often only sets CustomerId; registration is stored on the customer record (VehicleNumber).
+        /// Copy it onto the sale when empty so lists and PDFs show the plate.
+        /// </summary>
+        private async Task ApplyVehicleNumberFromCustomerIfEmptyAsync(ApplicationDbContext ctx, Sale sale)
+        {
+            if (!sale.CustomerId.HasValue || !string.IsNullOrWhiteSpace(sale.VehicleNumber))
+                return;
+
+            var tenantId = _tenantProvider.TenantId;
+            var customer = await ctx.Customer
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == sale.CustomerId.Value
+                    && (tenantId == Guid.Empty || c.TenantId == tenantId));
+
+            if (customer != null && !string.IsNullOrWhiteSpace(customer.VehicleNumber))
+                sale.VehicleNumber = customer.VehicleNumber;
         }
 
         private async Task HydrateSalesWithCustomers(List<Sale> sales)

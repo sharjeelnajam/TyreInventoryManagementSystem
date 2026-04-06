@@ -20,7 +20,7 @@
 
     <div class="col-md-2">
         <InputText class="form-control"
-        placeholder="Search by Name"
+        placeholder="Search by name or registration..."
         TValue="string"
         Value=""
         ValueChanged="OnNameChanged"
@@ -52,7 +52,7 @@
             <th>Name</th>
             <th>Phone</th>
             @*  <th>Email</th> *@
-            <th>Registerd At</th>
+            <th>Vehicle number</th>
             <th>City</th>
             <th>Type</th>
             <th>Active</th>
@@ -72,7 +72,7 @@
                     <td>@c.Name</td>
                     <td>@c.Phone</td>
                     @*     <td>@c.Email</td> *@
-                    <td>@c.CreatedAt.ToShortDateString()</td>
+                    <td>@(string.IsNullOrWhiteSpace(c.VehicleNumber) ? "—" : c.VehicleNumber)</td>
                     <td>@c.City</td>
                     <td>@GetCustomerTypeName(c.ListManagementId)</td>
                     <td>@(c.IsActive ? "Yes" : "No")</td>

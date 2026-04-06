@@ -31,7 +31,12 @@ namespace Infrastructure.Services
                 if (tenantId != Guid.Empty)
                     query = query.Where(c => c.TenantId == tenantId);
                 if (!string.IsNullOrWhiteSpace(name))
-                    query = query.Where(s => s.Name.Contains(name));
+                {
+                    var term = name.Trim();
+                    query = query.Where(s =>
+                        s.Name.Contains(term)
+                        || (s.VehicleNumber != null && s.VehicleNumber.Contains(term)));
+                }
                 if (typeId.HasValue && typeId.Value != Guid.Empty)
                     query = query.Where(c => c.ListManagementId == typeId.Value);
                 return await query.ToListAsync();
