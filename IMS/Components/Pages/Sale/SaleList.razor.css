@@ -8,10 +8,12 @@
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
+.sale-list-header { margin-bottom: 0.35rem; }
+
 .sale-list-toolbar-search {
-    flex: 1 1 12rem;
-    max-width: 22rem;
-    min-width: 10rem;
+    flex: 0 1 16rem;
+    max-width: 16rem;
+    min-width: 9rem;
 }
 
     .sale-list-toolbar-search .form-label {
@@ -27,6 +29,22 @@
     gap: 0.5rem;
     margin-left: auto;
 }
+
+.sale-list-special-note-toggle {
+    flex-shrink: 0;
+    padding: 0.2rem 0.55rem 0.2rem;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 0.35rem;
+    background: #fff;
+    margin-left: 0.35rem;
+}
+
+    .sale-list-special-note-toggle .form-label {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
 
 .sale-list-date-compact {
     width: 9.75rem;

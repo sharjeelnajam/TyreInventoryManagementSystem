@@ -49,6 +49,20 @@
                     <span>@CustomerDisplay</span>
                 </div>
             }
+            @if (!string.IsNullOrWhiteSpace(RegistrationDisplay))
+            {
+                <div class="receipt-kv">
+                    <span>Registration Number</span>
+                    <span>@RegistrationDisplay</span>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(CustomerEmailDisplay))
+            {
+                <div class="receipt-kv">
+                    <span>Email</span>
+                    <span>@CustomerEmailDisplay</span>
+                </div>
+            }
 
             <div class="receipt-dash my-2">********************************</div>
 
@@ -122,11 +136,6 @@
                 <span>@sale.PaymentStatus</span>
             </div>
 
-            @if (!string.IsNullOrWhiteSpace(sale.Notes))
-            {
-                <div class="receipt-notes">Note: @sale.Notes</div>
-            }
-
             @if (sale.ShopServiceBillId is Guid billId)
             {
                 <div class="receipt-link-bar">
@@ -159,6 +168,15 @@
     private string? CustomerDisplay =>
         !string.IsNullOrWhiteSpace(sale?.Customer?.Name) ? sale!.Customer!.Name
         : !string.IsNullOrWhiteSpace(sale?.CustomerName) ? sale!.CustomerName
+        : null;
+
+    private string? RegistrationDisplay =>
+        !string.IsNullOrWhiteSpace(sale?.Customer?.VehicleNumber) ? sale!.Customer!.VehicleNumber!.Trim()
+        : !string.IsNullOrWhiteSpace(sale?.VehicleNumber) ? sale!.VehicleNumber!.Trim()
+        : null;
+
+    private string? CustomerEmailDisplay =>
+        !string.IsNullOrWhiteSpace(sale?.Customer?.Email) ? sale!.Customer!.Email!.Trim()
         : null;
 
     protected override async Task OnInitializedAsync()

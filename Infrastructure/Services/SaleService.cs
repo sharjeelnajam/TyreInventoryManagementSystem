@@ -684,6 +684,15 @@ namespace Infrastructure.Services
                 : !string.IsNullOrWhiteSpace(sale.CustomerName) ? sale.CustomerName
                 : null;
 
+            var registrationDisplay =
+                !string.IsNullOrWhiteSpace(sale.Customer?.VehicleNumber) ? sale.Customer!.VehicleNumber!.Trim()
+                : !string.IsNullOrWhiteSpace(sale.VehicleNumber) ? sale.VehicleNumber.Trim()
+                : null;
+
+            var emailDisplay =
+                !string.IsNullOrWhiteSpace(sale.Customer?.Email) ? sale.Customer!.Email!.Trim()
+                : null;
+
             const string sepShort = "* * * * * * * * * * * * * * * *";
             const string sep = "********************************";
             var receiptDate = sale.SaleDate.ToString("dd MMM yyyy HH:mm");
@@ -700,6 +709,7 @@ namespace Infrastructure.Services
 
                     const float receiptBodyWidth = 320f;
                     const float labelWidth = 72f;
+                    const float labelWidthLong = 118f;
                     var muted = Colors.Grey.Medium;
 
                     page.Content().Row(outer =>
@@ -728,6 +738,22 @@ namespace Infrastructure.Services
                                 {
                                     r.ConstantItem(labelWidth).Text("Customer").FontSize(8);
                                     r.RelativeItem().AlignRight().Text(customerDisplay).FontSize(8);
+                                });
+                            }
+                            if (!string.IsNullOrWhiteSpace(registrationDisplay))
+                            {
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidthLong).Text("Registration Number").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text(registrationDisplay).FontSize(8);
+                                });
+                            }
+                            if (!string.IsNullOrWhiteSpace(emailDisplay))
+                            {
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Email").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text(emailDisplay).FontSize(8);
                                 });
                             }
 
@@ -810,9 +836,6 @@ namespace Infrastructure.Services
                                 r.ConstantItem(labelWidth).Text("Status").FontSize(7).FontColor(muted);
                                 r.RelativeItem().AlignRight().Text(sale.PaymentStatus ?? "").FontSize(7).FontColor(muted);
                             });
-
-                            if (!string.IsNullOrWhiteSpace(sale.Notes))
-                                body.Item().PaddingTop(6).Text($"Note: {sale.Notes}").FontSize(7);
 
                             body.Item().PaddingTop(8).AlignCenter().Text(sep).FontSize(7);
                             body.Item().PaddingTop(6).AlignCenter().Text("THANK YOU").Bold().FontSize(12);

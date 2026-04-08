@@ -3,6 +3,7 @@
 @using Infrastructure.Services
 @inject ISaleService SaleService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <h4 class="mb-3">🧾 Invoice Details</h4>
@@ -36,6 +37,15 @@ else
                 <input class="form-control" value="@(sale.Customer?.Name ?? sale.CustomerName)" readonly />
             </div>
         </div>
+        @if (showCustomerSpecialNote)
+        {
+            <div class="row mt-2">
+                <div class="col-md-12">
+                    <label>Customer special note</label>
+                    <input class="form-control" value="@(sale.Customer?.SpecialNote)" readonly />
+                </div>
+            </div>
+        }
 
         <div class="row mt-2">
             <div class="col-md-3">
@@ -84,12 +94,15 @@ else
                 <input class="form-control fw-bold" value="@sale.NetAmount.ToString("N2")" readonly />
             </div>
         </div>
-        <div class="row mt-2">
-            <div class="col-md-12">
-                <label>Notes</label>
-                <input class="form-control" value="@sale.Notes" readonly />
+        @if (showCustomerSpecialNote)
+        {
+            <div class="row mt-2">
+                <div class="col-md-12">
+                    <label>Notes</label>
+                    <input class="form-control" value="@sale.Notes" readonly />
+                </div>
             </div>
-        </div>
+        }
 
         <hr />
         <h5>Sale Items</h5>
@@ -136,13 +149,32 @@ else
 }
 
 @code {
+    private const string ShowSpecialNoteOnInvoiceViewKey = "ims.sales.showSpecialNoteOnInvoiceView";
+
     [Parameter] public Guid SaleId { get; set; }
 
     private Sale? sale;
+    private bool showCustomerSpecialNote;
 
     protected override async Task OnInitializedAsync()
     {
         sale = await SaleService.GetByIdAsync(SaleId);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        try
+        {
+            var stored = await JS.InvokeAsync<string?>("localStorage.getItem", ShowSpecialNoteOnInvoiceViewKey);
+            showCustomerSpecialNote = stored != "false";
+            StateHasChanged();
+        }
+        catch
+        {
+            /* localStorage unavailable */
+        }
     }
 
     private static bool IsSplitPayment(string? paymentMethod) =>

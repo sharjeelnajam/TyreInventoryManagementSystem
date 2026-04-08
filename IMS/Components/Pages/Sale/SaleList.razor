@@ -10,7 +10,9 @@
 <PageTitle>Sales</PageTitle>
 
 <div class="container mt-4">
-    <h3 class="fw-bold mb-2">Sales</h3>
+    <div class="sale-list-header">
+        <h3 class="fw-bold mb-2">Sales</h3>
+    </div>
 
     <div class="sale-list-toolbar">
         <div class="sale-list-toolbar-search">
@@ -26,10 +28,16 @@
                 <label class="form-label">To Date</label>
                 <InputDate @bind-Value="toDate" class="form-control form-control-sm" />
             </div>
+           
+            <div class="sale-list-special-note-toggle">
+                <label class="form-label" for="toggleSpecialNoteView">Note</label>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="toggleSpecialNoteView"
+                           checked="@showSpecialNoteOnInvoiceView"
+                           @onchange="OnSpecialNoteViewToggleChanged" />
+                </div>
+            </div>
             <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">Clear</button>
-            <button type="button" class="btn btn-warning btn-sm fw-bold text-dark" @onclick="RefreshPage">
-                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-            </button>
         </div>
     </div>
 
@@ -95,11 +103,14 @@
 
 
 @code {
+    private const string ShowSpecialNoteOnInvoiceViewKey = "ims.sales.showSpecialNoteOnInvoiceView";
+
     private List<Sale> sales = new();
     private bool canEditInvoices;
     private DateTime? fromDate;
     private DateTime? toDate;
     private string searchText = string.Empty;
+    private bool showSpecialNoteOnInvoiceView = true;
 
     private IEnumerable<Sale> FilteredSales =>
         sales
@@ -126,6 +137,38 @@
         sales = (await SaleService.GetAllAsync())
             .OrderByDescending(s => s.SaleDate)
             .ToList();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        try
+        {
+            var stored = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", ShowSpecialNoteOnInvoiceViewKey);
+            if (stored == "false")
+                showSpecialNoteOnInvoiceView = false;
+            else if (stored == "true")
+                showSpecialNoteOnInvoiceView = true;
+            StateHasChanged();
+        }
+        catch
+        {
+            /* localStorage unavailable (e.g. prerender) */
+        }
+    }
+
+    private async Task OnSpecialNoteViewToggleChanged(ChangeEventArgs e)
+    {
+        showSpecialNoteOnInvoiceView = e.Value is bool cb
+            ? cb
+            : string.Equals(Convert.ToString(e.Value), "true", StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", ShowSpecialNoteOnInvoiceViewKey,
+                showSpecialNoteOnInvoiceView ? "true" : "false");
+        }
+        catch { /* ignore */ }
     }
 
     // private void OpenAddSale()
@@ -166,11 +209,6 @@
             .OrderByDescending(s => s.SaleDate)
             .ToList();
         StateHasChanged();
-    }
-
-    private async Task RefreshPage()
-    {
-        await ReloadSales();
     }
 
     private void ClearFilters()
