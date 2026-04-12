@@ -29,6 +29,9 @@ namespace Domain
         public string? PaymentStatus { get; set; }
         public string? Notes { get; set; }
 
+        /// <summary>Work / job description for this bill (separate from notes).</summary>
+        public string? JobDescription { get; set; }
+
         public ICollection<ShopServiceBillItem> Items { get; set; } = new List<ShopServiceBillItem>();
     }
 }

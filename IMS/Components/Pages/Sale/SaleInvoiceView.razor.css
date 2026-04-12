@@ -1,0 +1,55 @@
+.invoice-page-title-text {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: #1e3a5f;
+}
+
+.invoice-detail-card {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 0.125rem 0.5rem rgba(30, 58, 95, 0.08);
+}
+
+.invoice-label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 0.2rem;
+}
+
+.invoice-section-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.invoice-table-wrap {
+    border-color: #e2e8f0 !important;
+}
+
+.invoice-table thead th {
+    background: #1e3a5f;
+    color: #fff;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    border: none;
+    padding: 0.65rem 0.75rem;
+    vertical-align: middle;
+}
+
+.invoice-table tbody td {
+    padding: 0.6rem 0.75rem;
+    vertical-align: middle;
+    border-color: #e2e8f0;
+}
+
+.invoice-table tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+}

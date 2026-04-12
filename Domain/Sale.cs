@@ -49,6 +49,9 @@ namespace Domain
         public bool IsApproved { get; set; }
 
         public string? Notes { get; set; }
+
+        /// <summary>Work / job description for this invoice or receipt (separate from free-form notes).</summary>
+        public string? JobDescription { get; set; }
         public string? InvoiceFilePath { get; set; }
         public string? VehicleNumber { get; set; }
         public bool IsReturn { get; set; } 

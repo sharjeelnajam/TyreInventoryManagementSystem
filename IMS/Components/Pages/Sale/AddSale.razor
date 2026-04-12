@@ -298,6 +298,17 @@
                             </div>
                         </div>
 
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label>Job description (optional)</label>
+                                <InputTextArea class="form-control" rows="2" @bind-Value="Sale.JobDescription" placeholder="Work carried out" />
+                            </div>
+                            <div class="col-md-6">
+                                <label>Special Note (optional)</label>
+                                <InputTextArea class="form-control" rows="2" @bind-Value="Sale.Notes" />
+                            </div>
+                        </div>
+
 
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary" disabled="@(!isFormValid)" style="opacity:@(isFormValid ? "1" : "0.6")">
@@ -504,7 +515,7 @@
                 Sale = new Sale
                     {
                         SaleDate = DateTime.Now,
-                        SaleNumber = $"SO-{DateTime.Now:yyyyMMddHHmmss}",
+                        SaleNumber = await SaleService.GetNextSaleReferencePreviewAsync(),
                         SaleDetails = new List<SaleDetail>(),
                         Discount = 0,
                         TaxAmount = 0

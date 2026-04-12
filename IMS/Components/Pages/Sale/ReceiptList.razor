@@ -12,7 +12,7 @@
 <div class="receipts-page container-fluid py-4">
     <div class="receipts-header mb-2">
         <h2 class="receipts-title mb-1">Receipts</h2>
-        <p class="receipts-sub text-muted small mb-0">Sale slips — tap a card to open the receipt view.</p>
+        <p class="receipts-sub text-muted small mb-0">Sale slips — tap a card to open invoice details.</p>
     </div>
 
     <div class="receipts-toolbar">
@@ -61,7 +61,7 @@
 
                 <div class="col-12 col-md-6 col-xl-4">
                     <div class="receipt-card h-100" role="button" tabindex="0"
-                         @onclick="() => GoToViewReceipt(sale.Id)"
+                         @onclick="() => GoToInvoiceDetail(sale.Id)"
                          @onkeydown="e => OnCardKeyDown(e, sale.Id)">
                         <div class="receipt-card-inner">
                             <div class="receipt-card-top">
@@ -90,8 +90,8 @@
                                             @onclick="() => DownloadReceiptPdf(sale.Id)">
                                         <i class="bi bi-download"></i>
                                     </button>
-                                    <button type="button" class="btn btn-link btn-sm p-1 receipt-action text-primary" title="View receipt"
-                                            @onclick="() => GoToViewReceipt(sale.Id)">
+                                    <button type="button" class="btn btn-link btn-sm p-1 receipt-action text-primary" title="View invoice"
+                                            @onclick="() => GoToInvoiceDetail(sale.Id)">
                                         <i class="bi bi-receipt"></i>
                                     </button>
                                     @if (canEditInvoices)
@@ -189,13 +189,13 @@
         await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber ?? saleId.ToString("N")[..8]}.pdf", base64);
     }
 
-    private void GoToViewReceipt(Guid id) => Nav.NavigateTo($"/receipts/view/{id}");
+    private void GoToInvoiceDetail(Guid id) => Nav.NavigateTo($"/sales/view/{id}?from=receipts");
 
     private void GoToEditSale(Guid id) => Nav.NavigateTo($"/sales/edit/{id}");
 
     private void OnCardKeyDown(KeyboardEventArgs e, Guid id)
     {
         if (e.Code is "Enter" or "NumpadEnter" or "Space")
-            GoToViewReceipt(id);
+            GoToInvoiceDetail(id);
     }
 }

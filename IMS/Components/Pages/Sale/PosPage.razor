@@ -254,10 +254,10 @@
                     </button>
                 </div>
                 <div class="checkout-modal-body">
-                    <p class="mb-3">Sale recorded successfully. You can view or download the receipt.</p>
+                    <p class="mb-3">Sale recorded successfully. You can view invoice details or download the receipt PDF.</p>
                     <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="btn btn-outline-primary" @onclick="ViewReceipt" disabled="@receiptLoading">
-                            <i class="bi bi-eye me-1"></i> View Receipt
+                        <button type="button" class="btn btn-outline-primary" @onclick="ViewInvoiceDetail" disabled="@receiptLoading">
+                            <i class="bi bi-eye me-1"></i> View Invoice
                         </button>
                         <button type="button" class="btn btn-outline-success" @onclick="DownloadReceipt" disabled="@receiptLoading">
                             <i class="bi bi-download me-1"></i> Download Receipt
@@ -393,7 +393,9 @@
                     </div>
                     <div class="checkout-summary-row">
                         <div class="w-100">
-                            <label class="form-label small mb-1 checkout-heading">Notes (optional)</label>
+                            <label class="form-label small mb-1 checkout-heading">Job description (optional)</label>
+                            <InputTextArea class="form-control form-control-sm" rows="2" @bind-Value="Sale.JobDescription" placeholder="e.g. tyre fitting, alignment" />
+                            <label class="form-label small mb-1 mt-2 checkout-heading">Special Note (optional)</label>
                             <InputTextArea class="form-control form-control-sm" rows="2" @bind-Value="Sale.Notes" />
                         </div>
                     </div>
@@ -530,7 +532,7 @@
         Sale = new Sale
         {
             SaleDate = DateTime.Now,
-            SaleNumber = $"SO-{DateTime.Now:yyyyMMddHHmmss}",
+            SaleNumber = await SaleService.GetNextSaleReferencePreviewAsync(),
             SaleDetails = new List<SaleDetail>(),
             Discount = 0,
             TaxAmount = 0
@@ -595,20 +597,20 @@
         }
     }
 
-    private void CloseCheckoutModal()
+    private async Task CloseCheckoutModal()
     {
         showCheckoutModal = false;
         checkoutSuccessSaleId = null;
-        ResetCartForNewSale();
+        await ResetCartForNewSaleAsync();
         StateHasChanged();
     }
 
-    private void ResetCartForNewSale()
+    private async Task ResetCartForNewSaleAsync()
     {
         Sale = new Sale
         {
             SaleDate = DateTime.Now,
-            SaleNumber = $"SO-{DateTime.Now:yyyyMMddHHmmss}",
+            SaleNumber = await SaleService.GetNextSaleReferencePreviewAsync(),
             SaleDetails = new List<SaleDetail>(),
             Discount = 0,
             TaxAmount = 0
@@ -1033,22 +1035,11 @@
         showWholesalerModal = false;
     }
 
-    private async Task ViewReceipt()
+    private async Task ViewInvoiceDetail()
     {
         if (!checkoutSuccessSaleId.HasValue) return;
-        receiptLoading = true;
-        StateHasChanged();
-        try
-        {
-            var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(checkoutSuccessSaleId.Value);
-            var base64 = Convert.ToBase64String(pdfBytes);
-            await JSRuntime.InvokeVoidAsync("openPdfInNewTab", base64);
-        }
-        finally
-        {
-            receiptLoading = false;
-            StateHasChanged();
-        }
+        var url = Nav.ToAbsoluteUri($"sales/view/{checkoutSuccessSaleId.Value}").ToString();
+        await JSRuntime.InvokeVoidAsync("window.open", url, "_blank");
     }
 
     private async Task DownloadReceipt()

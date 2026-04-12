@@ -53,8 +53,14 @@
                             <span class="fw-semibold">@Bill.ClosedAt.Value.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</span>
                         </div>
                     }
-                    <div class="@(Bill.ClosedAt.HasValue ? "col-md-4" : "col-md-8")">
-                        <span class="text-muted small d-block">Notes</span>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <span class="text-muted small d-block">Job description</span>
+                        <span class="@(string.IsNullOrWhiteSpace(Bill.JobDescription) ? "text-muted fst-italic" : "")">@(string.IsNullOrWhiteSpace(Bill.JobDescription) ? "—" : Bill.JobDescription)</span>
+                    </div>
+                    <div class="col-md-6">
+                        <span class="text-muted small d-block">Special Note</span>
                         <span class="@(string.IsNullOrWhiteSpace(Bill.Notes) ? "text-muted fst-italic" : "")">@(string.IsNullOrWhiteSpace(Bill.Notes) ? "—" : Bill.Notes)</span>
                     </div>
                 </div>
@@ -457,10 +463,10 @@
                         <button type="button" class="btn-close" @onclick="CloseCheckoutModal"></button>
                     </div>
                     <div class="modal-body">
-                        <p class="mb-3">Bill has been closed and the sale is recorded. You can view or download the receipt.</p>
+                        <p class="mb-3">Bill has been closed and the sale is recorded. You can view invoice details or download the receipt PDF.</p>
                         <div class="d-flex flex-wrap gap-2">
-                            <button type="button" class="btn btn-outline-primary" @onclick="ViewReceipt" disabled="@receiptLoading">
-                                <i class="bi bi-eye me-1"></i> View Receipt
+                            <button type="button" class="btn btn-outline-primary" @onclick="ViewInvoiceDetail" disabled="@receiptLoading">
+                                <i class="bi bi-eye me-1"></i> View Invoice
                             </button>
                             <button type="button" class="btn btn-outline-success" @onclick="DownloadReceipt" disabled="@receiptLoading">
                                 <i class="bi bi-download me-1"></i> Download Receipt
@@ -521,7 +527,11 @@
                             </div>
                         }
                         <div class="mb-3">
-                            <label class="form-label">Notes (optional)</label>
+                            <label class="form-label">Job description (optional)</label>
+                            <textarea class="form-control" rows="2" @bind="checkoutJobDescription" placeholder="e.g. work carried out"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Special Note (optional)</label>
                             <textarea class="form-control" rows="2" @bind="checkoutNotes"></textarea>
                         </div>
                         @if (!string.IsNullOrEmpty(checkoutError))
@@ -566,6 +576,7 @@
     private decimal checkoutCardAmount;
     private decimal checkoutCashAmount;
     private string? checkoutNotes;
+    private string? checkoutJobDescription;
     private string? checkoutError;
     private bool showAddCustomerModal;
     private Customer selectedCustomerForModal = new();
@@ -907,6 +918,8 @@
     private void ShowCheckoutModal()
     {
         checkoutError = null;
+        checkoutNotes = null;
+        checkoutJobDescription = null;
         checkoutCardAmount = 0m;
         checkoutCashAmount = 0m;
         if (checkoutPaymentMethod == "CardAndCash" && Bill != null)
@@ -965,7 +978,7 @@
             var paymentMethod = checkoutPaymentMethod == "CardAndCash" ? "Card & Cash" : checkoutPaymentMethod;
             decimal? cashAmt = checkoutPaymentMethod == "CardAndCash" ? checkoutCashAmount : null;
             decimal? cardAmt = checkoutPaymentMethod == "CardAndCash" ? checkoutCardAmount : null;
-            var saleId = await BillingService.CheckoutAsync(BillId, paymentMethod, "Paid", checkoutNotes, cashAmt, cardAmt);
+            var saleId = await BillingService.CheckoutAsync(BillId, paymentMethod, "Paid", checkoutNotes, checkoutJobDescription, cashAmt, cardAmt);
             checkoutSuccessSaleId = saleId;
             await LoadBill();
             StateHasChanged();
@@ -976,10 +989,10 @@
         }
     }
 
-    private async Task ViewReceipt()
+    private async Task ViewInvoiceDetail()
     {
         if (!checkoutSuccessSaleId.HasValue) return;
-        var url = Nav.ToAbsoluteUri($"receipts/view/{checkoutSuccessSaleId.Value}").ToString();
+        var url = Nav.ToAbsoluteUri($"sales/view/{checkoutSuccessSaleId.Value}").ToString();
         await JS.InvokeVoidAsync("window.open", url, "_blank");
     }
 

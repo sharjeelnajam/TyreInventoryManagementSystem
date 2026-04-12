@@ -7,6 +7,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Shared.MultiTenancy;
+using System.Data;
 using System.Security.Claims;
 
 namespace Infrastructure.Services
@@ -75,9 +76,16 @@ namespace Infrastructure.Services
             }
         }
 
+        public async Task<string> GetNextSaleReferencePreviewAsync()
+        {
+            var tenantId = _tenantProvider.TenantId;
+            var max = await UnifiedSaleReference.GetMaxSequenceAsync(_context, tenantId);
+            return UnifiedSaleReference.FormatSequence(max + 1);
+        }
+
         public async Task<bool> AddAsync(Sale sale)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
             try
             {
@@ -105,6 +113,9 @@ namespace Infrastructure.Services
                 sale.CreatedAt = DateTime.Now;
                 if (_tenantProvider.TenantId != Guid.Empty)
                     sale.TenantId = _tenantProvider.TenantId;
+
+                if (!sale.ShopServiceBillId.HasValue)
+                    sale.SaleNumber = await UnifiedSaleReference.AllocateNextAsync(_context, _tenantProvider.TenantId);
 
                 List<SaleDetail> saleDetails = new List<SaleDetail>();
 
@@ -265,6 +276,8 @@ namespace Infrastructure.Services
                 existingSales.DueDate = sale.DueDate;
                 existingSales.VehicleNumber = sale.VehicleNumber;
                 existingSales.IsApproved = sale.IsApproved;
+                existingSales.Notes = sale.Notes;
+                existingSales.JobDescription = sale.JobDescription;
                 existingSales.UpdatedAt = DateTime.Now; // best practice
 
                 // --- Sync SaleDetails ---
@@ -526,49 +539,67 @@ namespace Infrastructure.Services
 
             var totalDue = subTotal + vatAmount - (sale.Discount ?? 0m);
 
+            var accent = Color.FromHex("#1e3a5f");
+            var muted = Color.FromHex("#64748b");
+            var border = Color.FromHex("#e2e8f0");
+            var tableHeader = Color.FromHex("#1e3a5f");
+            var rowAlt = Color.FromHex("#f1f5f9");
+
             var document = QuestPDF.Fluent.Document.Create(container =>
             {
                 container.Page(page =>
                 {
-                    page.MarginHorizontal(20);
-                    page.MarginVertical(20);
+                    page.Size(PageSizes.A4);
+                    page.MarginHorizontal(40);
+                    page.MarginVertical(36);
+                    page.DefaultTextStyle(x => x.FontSize(10).FontColor(Colors.Black));
 
-                    // HEADER
                     page.Header().Column(col =>
                     {
                         if (logoData != null)
-                        {
-                            col.Item().PaddingTop(20).AlignCenter().Width(200).Image(logoData).FitArea();
-                        }
-
-                        col.Item().PaddingTop(24).Column(invoiceCol =>
-                        {
-                            invoiceCol.Item().Text("Invoice").FontSize(16).Bold();
-                            invoiceCol.Item().Text($"Invoice #: {sale.SaleNumber ?? "N/A"}").FontSize(14);
-                        });
-
-                        col.Item().PaddingTop(16).PaddingBottom(24).Column(customerCol =>
-                        {
-                            customerCol.Item().Text($"Date: {sale.SaleDate:dd MMM yyyy}").FontSize(14);
-                            customerCol.Item().PaddingTop(8).Text("Sold To:").Bold().FontSize(14);
-
-                            if (sale.Customer != null)
-                            {
-                                customerCol.Item().Text($"Name: {sale.Customer.Name ?? "N/A"}").FontSize(14);
-                                customerCol.Item().Text($"Email: {sale.Customer.Email ?? "N/A"}").FontSize(14);
-                            }
-                            else
-                            {
-                                customerCol.Item().Text("Name: N/A").FontSize(14);
-                                customerCol.Item().Text("Email: N/A").FontSize(14);
-                            }
-                        });
+                            col.Item().PaddingTop(8).AlignCenter().Width(200).Image(logoData).FitArea();
                     });
 
-                    // CONTENT
                     page.Content().Column(contentCol =>
                     {
-                        contentCol.Item().Table(table =>
+                        contentCol.Item().PaddingTop(logoData != null ? 8 : 20).Row(topRow =>
+                        {
+                            topRow.RelativeItem().Column(left =>
+                            {
+                                left.Item().Text("INVOICE").FontSize(22).Bold().FontColor(accent);
+                                left.Item().PaddingTop(8).Text(text =>
+                                {
+                                    text.DefaultTextStyle(x => x.FontSize(10));
+                                    text.Span("Invoice number  ").FontColor(muted);
+                                    text.Span(sale.SaleNumber ?? "N/A").Bold().FontSize(11);
+                                });
+                            });
+                            topRow.ConstantItem(150).AlignRight().Column(right =>
+                            {
+                                right.Item().AlignRight().Text("Issue date").FontSize(9).FontColor(muted);
+                                right.Item().AlignRight().PaddingTop(2).Text($"{sale.SaleDate:dd MMM yyyy}").FontSize(12).Bold();
+                            });
+                        });
+
+                        contentCol.Item().PaddingTop(22)
+                            .Border(1)
+                            .BorderColor(border)
+                            .Background(Color.FromHex("#f8fafc"))
+                            .Padding(16)
+                            .Column(billTo =>
+                            {
+                                billTo.Item().Text("Bill to").FontSize(9).FontColor(muted).Bold();
+                                var billName = sale.Customer?.Name ?? sale.CustomerName ?? "—";
+                                billTo.Item().PaddingTop(6).Text(billName).FontSize(12).Bold();
+                                var email = sale.Customer?.Email;
+                                billTo.Item().PaddingTop(4).Text(text =>
+                                {
+                                    text.Span("Email  ").FontSize(9).FontColor(muted);
+                                    text.Span(string.IsNullOrWhiteSpace(email) ? "—" : email).FontSize(10);
+                                });
+                            });
+
+                        contentCol.Item().PaddingTop(24).Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
                             {
@@ -580,58 +611,81 @@ namespace Infrastructure.Services
 
                             table.Header(header =>
                             {
-                                header.Cell().Text("Description").Bold();
-                                header.Cell().Text("Quantity").Bold();
-                                header.Cell().Text("Unit Price").Bold();
-                                header.Cell().Text("Total").Bold();
+                                header.Cell().Background(tableHeader).PaddingVertical(10).PaddingHorizontal(10)
+                                    .Text("Description").FontColor(Colors.White).Bold().FontSize(9);
+                                header.Cell().Background(tableHeader).PaddingVertical(10).PaddingHorizontal(10)
+                                    .AlignMiddle().Text("Qty").FontColor(Colors.White).Bold().FontSize(9);
+                                header.Cell().Background(tableHeader).PaddingVertical(10).PaddingHorizontal(10)
+                                    .AlignRight().Text("Unit price").FontColor(Colors.White).Bold().FontSize(9);
+                                header.Cell().Background(tableHeader).PaddingVertical(10).PaddingHorizontal(10)
+                                    .AlignRight().Text("Total").FontColor(Colors.White).Bold().FontSize(9);
                             });
 
+                            var rowIndex = 0;
                             foreach (var item in lineItems)
                             {
-                                table.Cell().Text(item.desc);
-                                table.Cell().Text(item.qty.ToString());
-                                table.Cell().Text($"£{item.unit:0.00}");
-                                table.Cell().Text($"£{item.total:0.00}");
+                                var bg = rowIndex % 2 == 0 ? Colors.White : rowAlt;
+                                rowIndex++;
+                                table.Cell().BorderBottom(1).BorderColor(border).Background(bg).PaddingVertical(10).PaddingHorizontal(10)
+                                    .Text(item.desc).FontSize(10);
+                                table.Cell().BorderBottom(1).BorderColor(border).Background(bg).PaddingVertical(10).PaddingHorizontal(10)
+                                    .AlignMiddle().Text(item.qty.ToString()).FontSize(10);
+                                table.Cell().BorderBottom(1).BorderColor(border).Background(bg).PaddingVertical(10).PaddingHorizontal(10)
+                                    .AlignRight().Text($"£{item.unit:0.00}").FontSize(10);
+                                table.Cell().BorderBottom(1).BorderColor(border).Background(bg).PaddingVertical(10).PaddingHorizontal(10)
+                                    .AlignRight().Text($"£{item.total:0.00}").FontSize(10).Bold();
                             }
                         });
 
-                        contentCol.Item().PaddingTop(20).Column(totalsCol =>
+                        contentCol.Item().PaddingTop(24).AlignRight().Width(280).Column(totalsCol =>
                         {
-                            totalsCol.Item().Text($"SubTotal: £{subTotal:0.00}");
-                            totalsCol.Item().Text($"VAT (20%): £{vatAmount:0.00}");
-                            totalsCol.Item().Text($"Total: £{totalDue:0.00}").Bold();
+                            totalsCol.Item().Row(r =>
+                            {
+                                r.RelativeItem().Text("Subtotal").FontSize(10).FontColor(muted);
+                                r.ConstantItem(100).AlignRight().Text($"£{subTotal:0.00}").FontSize(10);
+                            });
+                            totalsCol.Item().PaddingTop(6).Row(r =>
+                            {
+                                r.RelativeItem().Text("VAT (20%)").FontSize(10).FontColor(muted);
+                                r.ConstantItem(100).AlignRight().Text($"£{vatAmount:0.00}").FontSize(10);
+                            });
+                            totalsCol.Item().PaddingTop(12).LineHorizontal(1).LineColor(accent);
+                            totalsCol.Item().PaddingTop(10).Row(r =>
+                            {
+                                r.RelativeItem().Text("Total due").FontSize(12).Bold().FontColor(accent);
+                                r.ConstantItem(100).AlignRight().Text($"£{totalDue:0.00}").FontSize(14).Bold().FontColor(accent);
+                            });
                         });
                     });
 
                     page.Footer().Column(col =>
                     {
-                        col.Item().AlignCenter().PaddingBottom(8)
-                            .Text("Thank you for your business!")
+                        col.Item().PaddingTop(16).LineHorizontal(1).LineColor(border);
+                        col.Item().AlignCenter().PaddingTop(14)
+                            .Text("Thank you for your business")
                             .Italic()
-                            .FontSize(20);
+                            .FontSize(11)
+                            .FontColor(muted);
 
-                        col.Item().PaddingTop(5)
+                        col.Item().PaddingTop(12)
                             .Row(row =>
                             {
-                                // LEFT (stretch)
                                 row.RelativeItem().AlignMiddle().AlignLeft().Column(left =>
                                 {
-                                    left.Item().Text("15 Davidson Street").FontSize(10);
-                                    left.Item().Text("G40 4NS Glasgow").FontSize(10);
+                                    left.Item().Text("15 Davidson Street").FontSize(9).FontColor(muted);
+                                    left.Item().Text("G40 4NS Glasgow").FontSize(9).FontColor(muted);
                                 });
 
-                                // CENTER (auto width + centered in page)
                                 row.ConstantItem(260).AlignMiddle().AlignCenter().Column(center =>
                                 {
-                                    center.Item().AlignCenter().Text("H&H").Bold().FontSize(12);
-                                    center.Item().AlignCenter().Text("A company of EcoTrack Holdings").FontSize(9);
-                                    center.Item().AlignCenter().Text("Ltd, Vat No. 456042895 & Company No. SC789723").FontSize(9);
+                                    center.Item().AlignCenter().Text("H&H").Bold().FontSize(11).FontColor(accent);
+                                    center.Item().AlignCenter().Text("A company of EcoTrack Holdings").FontSize(8).FontColor(muted);
+                                    center.Item().AlignCenter().Text("Ltd, Vat No. 456042895 & Company No. SC789723").FontSize(8).FontColor(muted);
                                 });
 
-                                // RIGHT (stretch)
                                 row.RelativeItem().AlignMiddle().AlignRight().Column(right =>
                                 {
-                                    right.Item().Text("Tel: 0141 554 0516").FontSize(10);
+                                    right.Item().Text("Tel: 0141 554 0516").FontSize(9).FontColor(muted);
                                 });
                             });
                     });
@@ -642,7 +696,7 @@ namespace Infrastructure.Services
             document.GeneratePdf(ms);
             return ms.ToArray();
         }
-        /// <summary>Thermal-style PDF aligned with the on-screen receipt at <c>/receipts/view/</c> (ReceiptView).</summary>
+        /// <summary>Thermal-style receipt PDF (narrow layout).</summary>
         public async Task<byte[]> GenerateThermalReceiptPdfAsync(Guid saleId)
         {
             var sale = await _context.Sale

@@ -25,5 +25,8 @@ namespace Infrastructure.Services
         Task<List<TopCustomerDto>> GetTopCustomersByDateAsync(DateTime start, DateTime end);
         Task<List<TopProductDetailDto>> GetTopProductsByDateAsync(DateTime start, DateTime end);
         Task<List<Sale>> GetSalesByCustomerIdAsync(Guid customerId);
+
+        /// <summary>Preview of the next unified 5-digit reference (same sequence as Shop Billing). Not reserved until save.</summary>
+        Task<string> GetNextSaleReferencePreviewAsync();
     }
 }

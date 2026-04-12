@@ -1,5 +1,4 @@
 using System.Data;
-using System.Globalization;
 using Domain;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -29,23 +28,12 @@ namespace Infrastructure.Services
                 await using var tx = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
                 try
                 {
-                    var query = _context.ShopServiceBills.AsQueryable();
-                    if (tenantId != Guid.Empty)
-                        query = query.Where(b => b.TenantId == tenantId);
-
-                    var numbers = await query.Select(b => b.BillNumber).ToListAsync();
-                    var maxSeq = 0;
-                    foreach (var bn in numbers)
-                    {
-                        if (int.TryParse(bn, NumberStyles.None, CultureInfo.InvariantCulture, out var n) && n > maxSeq)
-                            maxSeq = n;
-                    }
-
+                    var maxSeq = await UnifiedSaleReference.GetMaxSequenceAsync(_context, tenantId);
                     var next = maxSeq + 1;
                     var bill = new ShopServiceBill
                     {
                         Id = Guid.NewGuid(),
-                        BillNumber = next.ToString("D5", CultureInfo.InvariantCulture),
+                        BillNumber = UnifiedSaleReference.FormatSequence(next),
                         Status = ShopServiceBillStatus.Open,
                         CustomerId = customerId,
                         CustomerName = customerName,
@@ -169,7 +157,7 @@ namespace Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, decimal? cashAmount = null, decimal? cardAmount = null)
+        public async Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, string? jobDescription = null, decimal? cashAmount = null, decimal? cardAmount = null)
         {
             var bill = await _context.ShopServiceBills
                 .Include(b => b.Items)
@@ -194,6 +182,7 @@ namespace Infrastructure.Services
             bill.PaymentMethod = paymentMethod;
             bill.PaymentStatus = paymentStatus;
             bill.Notes = notes;
+            bill.JobDescription = jobDescription;
             await _context.SaveChangesAsync();
 
             // Build SaleDetails from bill items that are products (for stock update)
@@ -233,6 +222,7 @@ namespace Infrastructure.Services
                 CardAmount = cardAmount ?? (paymentMethod == "Card" ? netAmount : 0),
                 IsApproved = true,
                 Notes = notes,
+                JobDescription = jobDescription,
                 ShopServiceBillId = bill.Id,
                 SaleDetails = saleDetails
             };

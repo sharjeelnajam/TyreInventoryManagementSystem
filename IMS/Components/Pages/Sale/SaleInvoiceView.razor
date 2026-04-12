@@ -6,155 +6,181 @@
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 
-<h4 class="mb-3">🧾 Invoice Details</h4>
-@if (sale?.ShopServiceBillId != null)
-{
-    <p class="text-muted small mb-2">
-        <span class="badge bg-secondary">Shop Billing</span>
-        <a href="/shop-billing/bill/@sale.ShopServiceBillId">View original bill</a>
-    </p>
-}
-
 @if (sale == null)
 {
+    <h4 class="mb-3">🧾 Invoice Details</h4>
     <p><em>Loading...</em></p>
 }
 else
 {
-    <div class="card p-3">
-        <!-- Header Info -->
-        <div class="row">
-            <div class="col-md-4">
-                <label>Sale #</label>
-                <input class="form-control" value="@sale.SaleNumber" readonly />
-            </div>
-            <div class="col-md-4">
-                <label>Date</label>
-                <input class="form-control" value="@sale.SaleDate.ToString("dd-MMM-yyyy")" readonly />
-            </div>
-            <div class="col-md-4">
-                <label>Customer</label>
-                <input class="form-control" value="@(sale.Customer?.Name ?? sale.CustomerName)" readonly />
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h4 class="mb-0 invoice-page-title-text">🧾 Invoice Details</h4>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+            <label class="form-label small mb-0 text-nowrap" for="invoiceToggleSaleSpecialNote">Special note</label>
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="invoiceToggleSaleSpecialNote"
+                       checked="@showSaleSpecialNote"
+                       @onchange="OnSaleSpecialNoteToggleChanged" />
             </div>
         </div>
-        @if (showCustomerSpecialNote)
-        {
-            <div class="row mt-2">
-                <div class="col-md-12">
-                    <label>Customer special note</label>
-                    <input class="form-control" value="@(sale.Customer?.SpecialNote)" readonly />
+    </div>
+    @if (sale.ShopServiceBillId != null)
+    {
+        <p class="text-muted small mb-2">
+            <span class="badge bg-secondary">Shop Billing</span>
+            <a href="/shop-billing/bill/@sale.ShopServiceBillId">View original bill</a>
+        </p>
+    }
+
+    <div class="card invoice-detail-card shadow-sm border-0">
+        <div class="card-body">
+            <!-- Header Info -->
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="invoice-label">Sale #</label>
+                    <input class="form-control" value="@sale.SaleNumber" readonly />
+                </div>
+                <div class="col-md-4">
+                    <label class="invoice-label">Date</label>
+                    <input class="form-control" value="@sale.SaleDate.ToString("dd-MMM-yyyy")" readonly />
+                </div>
+                <div class="col-md-4">
+                    <label class="invoice-label">Customer</label>
+                    <input class="form-control" value="@(sale.Customer?.Name ?? sale.CustomerName)" readonly />
                 </div>
             </div>
-        }
+            @if (showCustomerSpecialNote)
+            {
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <label class="invoice-label">Customer special note</label>
+                        <input class="form-control" value="@(sale.Customer?.SpecialNote)" readonly />
+                    </div>
+                </div>
+            }
 
-        <div class="row mt-2">
-            <div class="col-md-3">
-                <label>Payment Method</label>
-                <input class="form-control" value="@sale.PaymentMethod" readonly />
-            </div>
-            <div class="col-md-3">
-                <label>Payment Status</label>
-                <input class="form-control" value="@sale.PaymentStatus" readonly />
-            </div>
-            <div class="col-md-3">
-                <label>Discount</label>
-                <input class="form-control" value="@sale.Discount?.ToString("N2")" readonly />
-            </div>
-            <div class="col-md-3">
-                <label>Tax</label>
-                <input class="form-control" value="@sale.TaxAmount?.ToString("N2")" readonly />
-            </div>
-        </div>
-        @if (IsSplitPayment(sale.PaymentMethod))
-        {
             <div class="row mt-2">
                 <div class="col-md-3">
-                    <label>Cash Amount</label>
-                    <input class="form-control" value="@sale.CashAmount.ToString("N2")" readonly />
+                    <label class="invoice-label">Payment Method</label>
+                    <input class="form-control" value="@sale.PaymentMethod" readonly />
                 </div>
                 <div class="col-md-3">
-                    <label>Card Amount</label>
-                    <input class="form-control" value="@sale.CardAmount.ToString("N2")" readonly />
+                    <label class="invoice-label">Payment Status</label>
+                    <input class="form-control" value="@sale.PaymentStatus" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label class="invoice-label">Discount</label>
+                    <input class="form-control" value="@sale.Discount?.ToString("N2")" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label class="invoice-label">Tax</label>
+                    <input class="form-control" value="@sale.TaxAmount?.ToString("N2")" readonly />
                 </div>
             </div>
-        }
+            @if (IsSplitPayment(sale.PaymentMethod))
+            {
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <label class="invoice-label">Cash Amount</label>
+                        <input class="form-control" value="@sale.CashAmount.ToString("N2")" readonly />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="invoice-label">Card Amount</label>
+                        <input class="form-control" value="@sale.CardAmount.ToString("N2")" readonly />
+                    </div>
+                </div>
+            }
 
-        <!-- Totals: Total (subtotal), Net, Invoice Total -->
-        <div class="row mt-2">
-            <div class="col-md-4">
-                <label>Total</label>
-                <input class="form-control" value="@sale.TotalAmount.ToString("N2")" readonly />
+            <div class="row mt-2">
+                <div class="col-md-4">
+                    <label class="invoice-label">Total</label>
+                    <input class="form-control" value="@sale.TotalAmount.ToString("N2")" readonly />
+                </div>
+                <div class="col-md-4">
+                    <label class="invoice-label">Net</label>
+                    <input class="form-control" value="@sale.NetAmount.ToString("N2")" readonly />
+                </div>
+                <div class="col-md-4">
+                    <label class="invoice-label">Invoice Total</label>
+                    <input class="form-control fw-bold" value="@sale.NetAmount.ToString("N2")" readonly />
+                </div>
             </div>
-            <div class="col-md-4">
-                <label>Net</label>
-                <input class="form-control" value="@sale.NetAmount.ToString("N2")" readonly />
-            </div>
-            <div class="col-md-4">
-                <label>Invoice Total</label>
-                <input class="form-control fw-bold" value="@sale.NetAmount.ToString("N2")" readonly />
-            </div>
-        </div>
-        @if (showCustomerSpecialNote)
-        {
+
             <div class="row mt-2">
                 <div class="col-md-12">
-                    <label>Notes</label>
-                    <input class="form-control" value="@sale.Notes" readonly />
+                    <label class="invoice-label">Job description</label>
+                    <textarea class="form-control" rows="2" readonly>@sale.JobDescription</textarea>
                 </div>
             </div>
-        }
+            @if (showSaleSpecialNote)
+            {
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <label class="invoice-label">Special Note</label>
+                        <textarea class="form-control" rows="2" readonly>@sale.Notes</textarea>
+                    </div>
+                </div>
+            }
 
-        <hr />
-        <h5>Sale Items</h5>
+            <hr class="my-4" />
+            <h6 class="invoice-section-title mb-3">Line items</h6>
 
-        <table class="table table-sm table-bordered">
-            <thead class="table-light">
-                <tr>
-                    <th>Product</th>
-                    <th>Brand</th>
-                    <th>Qty</th>
-                    <th>Unit Price</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (sale.SaleDetails != null && sale.SaleDetails.Any())
-                {
-                    @foreach (var detail in sale.SaleDetails)
-                    {
+            <div class="table-responsive rounded border invoice-table-wrap">
+                <table class="table table-sm invoice-table mb-0">
+                    <thead>
                         <tr>
-                            <td>@detail.Product?.ProductName</td>
-                            <td>@(detail.Brand ?? detail.Product?.Brand)</td>
-                            <td>@detail.Quantity</td>
-                            <td>@detail.UnitPrice.ToString("N2")</td>
-                            <td>@detail.TotalPrice.ToString("N2")</td>
+                            <th>Product</th>
+                            <th>Brand</th>
+                            <th class="text-end">Qty</th>
+                            <th class="text-end">Unit Price</th>
+                            <th class="text-end">Total</th>
                         </tr>
-                    }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="5" class="text-center text-muted">
-                            @(sale.ShopServiceBillId != null ? "Service bill — see original bill above for line items." : "No sale details found.")
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                    </thead>
+                    <tbody>
+                        @if (sale.SaleDetails != null && sale.SaleDetails.Any())
+                        {
+                            @foreach (var detail in sale.SaleDetails)
+                            {
+                                <tr>
+                                    <td>@detail.Product?.ProductName</td>
+                                    <td>@(detail.Brand ?? detail.Product?.Brand)</td>
+                                    <td class="text-end">@detail.Quantity</td>
+                                    <td class="text-end">@detail.UnitPrice.ToString("N2")</td>
+                                    <td class="text-end fw-semibold">@detail.TotalPrice.ToString("N2")</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    @(sale.ShopServiceBillId != null ? "Service bill — see original bill above for line items." : "No sale details found.")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
 
-        <div class="mt-3 text-end">
-            <button class="btn btn-secondary" @onclick="GoBack">Back</button>
+            <div class="mt-3 text-end">
+                <button type="button" class="btn btn-secondary px-4" @onclick="GoBack">Back</button>
+            </div>
         </div>
     </div>
 }
 
 @code {
     private const string ShowSpecialNoteOnInvoiceViewKey = "ims.sales.showSpecialNoteOnInvoiceView";
+    private const string ShowSaleSpecialNoteOnInvoiceDetailKey = "ims.sales.showSaleSpecialNoteOnInvoiceView";
 
     [Parameter] public Guid SaleId { get; set; }
 
+    [SupplyParameterFromQuery(Name = "from")]
+    public string? From { get; set; }
+
     private Sale? sale;
     private bool showCustomerSpecialNote;
+    private bool showSaleSpecialNote = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -169,6 +195,10 @@ else
         {
             var stored = await JS.InvokeAsync<string?>("localStorage.getItem", ShowSpecialNoteOnInvoiceViewKey);
             showCustomerSpecialNote = stored != "false";
+
+            var storedSaleNote = await JS.InvokeAsync<string?>("localStorage.getItem", ShowSaleSpecialNoteOnInvoiceDetailKey);
+            showSaleSpecialNote = storedSaleNote != "false";
+
             StateHasChanged();
         }
         catch
@@ -177,11 +207,29 @@ else
         }
     }
 
+    private async Task OnSaleSpecialNoteToggleChanged(ChangeEventArgs e)
+    {
+        showSaleSpecialNote = e.Value is bool cb
+            ? cb
+            : string.Equals(Convert.ToString(e.Value), "true", StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", ShowSaleSpecialNoteOnInvoiceDetailKey,
+                showSaleSpecialNote ? "true" : "false");
+        }
+        catch { /* ignore */ }
+    }
+
     private static bool IsSplitPayment(string? paymentMethod) =>
         !string.IsNullOrWhiteSpace(paymentMethod) &&
         paymentMethod.Contains("card", StringComparison.OrdinalIgnoreCase) &&
         paymentMethod.Contains("cash", StringComparison.OrdinalIgnoreCase);
 
-    private void GoBack() => Navigation.NavigateTo("/sales");
+    private void GoBack()
+    {
+        if (string.Equals(From, "receipts", StringComparison.OrdinalIgnoreCase))
+            Navigation.NavigateTo("/receipts");
+        else
+            Navigation.NavigateTo("/sales");
+    }
 }
-
