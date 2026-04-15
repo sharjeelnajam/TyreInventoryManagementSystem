@@ -31,7 +31,7 @@
         <div class="col-md-2">
 
             <InputText class="form-control"
-            placeholder="Search by Name,Type"
+            placeholder="Search by Name, SKU"
             @bind-Value="search_By_Name_Type_Thread"
             @oninput="@(e => OnSearchInput(e))" />
         </div>
@@ -59,11 +59,10 @@
                     <tr>
                         <th>Image</th>
                         <th>Name</th>
+                        <th>SKU</th>
                         <th>Quantity</th>
-                        <th>Type</th>
                         <th>Tread</th>
                         <th>Size</th>
-                        <th>Brand</th>
                         <th>Price</th>
                         <th style="width:150px;">Actions</th>
                     </tr>
@@ -97,11 +96,10 @@
                                 </div>
                             </td>
                             <td>@item.ProductName</td>
+                            <td>@(string.IsNullOrWhiteSpace(item.SKU) ? "-" : item.SKU)</td>
                             <td>@item.Quantity</td>
-                            <td>@item.Type</td>
                             <td>@GetUnitName(item.Unit)</td>
                             <td>@GetThreadName(item.ThreadId)</td>
-                            <td>@item.Brand</td>
                             <td>@FormatPrice(item.SellingPrice)</td>
                             <td>
                                 <i class="bi bi-eye text-info fs-5 me-3 cursor-pointer"
@@ -343,18 +341,29 @@
     }
 
     private void FilterProducts(ChangeEventArgs? e = null)
-   {
-        filteredProducts = products!
+    {
+        if (products == null)
+        {
+            filteredProducts = Enumerable.Empty<ProductDto>();
+            StateHasChanged();
+            return;
+        }
+
+        var searchTerm = search_By_Name_Type_Thread?.Trim();
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredProducts = products;
+            StateHasChanged();
+            return;
+        }
+
+        filteredProducts = products
             .Where(p =>
-                (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread) ||
-                 p.ProductName.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase)) ||
-
-                (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread) ||
-                 p.Type.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase)) ||
-
-                 (string.IsNullOrWhiteSpace(search_By_Name_Type_Thread))
-                //  p.Thread.StartsWith(search_By_Name_Type_Thread, StringComparison.OrdinalIgnoreCase))
-            )
+                p != null &&
+                (
+                    (p.ProductName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.SKU?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+                ))
             .ToList();
 
         StateHasChanged();

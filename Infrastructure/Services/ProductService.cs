@@ -88,10 +88,12 @@ namespace Infrastructure.Services
                 if (tenantId != Guid.Empty)
                     query = query.Where(p => p.TenantId == tenantId);
                 List<ProductDto> productList = [.. query
+                   .OrderByDescending(product => product.CreatedAt)
                    .Select(product => new ProductDto
                    {
                        Id = product.Id,
                        Barcode = product.Barcode,
+                       SKU = product.SKU,
                        Brand = product.Brand,
                        ProductName = product.ProductName,
                        Min_Threshold = product.Min_Threshold,
@@ -142,10 +144,12 @@ namespace Infrastructure.Services
             {
                 List<ProductDto> productList = [.. _context.Products
                    .Include(p => p.PurchaseDetails)
+                   .OrderByDescending(product => product.CreatedAt)
                    .Select(product => new ProductDto
                    {
                        Id = product.Id,
                        Barcode = product.Barcode,
+                       SKU = product.SKU,
                        Brand = product.Brand,
                        ProductName = product.ProductName,
                        Min_Threshold = product.Min_Threshold,
@@ -323,6 +327,7 @@ namespace Infrastructure.Services
                 existing.ThreadId = dto.ThreadId == Guid.Empty ? null : dto.ThreadId;
                 existing.TyreSize = dto.TyreSize;
                 existing.Barcode = dto.Barcode;
+                existing.SKU = dto.SKU;
                 existing.AverageCostPrice = dto.AverageCostPrice;
                 existing.Unit = dto.Unit == Guid.Empty ? null : dto.Unit;
                 existing.UpdatedAt = DateTime.UtcNow;
@@ -446,7 +451,8 @@ namespace Infrastructure.Services
                     ImagePath = productDto.ImagePath,
                     Unit = productDto.Unit == Guid.Empty ? null : productDto.Unit,
                     ThreadId = productDto.ThreadId == Guid.Empty ? null : productDto.ThreadId,
-                    Barcode = Generate()
+                    Barcode = Generate(),
+                    SKU = productDto.SKU
                 };
                 return product;
             }
@@ -464,6 +470,7 @@ namespace Infrastructure.Services
             var productDto = new ProductDto
             {
                 Barcode = product.Barcode,
+                SKU = product.SKU,
                 Brand = product.Brand,
                 ProductName = product.ProductName,
                 Min_Threshold = product.Min_Threshold,

@@ -43,6 +43,7 @@ namespace Domain.DTO
         public decimal AverageCostPrice { get; set; }
 
         public string? Barcode { get; set; }
+        public string? SKU { get; set; }
 
         public string? ImagePath { get; set; }
 
