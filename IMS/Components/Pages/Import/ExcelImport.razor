@@ -21,11 +21,16 @@
                 <select @bind="SelectedImportType" class="form-select form-select-lg shadow-sm">
                     <option value="@ExcelImportType.Product">Product</option>
                     <option value="@ExcelImportType.Customer">Customer</option>
+                    <option value="@ExcelImportType.SKUProduct">SKU Product</option>
                 </select>
                 <small class="text-muted">
                     @if (SelectedImportType == ExcelImportType.Product)
                     {
                         <text>Required columns: ProductName, Unit, Thread. Optional: Description, DOT, Brand, Min_Threshold, Type, AverageCostPrice, Quantity</text>
+                    }
+                    else if (SelectedImportType == ExcelImportType.SKUProduct)
+                    {
+                        <text>Fixed mapping: A = SKU, B = Name, F = Regular Price</text>
                     }
                     else
                     {

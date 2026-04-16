@@ -3,6 +3,7 @@
 @using Domain.DTO
 @using Domain.Enums
 @using Infrastructure.Services
+@using System.Text.RegularExpressions
 @inject IProductService ProductService
 @inject IListManagementService ListManagementService
 @inject NavigationManager Navigation
@@ -62,7 +63,6 @@
                         <th>SKU</th>
                         <th>Quantity</th>
                         <th>Tread</th>
-                        <th>Size</th>
                         <th>Price</th>
                         <th style="width:150px;">Actions</th>
                     </tr>
@@ -99,7 +99,6 @@
                             <td>@(string.IsNullOrWhiteSpace(item.SKU) ? "-" : item.SKU)</td>
                             <td>@item.Quantity</td>
                             <td>@GetUnitName(item.Unit)</td>
-                            <td>@GetThreadName(item.ThreadId)</td>
                             <td>@FormatPrice(item.SellingPrice)</td>
                             <td>
                                 <i class="bi bi-eye text-info fs-5 me-3 cursor-pointer"
@@ -223,9 +222,6 @@
     private List<ListManagement>? units;
     private Dictionary<Guid, string> unitsLookup = new();
 
-    private List<ListManagement>? Threads;
-    private Dictionary<Guid, string> ThreadsLookup = new();
-
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -236,11 +232,9 @@
         isSupplier = user.IsInRole("Supplier");
 
         products = await ProductService.GetAllAsync();
-        filteredProducts = products;
+        filteredProducts = SortProductsByNaturalName(products);
         units = await ListManagementService.GetByTypeAsync(ListType.Tread);
-        Threads = await ListManagementService.GetByTypeAsync(ListType.Size);
         unitsLookup = units?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<Guid, string>();
-        ThreadsLookup = Threads?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<Guid, string>();
        
     }
 
@@ -250,12 +244,6 @@
         return unitsLookup.TryGetValue(unitId, out var name) ? name : "";
     } 
     
-    private string GetThreadName(Guid threadId)
-    {
-        if (threadId == Guid.Empty) return "";
-        return ThreadsLookup.TryGetValue(threadId, out var name) ? name : "";
-    }
-
     // Improved image validation
     private bool HasValidImage(string? imagePath)
     {
@@ -352,19 +340,19 @@
         var searchTerm = search_By_Name_Type_Thread?.Trim();
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            filteredProducts = products;
+            filteredProducts = SortProductsByNaturalName(products);
             StateHasChanged();
             return;
         }
 
-        filteredProducts = products
+        filteredProducts = SortProductsByNaturalName(products
             .Where(p =>
                 p != null &&
                 (
                     (p.ProductName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
                     (p.SKU?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
                 ))
-            .ToList();
+            .ToList());
 
         StateHasChanged();
     }
@@ -402,8 +390,29 @@
         showPricePopup = false;
 
         products = await ProductService.GetAllAsync();
-        filteredProducts = products;
+        filteredProducts = SortProductsByNaturalName(products);
         StateHasChanged();
+    }
+
+    private static List<ProductDto> SortProductsByNaturalName(IEnumerable<ProductDto> source)
+    {
+        return source
+            .OrderBy(p => ExtractTyreRimNumber(p.ProductName))
+            .ThenBy(p => p.ProductName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static int ExtractTyreRimNumber(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return int.MaxValue;
+
+        // Parse tyre pattern from name prefix: 255/45/21 ...
+        var match = Regex.Match(value, @"^\s*\d+\s*/\s*\d+\s*/\s*(\d+)\b");
+        if (match.Success && int.TryParse(match.Groups[1].Value, out var rim))
+            return rim;
+
+        return int.MaxValue;
     }
 
 }

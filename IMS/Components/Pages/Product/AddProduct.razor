@@ -33,19 +33,6 @@
         </div> 
          *@
         <div class="col-md-6 mb-3">
-            <label class="form-label fw-bold">Size</label>
-            <InputSelect @bind-Value="product.ThreadId"
-            class="form-select form-select-lg shadow-sm">
-                <option value="@Guid.Empty" disabled selected>
-                    Select Size
-                </option>
-                @foreach (var Thread in Threads)
-                {
-                    <option value="@Thread.Id">@Thread.Name</option>
-                }
-            </InputSelect>
-        </div>
-        <div class="col-md-6 mb-3">
             <label class="form-label fw-bold">Tread</label>
             <InputSelect @bind-Value="product.Unit"
             class="form-select form-select-lg shadow-sm">
@@ -150,12 +137,10 @@
     private string? originalImagePath;
     private string? uploadStatus;
     private List<ListManagement> units = new List<ListManagement>();
-    private List<ListManagement> Threads = new List<ListManagement>();
 
     protected override async Task OnInitializedAsync()
     {
         units = await ListManagementService.GetByTypeAsync(ListType.Tread);
-        Threads = await ListManagementService.GetByTypeAsync(ListType.Size);
 
         if (Id.HasValue)
         {
@@ -240,6 +225,7 @@
         try
         {
             product.DOT = dotDate.HasValue ? dotDate.Value.ToString("yyyy-MM-dd") : "";
+            product.ThreadId = Guid.Empty;
 
             bool success;
 

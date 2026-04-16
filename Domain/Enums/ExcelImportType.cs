@@ -6,6 +6,7 @@ namespace Domain.Enums
     public enum ExcelImportType
     {
         Product = 0,
-        Customer = 1
+        Customer = 1,
+        SKUProduct = 2
     }
 }

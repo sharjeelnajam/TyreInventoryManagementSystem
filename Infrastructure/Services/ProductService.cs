@@ -82,54 +82,100 @@ namespace Infrastructure.Services
             try
             {
                 var tenantId = _tenantProvider.TenantId;
-                var query = _context.Products
-                   .Include(p => p.PurchaseDetails)
-                   .AsQueryable();
+                var query = _context.Products.AsQueryable();
                 if (tenantId != Guid.Empty)
                     query = query.Where(p => p.TenantId == tenantId);
-                List<ProductDto> productList = [.. query
-                   .OrderByDescending(product => product.CreatedAt)
-                   .Select(product => new ProductDto
-                   {
-                       Id = product.Id,
-                       Barcode = product.Barcode,
-                       SKU = product.SKU,
-                       Brand = product.Brand,
-                       ProductName = product.ProductName,
-                       Min_Threshold = product.Min_Threshold,
-                       //Thread = product.Thread,
-                       AverageCostPrice = product.AverageCostPrice,
-                       ImagePath = product.ImagePath,
-                       Description = product.Description,
-                       DOT = product.DOT,
-                       TyreSize = product.TyreSize,
-                       Type = product.Type,
-                       ThreadId = product.ThreadId ?? Guid.Empty,
-                       TreadName = product.ThreadId.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault() : null,
-                       Unit = product.Unit ?? Guid.Empty,
-                       UnitName = product.Unit.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault() : null,
+                var products = await query
+                    .OrderByDescending(product => product.CreatedAt)
+                    .Select(product => new
+                    {
+                        product.Id,
+                        product.Barcode,
+                        product.SKU,
+                        product.Brand,
+                        product.ProductName,
+                        product.Min_Threshold,
+                        product.AverageCostPrice,
+                        product.ImagePath,
+                        product.Description,
+                        product.DOT,
+                        product.TyreSize,
+                        product.Type,
+                        product.ThreadId,
+                        product.Unit
+                    })
+                    .AsNoTracking()
+                    .ToListAsync();
 
-                       PurchasePrice = product.PurchaseDetails
-                            .OrderByDescending(pd => pd.Id)
-                            .Select(pd => pd.UnitPrice)
-                            .FirstOrDefault(),
+                if (!products.Any())
+                    return new List<ProductDto>();
 
-                         SellingPrice = product.PurchaseDetails
-                            .OrderByDescending(pd => pd.Id)
-                            .Select(pd => pd.SellingPrice)
-                            .FirstOrDefault(),
+                var productIds = products.Select(p => p.Id).ToList();
 
-                       Quantity =  _context.StockHistories
-                            .Where(s => s.ProductId == product.Id)
-                            .OrderByDescending(s => s.ActionDate)
-                            .ThenByDescending(s => s.Id)
-                            .Select(s => s.NewStockLevel)
-                            .FirstOrDefault()
-                   })
-                   .AsNoTracking()];
+                var latestPurchaseDetails = await _context.PurchaseDetails
+                    .Where(pd => productIds.Contains(pd.ProductId))
+                    .GroupBy(pd => pd.ProductId)
+                    .Select(g => g.OrderByDescending(x => x.Id).FirstOrDefault())
+                    .AsNoTracking()
+                    .ToListAsync();
+                var purchaseDetailMap = latestPurchaseDetails
+                    .Where(x => x != null)
+                    .ToDictionary(x => x!.ProductId, x => x!);
 
+                var latestStocks = await _context.StockHistories
+                    .Where(s => productIds.Contains(s.ProductId))
+                    .GroupBy(s => s.ProductId)
+                    .Select(g => g.OrderByDescending(x => x.ActionDate).ThenByDescending(x => x.Id).FirstOrDefault())
+                    .AsNoTracking()
+                    .ToListAsync();
+                var stockMap = latestStocks
+                    .Where(x => x != null)
+                    .ToDictionary(x => x!.ProductId, x => x!);
 
-                return productList;
+                var listIds = products
+                    .SelectMany(p => new Guid?[] { p.ThreadId, p.Unit })
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var listNameMap = listIds.Count == 0
+                    ? new Dictionary<Guid, string>()
+                    : await _context.ListManagements
+                        .Where(lm => listIds.Contains(lm.Id))
+                        .AsNoTracking()
+                        .ToDictionaryAsync(lm => lm.Id, lm => lm.Name);
+
+                return products.Select(product =>
+                {
+                    purchaseDetailMap.TryGetValue(product.Id, out var pd);
+                    stockMap.TryGetValue(product.Id, out var st);
+
+                    var dto = new ProductDto
+                    {
+                        Id = product.Id,
+                        Barcode = product.Barcode,
+                        SKU = product.SKU,
+                        Brand = product.Brand,
+                        ProductName = product.ProductName,
+                        Min_Threshold = product.Min_Threshold,
+                        AverageCostPrice = product.AverageCostPrice,
+                        ImagePath = product.ImagePath,
+                        Description = product.Description,
+                        DOT = product.DOT,
+                        TyreSize = product.TyreSize,
+                        Type = product.Type,
+                        ThreadId = product.ThreadId ?? Guid.Empty,
+                        TreadName = product.ThreadId.HasValue && listNameMap.TryGetValue(product.ThreadId.Value, out var treadName) ? treadName : null,
+                        Unit = product.Unit ?? Guid.Empty,
+                        UnitName = product.Unit.HasValue && listNameMap.TryGetValue(product.Unit.Value, out var unitName) ? unitName : null,
+                        PurchasePrice = pd?.UnitPrice ?? 0,
+                        SellingPrice = pd?.SellingPrice ?? 0,
+                        Quantity = st?.NewStockLevel ?? 0
+                    };
+
+                    return dto;
+                }).ToList();
             }
             catch (Exception)
             {
@@ -142,50 +188,95 @@ namespace Infrastructure.Services
         {
             try
             {
-                List<ProductDto> productList = [.. _context.Products
-                   .Include(p => p.PurchaseDetails)
-                   .OrderByDescending(product => product.CreatedAt)
-                   .Select(product => new ProductDto
-                   {
-                       Id = product.Id,
-                       Barcode = product.Barcode,
-                       SKU = product.SKU,
-                       Brand = product.Brand,
-                       ProductName = product.ProductName,
-                       Min_Threshold = product.Min_Threshold,
-                       //Thread = product.Thread,
-                       AverageCostPrice = product.AverageCostPrice,
-                       ImagePath = product.ImagePath,
-                       Description = product.Description,
-                       DOT = product.DOT,
-                       TyreSize = product.TyreSize,
-                       Type = product.Type,
-                       ThreadId = product.ThreadId ?? Guid.Empty,
-                       TreadName = product.ThreadId.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.ThreadId).Select(lm => lm.Name).FirstOrDefault() : null,
-                       Unit = product.Unit ?? Guid.Empty,
-                       UnitName = product.Unit.HasValue ? _context.ListManagements.Where(lm => lm.Id == product.Unit).Select(lm => lm.Name).FirstOrDefault() : null,
+                var products = await _context.Products
+                    .OrderByDescending(product => product.CreatedAt)
+                    .Select(product => new
+                    {
+                        product.Id,
+                        product.Barcode,
+                        product.SKU,
+                        product.Brand,
+                        product.ProductName,
+                        product.Min_Threshold,
+                        product.AverageCostPrice,
+                        product.ImagePath,
+                        product.Description,
+                        product.DOT,
+                        product.TyreSize,
+                        product.Type,
+                        product.ThreadId,
+                        product.Unit
+                    })
+                    .AsNoTracking()
+                    .ToListAsync();
 
-                       PurchasePrice = product.PurchaseDetails
-                            .OrderByDescending(pd => pd.Id)
-                            .Select(pd => pd.UnitPrice)
-                            .FirstOrDefault(),
+                if (!products.Any())
+                    return new List<ProductDto>();
 
-                         SellingPrice = product.PurchaseDetails
-                            .OrderByDescending(pd => pd.Id)
-                            .Select(pd => pd.SellingPrice)
-                            .FirstOrDefault(),
+                var productIds = products.Select(p => p.Id).ToList();
 
-                       Quantity =  _context.StockHistories
-                            .Where(s => s.ProductId == product.Id)
-                            .OrderByDescending(s => s.ActionDate)
-                            .ThenByDescending(s => s.Id)
-                            .Select(s => s.NewStockLevel)
-                            .FirstOrDefault()
-                   })
-                   .AsNoTracking()];
+                var latestPurchaseDetails = await _context.PurchaseDetails
+                    .Where(pd => productIds.Contains(pd.ProductId))
+                    .GroupBy(pd => pd.ProductId)
+                    .Select(g => g.OrderByDescending(x => x.Id).FirstOrDefault())
+                    .AsNoTracking()
+                    .ToListAsync();
+                var purchaseDetailMap = latestPurchaseDetails
+                    .Where(x => x != null)
+                    .ToDictionary(x => x!.ProductId, x => x!);
 
+                var latestStocks = await _context.StockHistories
+                    .Where(s => productIds.Contains(s.ProductId))
+                    .GroupBy(s => s.ProductId)
+                    .Select(g => g.OrderByDescending(x => x.ActionDate).ThenByDescending(x => x.Id).FirstOrDefault())
+                    .AsNoTracking()
+                    .ToListAsync();
+                var stockMap = latestStocks
+                    .Where(x => x != null)
+                    .ToDictionary(x => x!.ProductId, x => x!);
 
-                return productList;
+                var listIds = products
+                    .SelectMany(p => new Guid?[] { p.ThreadId, p.Unit })
+                    .Where(id => id.HasValue)
+                    .Select(id => id!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var listNameMap = listIds.Count == 0
+                    ? new Dictionary<Guid, string>()
+                    : await _context.ListManagements
+                        .Where(lm => listIds.Contains(lm.Id))
+                        .AsNoTracking()
+                        .ToDictionaryAsync(lm => lm.Id, lm => lm.Name);
+
+                return products.Select(product =>
+                {
+                    purchaseDetailMap.TryGetValue(product.Id, out var pd);
+                    stockMap.TryGetValue(product.Id, out var st);
+
+                    return new ProductDto
+                    {
+                        Id = product.Id,
+                        Barcode = product.Barcode,
+                        SKU = product.SKU,
+                        Brand = product.Brand,
+                        ProductName = product.ProductName,
+                        Min_Threshold = product.Min_Threshold,
+                        AverageCostPrice = product.AverageCostPrice,
+                        ImagePath = product.ImagePath,
+                        Description = product.Description,
+                        DOT = product.DOT,
+                        TyreSize = product.TyreSize,
+                        Type = product.Type,
+                        ThreadId = product.ThreadId ?? Guid.Empty,
+                        TreadName = product.ThreadId.HasValue && listNameMap.TryGetValue(product.ThreadId.Value, out var treadName) ? treadName : null,
+                        Unit = product.Unit ?? Guid.Empty,
+                        UnitName = product.Unit.HasValue && listNameMap.TryGetValue(product.Unit.Value, out var unitName) ? unitName : null,
+                        PurchasePrice = pd?.UnitPrice ?? 0,
+                        SellingPrice = pd?.SellingPrice ?? 0,
+                        Quantity = st?.NewStockLevel ?? 0
+                    };
+                }).ToList();
             }
             catch (Exception)
             {

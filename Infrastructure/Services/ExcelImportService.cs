@@ -46,17 +46,34 @@ namespace Infrastructure.Services
                         return result;
                     }
                 }
+                else if (importType == ExcelImportType.SKUProduct)
+                {
+                    worksheet = workbook.Worksheets
+                        .FirstOrDefault(ws => string.Equals(ws.Name, "SKUProduct", StringComparison.OrdinalIgnoreCase))
+                        ?? workbook.Worksheets.FirstOrDefault(ws => string.Equals(ws.Name, "SKUPorduct", StringComparison.OrdinalIgnoreCase))
+                        ?? workbook.Worksheet(1);
+                }
                 else
                 {
                     // Fallback to first sheet for non-product imports (customer)
                     worksheet = workbook.Worksheet(1);
                 }
 
-                var rows = worksheet.RowsUsed().Skip(1).ToList(); // skip header
+                var rows = worksheet.RowsUsed().Skip(1).ToList(); // default: skip header
+                if (importType == ExcelImportType.SKUProduct)
+                {
+                    rows = worksheet.RowsUsed().ToList();
+                    if (rows.Any() && IsSkuProductHeaderRow(rows.First()))
+                    {
+                        rows = rows.Skip(1).ToList();
+                    }
+                }
                 result.TotalRows = rows.Count;
 
                 if (importType == ExcelImportType.Product)
                     await ImportProductsAsync(rows, worksheet, tenantId, result, cancellationToken);
+                else if (importType == ExcelImportType.SKUProduct)
+                    await ImportSkuProductsAsync(rows, tenantId, result, cancellationToken);
                 else if (importType == ExcelImportType.Customer)
                     await ImportCustomersAsync(rows, worksheet, tenantId, result, cancellationToken);
                 else
@@ -405,12 +422,147 @@ namespace Infrastructure.Services
             }
         }
 
+        private async Task ImportSkuProductsAsync(
+            List<IXLRow> rows,
+            Guid tenantId,
+            ExcelImportResultDto result,
+            CancellationToken cancellationToken)
+        {
+            const int colSku = 1;           // A
+            const int colName = 2;          // B
+            const int colRegularPrice = 6;  // F
+
+            var productsToAdd = new List<Product>();
+            var purchasesToAdd = new List<Purchase>();
+            var stockHistoriesToAdd = new List<StockHistory>();
+            foreach (var row in rows)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int rowNum = row.RowNumber();
+
+                string? sku = GetCellString(row, colSku);
+                string? name = GetCellString(row, colName);
+                string? regularPriceRaw = GetCellString(row, colRegularPrice);
+
+                if (string.IsNullOrWhiteSpace(sku))
+                {
+                    result.RowErrors.Add(new ExcelImportRowError { RowNumber = rowNum, Error = "SKU (column A) is required.", Value = "(empty)" });
+                    result.ErrorCount++;
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    result.RowErrors.Add(new ExcelImportRowError { RowNumber = rowNum, Error = "Name (column B) is required.", Value = sku });
+                    result.ErrorCount++;
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(regularPriceRaw) ||
+                    !decimal.TryParse(regularPriceRaw, NumberStyles.Any, CultureInfo.InvariantCulture, out var regularPrice) ||
+                    regularPrice <= 0)
+                {
+                    result.RowErrors.Add(new ExcelImportRowError { RowNumber = rowNum, Error = "Regular Price (column F) must be a number greater than 0.", Value = regularPriceRaw ?? "(empty)" });
+                    result.ErrorCount++;
+                    continue;
+                }
+
+                var product = new Product
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    CreatedAt = DateTime.UtcNow,
+                    ProductName = name.Trim(),
+                    SKU = sku.Trim(),
+                    AverageCostPrice = regularPrice,
+                    Unit = null,
+                    ThreadId = null
+                };
+                productsToAdd.Add(product);
+
+                var stockHistory = new StockHistory
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    CreatedAt = DateTime.UtcNow,
+                    ProductId = product.Id,
+                    ActionType = "Import",
+                    QuantityChanged = 100,
+                    PreviousStockLevel = 0,
+                    NewStockLevel = 100,
+                    ActionDate = DateTime.UtcNow,
+                    ReferenceNumber = "ExcelImport-SKU"
+                };
+                stockHistoriesToAdd.Add(stockHistory);
+
+                // Keep selling price visible in product listing by creating initial purchase detail.
+                var purchase = new Purchase
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    CreatedAt = DateTime.UtcNow,
+                    PurchaseNumber = $"PO-SKU-{DateTime.UtcNow:yyyyMMddHHmmss}-{rowNum}",
+                    PurchaseDate = DateTime.UtcNow,
+                    SupplierId = null,
+                    TotalAmount = regularPrice,
+                    NetAmount = regularPrice,
+                    PaymentStatus = string.Empty,
+                    PaymentMethod = string.Empty,
+                    IsApproved = false,
+                    PurchaseDetails = new List<PurchaseDetail>
+                    {
+                        new PurchaseDetail
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenantId,
+                            CreatedAt = DateTime.UtcNow,
+                            PurchaseId = Guid.Empty, // set below after purchase id is available
+                            ProductId = product.Id,
+                            Quantity = 100,
+                            UnitPrice = regularPrice,
+                            TotalPrice = regularPrice,
+                            SellingPrice = regularPrice,
+                            Brand = null
+                        }
+                    }
+                };
+                var detail = purchase.PurchaseDetails.First();
+                detail.PurchaseId = purchase.Id;
+                purchasesToAdd.Add(purchase);
+
+                result.ImportedCount++;
+            }
+
+            if (productsToAdd.Count > 0 && result.ErrorCount == 0)
+            {
+                await _context.Products.AddRangeAsync(productsToAdd, cancellationToken);
+                await _context.StockHistories.AddRangeAsync(stockHistoriesToAdd, cancellationToken);
+                await _context.Purchase.AddRangeAsync(purchasesToAdd, cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            else if (result.ErrorCount > 0)
+            {
+                result.ImportedCount = 0;
+            }
+        }
+
         private static string? GetCellString(IXLRow row, int col)
         {
             if (col <= 0) return null;
             var cell = row.Cell(col);
             if (cell.IsEmpty()) return null;
             return cell.GetString()?.Trim();
+        }
+
+        private static bool IsSkuProductHeaderRow(IXLRow row)
+        {
+            var colA = GetCellString(row, 1);
+            var colB = GetCellString(row, 2);
+            var colF = GetCellString(row, 6);
+
+            return string.Equals(colA, "SKU", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(colB, "Name", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(colF, "Regular Price", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

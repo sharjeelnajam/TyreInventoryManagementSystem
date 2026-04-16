@@ -71,11 +71,6 @@
                             </div> *@
 
                             <div class="col-md-6 mb-3">
-                                <strong>Thread:</strong>
-                                <p>@GetThreadName(Product.ThreadId)</p>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
                                 <strong>Unit:</strong>
                                 <p>@GetUnitName(Product.Unit)</p>
                             </div>
@@ -122,24 +117,18 @@
     private ProductDto? Product;
 
     private Dictionary<Guid, string> unitLookup = new();
-    private Dictionary<Guid, string> ThreadLookup = new();
 
     protected override async Task OnInitializedAsync()
     {
         Product = await ProductService.GetByIdAsync(Id);
 
         var units = await ListManagementService.GetByTypeAsync(ListType.Tread);
-        var Threads = await ListManagementService.GetByTypeAsync(ListType.Size);
 
         unitLookup = units.ToDictionary(x => x.Id, x => x.Name);
-        ThreadLookup = Threads.ToDictionary(x => x.Id, x => x.Name);
     }
 
     string GetUnitName(Guid id)
         => id == Guid.Empty ? "" : (unitLookup.TryGetValue(id, out var name) ? name : "");
-
-    string GetThreadName(Guid id)
-        => id == Guid.Empty ? "" : (ThreadLookup.TryGetValue(id, out var name) ? name : "");
 
     void GoBack()
     {
