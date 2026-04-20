@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
+@implements IDisposable
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
@@ -31,10 +32,10 @@
     <div class="row mb-3 g-2">
         <div class="col-md-2">
 
-            <InputText class="form-control"
-            placeholder="Search by Name, SKU"
-            @bind-Value="search_By_Name_Type_Thread"
-            @oninput="@(e => OnSearchInput(e))" />
+            <input class="form-control"
+                   placeholder="Search by Name, SKU"
+                   value="@search_By_Name_Type_Thread"
+                   @oninput="OnSearchInputDebounced" />
         </div>
 
     </div>
@@ -207,10 +208,12 @@
 @code {
     private List<ProductDto>? products;
     private IEnumerable<ProductDto>? filteredProducts;
+    private List<ProductDto> sortedProducts = new();
 
     private string search_By_Name_Type_Thread = "";
     private string searchType = "";
     private string searchThread = "";
+    private CancellationTokenSource? searchDebounceCts;
 
     private bool showPricePopup = false;
     private ProductDto selectedProduct = new();
@@ -232,7 +235,8 @@
         isSupplier = user.IsInRole("Supplier");
 
         products = await ProductService.GetAllAsync();
-        filteredProducts = SortProductsByNaturalName(products);
+        sortedProducts = SortProductsByNaturalName(products);
+        filteredProducts = sortedProducts;
         units = await ListManagementService.GetByTypeAsync(ListType.Tread);
         unitsLookup = units?.ToDictionary(c => c.Id, c => c.Name) ?? new Dictionary<Guid, string>();
        
@@ -319,18 +323,35 @@
 
         await ProductService.DeleteAsync(id);
         products = await ProductService.GetAllAsync();
+        sortedProducts = SortProductsByNaturalName(products);
         FilterProducts(); // refresh filtered list so the table updates immediately
     }
 
-    private void OnSearchInput(ChangeEventArgs e)
+    private async Task OnSearchInputDebounced(ChangeEventArgs e)
     {
         search_By_Name_Type_Thread = e.Value?.ToString() ?? "";
-        FilterProducts();
+
+        searchDebounceCts?.Cancel();
+        searchDebounceCts?.Dispose();
+        searchDebounceCts = new CancellationTokenSource();
+
+        try
+        {
+            await Task.Delay(250, searchDebounceCts.Token);
+            if (!searchDebounceCts.Token.IsCancellationRequested)
+            {
+                FilterProducts();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore: new keystroke arrived before debounce interval.
+        }
     }
 
-    private void FilterProducts(ChangeEventArgs? e = null)
+    private void FilterProducts()
     {
-        if (products == null)
+        if (products == null || sortedProducts.Count == 0)
         {
             filteredProducts = Enumerable.Empty<ProductDto>();
             StateHasChanged();
@@ -340,19 +361,19 @@
         var searchTerm = search_By_Name_Type_Thread?.Trim();
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            filteredProducts = SortProductsByNaturalName(products);
+            filteredProducts = sortedProducts;
             StateHasChanged();
             return;
         }
 
-        filteredProducts = SortProductsByNaturalName(products
+        filteredProducts = sortedProducts
             .Where(p =>
                 p != null &&
                 (
                     (p.ProductName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
                     (p.SKU?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
                 ))
-            .ToList());
+            .ToList();
 
         StateHasChanged();
     }
@@ -390,7 +411,8 @@
         showPricePopup = false;
 
         products = await ProductService.GetAllAsync();
-        filteredProducts = SortProductsByNaturalName(products);
+        sortedProducts = SortProductsByNaturalName(products);
+        filteredProducts = sortedProducts;
         StateHasChanged();
     }
 
@@ -413,6 +435,12 @@
             return rim;
 
         return int.MaxValue;
+    }
+
+    public void Dispose()
+    {
+        searchDebounceCts?.Cancel();
+        searchDebounceCts?.Dispose();
     }
 
 }

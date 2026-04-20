@@ -26,7 +26,7 @@
         <div class="pos-header">
             <div class="d-flex align-items-center gap-3 flex-grow-1 flex-wrap">
                 <input class="form-control pos-search-input" 
-                       placeholder="Search by name, size, tread, brand..."
+                       placeholder="Search by name, SKU, size, tread, brand..."
                        @oninput="e => searchText = e.Value?.ToString()" />
             </div>
         </div>
@@ -39,6 +39,7 @@
                         var filteredProducts = products
                             .Where(p => string.IsNullOrEmpty(searchText) ||
                                        (p.ProductName != null && p.ProductName.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                                       (p.SKU != null && p.SKU.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
                                        (p.Brand != null && p.Brand.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
                                        (p.TyreSize != null && p.TyreSize.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
                                        (p.TreadName != null && p.TreadName.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
@@ -67,6 +68,10 @@
                             <!-- Product Details -->
                             <div class="product-details-col">
                                 <div class="product-name-row">@product.ProductName</div>
+                                @if (!string.IsNullOrWhiteSpace(product.SKU))
+                                {
+                                    <div class="product-sku-row text-muted small">@product.SKU</div>
+                                }
                                 <div class="product-stock-row @(isOutOfStock ? "stock-out" : "stock-in")">
                                     @(stockLevel > 0 ? $"{stockLevel} in stock" : "Out of Stock")
                                 </div>

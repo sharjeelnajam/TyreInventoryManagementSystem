@@ -134,7 +134,7 @@
                         </div>
                         <div class="card-body p-2 d-flex flex-column flex-grow-1" style="min-height: 0;">
                             <input class="form-control form-control-sm mb-2 flex-shrink-0"
-                                   placeholder="Search by name, size, brand, tread..."
+                                   placeholder="Search by name, SKU, size, brand, tread..."
                                    @bind="productSearchText"
                                    @bind:event="oninput" />
                             <div class="border rounded p-2 flex-grow-1 overflow-auto" style="min-height: 0;">
@@ -142,6 +142,7 @@
                                     var filteredProducts = products
                                         .Where(p => string.IsNullOrWhiteSpace(productSearchText) ||
                                             (p.ProductName != null && p.ProductName.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                                            (p.SKU != null && p.SKU.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
                                             (p.Brand != null && p.Brand.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
                                             (p.TyreSize != null && p.TyreSize.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)) ||
                                             (p.TreadName != null && p.TreadName.Contains(productSearchText, StringComparison.OrdinalIgnoreCase)))
@@ -157,6 +158,10 @@
                                          @onclick="() => TryAddProduct(p, stockLevel)">
                                         <div class="small">
                                             <div class="fw-semibold">@p.ProductName</div>
+                                            @if (!string.IsNullOrWhiteSpace(p.SKU))
+                                            {
+                                                <div class="text-muted">SKU: @p.SKU</div>
+                                            }
                                             <div class="text-muted">
                                                 @if (!string.IsNullOrEmpty(p.TyreSize)) { <span>Size: @p.TyreSize</span> }
                                                 @if (!string.IsNullOrEmpty(p.TreadName)) { <span>@(string.IsNullOrEmpty(p.TyreSize) ? "" : " • ")Tread: @p.TreadName</span> }
