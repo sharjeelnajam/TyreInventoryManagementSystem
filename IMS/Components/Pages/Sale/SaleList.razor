@@ -224,11 +224,8 @@
         if (sale == null)
             return;
 
-        // Full invoice PDF (logo, background, customer, table, footer)
-        var pdfBytes = await SaleService.GenerateReceiptPdfAsync(saleId);
-
-        string base64 = Convert.ToBase64String(pdfBytes);
-        await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Invoice_{sale.SaleNumber}.pdf", base64);
+        await BrowserFileDownload.DownloadPdfFromAuthenticatedUrlAsync(
+            JSRuntime, Nav, $"/api/sales/{saleId}/invoice.pdf", $"Invoice_{sale.SaleNumber}.pdf");
     }
 
     private void GoToAddSale()

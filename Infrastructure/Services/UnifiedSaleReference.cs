@@ -5,22 +5,17 @@ namespace Infrastructure.Services
 {
     /// <summary>
     /// One incrementing 5-digit reference (00001, 00002, …) shared by Shop Billing bills and POS / manual sales.
-    /// Legacy values like "SO-2026…" are ignored when computing the max.
+    /// Sequence is computed across all tenants so numbers never repeat in the database (multi-branch UI lists every bill).
+    /// Legacy values like "SO-2026…" or "SB-…" are ignored when computing the max.
     /// </summary>
     public static class UnifiedSaleReference
     {
         public static async Task<int> GetMaxSequenceAsync(ApplicationDbContext context, Guid tenantId)
         {
-            var billQuery = context.ShopServiceBills.AsQueryable();
-            var saleQuery = context.Sale.AsQueryable();
-            if (tenantId != Guid.Empty)
-            {
-                billQuery = billQuery.Where(b => b.TenantId == tenantId);
-                saleQuery = saleQuery.Where(s => s.TenantId == tenantId);
-            }
+            _ = tenantId;
 
-            var billNums = await billQuery.Select(b => b.BillNumber).ToListAsync();
-            var saleNums = await saleQuery.Select(s => s.SaleNumber).ToListAsync();
+            var billNums = await context.ShopServiceBills.Select(b => b.BillNumber).ToListAsync();
+            var saleNums = await context.Sale.Select(s => s.SaleNumber).ToListAsync();
 
             var max = 0;
             foreach (var n in billNums)

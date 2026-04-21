@@ -28,8 +28,8 @@
     else
     {
         <div class="receipt-paper">
-            <div class="receipt-dash">* * * * * * * * * * * * * * * *</div>
-
+            @* <div class="receipt-dash">* * * * * * * * * * * * * * * *</div>
+ *@
             <div class="receipt-dash mt-2">********************************</div>
             <div class="receipt-title">PAYMENT RECEIPT</div>
             <div class="receipt-dash">********************************</div>
@@ -68,7 +68,7 @@
 
             <div class="receipt-lines-head">
                 <span>Item</span>
-                <span>Amt</span>
+                <span>Amount</span>
             </div>
 
             @foreach (var line in lines)
@@ -228,11 +228,9 @@
     private async Task DownloadThermal()
     {
         if (sale == null) return;
-        var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(SaleId);
-        if (pdfBytes.Length == 0) return;
-        var base64 = Convert.ToBase64String(pdfBytes);
         var name = $"Receipt_{sale.SaleNumber ?? SaleId.ToString("N")[..8]}.pdf";
-        await JS.InvokeVoidAsync("downloadFileFromBytes", name, base64);
+        await BrowserFileDownload.DownloadPdfFromAuthenticatedUrlAsync(
+            JS, Navigation, $"/api/sales/{SaleId}/receipt.pdf", name);
     }
 
     private sealed record ReceiptLine(string Description, int Qty, decimal UnitPrice, decimal Total, string? Remarks);

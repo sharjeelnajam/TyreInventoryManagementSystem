@@ -37,7 +37,13 @@ namespace Infrastructure.Services
                     .ThenInclude(sd => sd.Product)
                     .AsQueryable();
                 if (tenantId != Guid.Empty)
-                    query = query.Where(s => s.TenantId == tenantId);
+                {
+                    // Include shop-billing sales that were saved with null TenantId but belong to this branch's bill
+                    query = query.Where(s =>
+                        s.TenantId == tenantId
+                        || (s.TenantId == null && s.ShopServiceBillId != null
+                            && _context.ShopServiceBills.Any(b => b.Id == s.ShopServiceBillId && b.TenantId == tenantId)));
+                }
                 var sales = await query.ToListAsync();
                 await HydrateSalesWithCustomers(sales);
                 return sales ?? new List<Sale>();
@@ -64,7 +70,16 @@ namespace Infrastructure.Services
                 if (sale == null) return null;
                 var tenantId = _tenantProvider.TenantId;
                 if (tenantId != Guid.Empty && sale.TenantId != tenantId)
-                    return null;
+                {
+                    if (sale.TenantId != null || sale.ShopServiceBillId is not Guid billId)
+                        return null;
+                    var billTenant = await _context.ShopServiceBills.AsNoTracking()
+                        .Where(b => b.Id == billId)
+                        .Select(b => b.TenantId)
+                        .FirstOrDefaultAsync();
+                    if (!billTenant.HasValue || billTenant.Value != tenantId)
+                        return null;
+                }
                 await HydrateSaleWithCustomer(sale);
                 return sale;
                 
@@ -85,11 +100,13 @@ namespace Infrastructure.Services
 
         public async Task<bool> AddAsync(Sale sale)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-            try
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                if (sale == null) return false;
+                await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                try
+                {
+                    if (sale == null) return false;
 
                 if (sale.CustomerId == Guid.Empty)
                     sale.CustomerId = null;
@@ -113,6 +130,15 @@ namespace Infrastructure.Services
                 sale.CreatedAt = DateTime.Now;
                 if (_tenantProvider.TenantId != Guid.Empty)
                     sale.TenantId = _tenantProvider.TenantId;
+                else if (!sale.TenantId.HasValue && sale.ShopServiceBillId is Guid shopBillId)
+                {
+                    var billTenant = await _context.ShopServiceBills.AsNoTracking()
+                        .Where(b => b.Id == shopBillId)
+                        .Select(b => b.TenantId)
+                        .FirstOrDefaultAsync();
+                    if (billTenant.HasValue && billTenant.Value != Guid.Empty)
+                        sale.TenantId = billTenant;
+                }
 
                 if (!sale.ShopServiceBillId.HasValue)
                     sale.SaleNumber = await UnifiedSaleReference.AllocateNextAsync(_context, _tenantProvider.TenantId);
@@ -239,16 +265,17 @@ namespace Infrastructure.Services
                     }
                 }
 
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                Console.WriteLine($"❌ Error in AddAsync: {ex.Message}");
-                return false;
-            }
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine($"❌ Error in AddAsync: {ex.Message}");
+                    return false;
+                }
+            });
         }
 
         public async Task UpdateAsync(Sale sale)

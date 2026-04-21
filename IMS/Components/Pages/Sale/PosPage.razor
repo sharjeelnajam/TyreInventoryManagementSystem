@@ -1056,9 +1056,8 @@
         {
             var sale = await SaleService.GetByIdAsync(checkoutSuccessSaleId.Value);
             if (sale == null) return;
-            var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(checkoutSuccessSaleId.Value);
-            var base64 = Convert.ToBase64String(pdfBytes);
-            await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber}.pdf", base64);
+            await BrowserFileDownload.DownloadPdfFromAuthenticatedUrlAsync(
+                JSRuntime, Nav, $"/api/sales/{checkoutSuccessSaleId.Value}/receipt.pdf", $"Receipt_{sale.SaleNumber}.pdf");
         }
         finally
         {

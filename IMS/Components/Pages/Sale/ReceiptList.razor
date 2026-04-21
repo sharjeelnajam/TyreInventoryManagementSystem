@@ -181,12 +181,8 @@
         if (sale == null)
             return;
 
-        var pdfBytes = await SaleService.GenerateThermalReceiptPdfAsync(saleId);
-        if (pdfBytes.Length == 0)
-            return;
-
-        var base64 = Convert.ToBase64String(pdfBytes);
-        await JSRuntime.InvokeVoidAsync("downloadFileFromBytes", $"Receipt_{sale.SaleNumber ?? saleId.ToString("N")[..8]}.pdf", base64);
+        await BrowserFileDownload.DownloadPdfFromAuthenticatedUrlAsync(
+            JSRuntime, Nav, $"/api/sales/{saleId}/receipt.pdf", $"Receipt_{sale.SaleNumber ?? saleId.ToString("N")[..8]}.pdf");
     }
 
     private void GoToInvoiceDetail(Guid id) => Nav.NavigateTo($"/sales/view/{id}?from=receipts");

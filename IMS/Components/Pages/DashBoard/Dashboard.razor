@@ -504,13 +504,7 @@
 
             var pdfBytes = doc.GeneratePdf();
 
-            string base64 = Convert.ToBase64String(pdfBytes);
-
-            await JS.InvokeVoidAsync(
-                "downloadFileFromBytes",
-                "LowStockProducts.pdf",
-                base64
-            );
+            await BrowserFileDownload.DownloadPdfAsync(JS, "LowStockProducts.pdf", pdfBytes);
         }
         catch (Exception ex)
         {

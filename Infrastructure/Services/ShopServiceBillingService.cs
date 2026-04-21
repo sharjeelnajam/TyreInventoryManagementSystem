@@ -19,6 +19,14 @@ namespace Infrastructure.Services
             _saleService = saleService;
         }
 
+        private IQueryable<ShopServiceBill> ApplyTenantScope(IQueryable<ShopServiceBill> query)
+        {
+            var tid = _tenantProvider.TenantId;
+            if (tid != Guid.Empty)
+                query = query.Where(b => b.TenantId == tid);
+            return query;
+        }
+
         public async Task<ShopServiceBill> StartBillAsync(Guid? customerId = null, string? customerName = null)
         {
             var tenantId = _tenantProvider.TenantId;
@@ -55,16 +63,15 @@ namespace Infrastructure.Services
 
         public async Task<List<ShopServiceBill>> GetOpenBillsAsync()
         {
-            return await _context.ShopServiceBills
-                .Where(b => b.Status == ShopServiceBillStatus.Open)
-                .OrderByDescending(b => b.OpenedAt)
-                .ToListAsync();
+            var query = ApplyTenantScope(_context.ShopServiceBills
+                .Where(b => b.Status == ShopServiceBillStatus.Open));
+            return await query.OrderByDescending(b => b.OpenedAt).ToListAsync();
         }
 
         public async Task<List<ShopServiceBill>> GetClosedBillsAsync(DateTime? from = null, DateTime? to = null)
         {
-            var query = _context.ShopServiceBills
-                .Where(b => b.Status == ShopServiceBillStatus.Closed);
+            var query = ApplyTenantScope(_context.ShopServiceBills
+                .Where(b => b.Status == ShopServiceBillStatus.Closed));
             if (from.HasValue)
                 query = query.Where(b => b.ClosedAt >= from.Value);
             if (to.HasValue)
@@ -74,14 +81,16 @@ namespace Infrastructure.Services
 
         public async Task<ShopServiceBill?> GetBillByIdAsync(Guid billId)
         {
-            return await _context.ShopServiceBills
+            var query = ApplyTenantScope(_context.ShopServiceBills
                 .Include(b => b.Items)
-                .FirstOrDefaultAsync(b => b.Id == billId);
+                .Where(b => b.Id == billId));
+            return await query.FirstOrDefaultAsync();
         }
 
         public async Task UpdateBillCustomerAsync(Guid billId, Guid? customerId, string? customerName)
         {
-            var bill = await _context.ShopServiceBills.FindAsync(billId);
+            var bill = await ApplyTenantScope(_context.ShopServiceBills.Where(b => b.Id == billId))
+                .FirstOrDefaultAsync();
             if (bill == null || bill.Status != ShopServiceBillStatus.Open)
                 return;
             bill.CustomerId = customerId;
@@ -91,7 +100,8 @@ namespace Infrastructure.Services
 
         public async Task UpdateBillDiscountAsync(Guid billId, decimal discount)
         {
-            var bill = await _context.ShopServiceBills.FindAsync(billId);
+            var bill = await ApplyTenantScope(_context.ShopServiceBills.Where(b => b.Id == billId))
+                .FirstOrDefaultAsync();
             if (bill == null || bill.Status != ShopServiceBillStatus.Open)
                 return;
             bill.Discount = discount;
@@ -100,7 +110,8 @@ namespace Infrastructure.Services
 
         public async Task<ShopServiceBillItem> AddItemAsync(Guid billId, Guid? serviceId, Guid? productId, string serviceName, int quantity, decimal unitPrice, string? remarks = null)
         {
-            var bill = await _context.ShopServiceBills.FindAsync(billId);
+            var bill = await ApplyTenantScope(_context.ShopServiceBills.Where(b => b.Id == billId))
+                .FirstOrDefaultAsync();
             if (bill == null || bill.Status != ShopServiceBillStatus.Open)
                 throw new InvalidOperationException("Bill not found or already closed.");
 
@@ -129,6 +140,9 @@ namespace Infrastructure.Services
                 .FirstOrDefaultAsync(i => i.Id == itemId);
             if (item == null || item.ShopServiceBill.Status != ShopServiceBillStatus.Open)
                 throw new InvalidOperationException("Item not found or bill is closed.");
+            var tid = _tenantProvider.TenantId;
+            if (tid != Guid.Empty && item.ShopServiceBill.TenantId != tid)
+                throw new InvalidOperationException("Item not found or bill is closed.");
 
             item.Quantity = quantity;
             item.UnitPrice = unitPrice;
@@ -143,6 +157,9 @@ namespace Infrastructure.Services
                 .FirstOrDefaultAsync(i => i.Id == itemId);
             if (item == null || item.ShopServiceBill.Status != ShopServiceBillStatus.Open)
                 throw new InvalidOperationException("Item not found or bill is closed.");
+            var tidRemove = _tenantProvider.TenantId;
+            if (tidRemove != Guid.Empty && item.ShopServiceBill.TenantId != tidRemove)
+                throw new InvalidOperationException("Item not found or bill is closed.");
 
             _context.ShopServiceBillItems.Remove(item);
             await _context.SaveChangesAsync();
@@ -150,7 +167,8 @@ namespace Infrastructure.Services
 
         public async Task SaveBillAsync(Guid billId)
         {
-            var bill = await _context.ShopServiceBills.FindAsync(billId);
+            var bill = await ApplyTenantScope(_context.ShopServiceBills.Where(b => b.Id == billId))
+                .FirstOrDefaultAsync();
             if (bill == null || bill.Status != ShopServiceBillStatus.Open)
                 throw new InvalidOperationException("Bill not found or already closed.");
             bill.PaymentStatus = "Hold";
@@ -159,9 +177,10 @@ namespace Infrastructure.Services
 
         public async Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, string? jobDescription = null, decimal? cashAmount = null, decimal? cardAmount = null)
         {
-            var bill = await _context.ShopServiceBills
-                .Include(b => b.Items)
-                .FirstOrDefaultAsync(b => b.Id == billId);
+            var bill = await ApplyTenantScope(_context.ShopServiceBills
+                    .Include(b => b.Items)
+                    .Where(b => b.Id == billId))
+                .FirstOrDefaultAsync();
             if (bill == null || bill.Status != ShopServiceBillStatus.Open)
                 throw new InvalidOperationException("Bill not found or already closed.");
 
@@ -175,15 +194,6 @@ namespace Infrastructure.Services
                 if (Math.Abs(sum - netAmount) > 0.01m)
                     throw new InvalidOperationException($"Split payment invalid: Card (£{(cardAmount ?? 0):N2}) + Cash (£{(cashAmount ?? 0):N2}) = £{sum:N2} must equal Total £{netAmount:N2}. Checkout not allowed.");
             }
-
-            bill.TotalAmount = netAmount;
-            bill.ClosedAt = DateTime.UtcNow;
-            bill.Status = ShopServiceBillStatus.Closed;
-            bill.PaymentMethod = paymentMethod;
-            bill.PaymentStatus = paymentStatus;
-            bill.Notes = notes;
-            bill.JobDescription = jobDescription;
-            await _context.SaveChangesAsync();
 
             // Build SaleDetails from bill items that are products (for stock update)
             var saleDetails = new List<SaleDetail>();
@@ -209,7 +219,7 @@ namespace Infrastructure.Services
             var sale = new Sale
             {
                 SaleNumber = bill.BillNumber,
-                SaleDate = bill.ClosedAt.Value,
+                SaleDate = DateTime.UtcNow,
                 CustomerId = bill.CustomerId,
                 CustomerName = bill.CustomerName,
                 TotalAmount = subtotal,
@@ -224,9 +234,21 @@ namespace Infrastructure.Services
                 Notes = notes,
                 JobDescription = jobDescription,
                 ShopServiceBillId = bill.Id,
-                SaleDetails = saleDetails
+                SaleDetails = saleDetails,
+                TenantId = bill.TenantId
             };
-            await _saleService.AddAsync(sale);
+            var saved = await _saleService.AddAsync(sale);
+            if (!saved)
+                throw new InvalidOperationException("Checkout failed: bill was not closed because the sale entry could not be created.");
+
+            bill.TotalAmount = netAmount;
+            bill.ClosedAt = sale.SaleDate;
+            bill.Status = ShopServiceBillStatus.Closed;
+            bill.PaymentMethod = paymentMethod;
+            bill.PaymentStatus = paymentStatus;
+            bill.Notes = notes;
+            bill.JobDescription = jobDescription;
+            await _context.SaveChangesAsync();
             return sale.Id;
         }
     }

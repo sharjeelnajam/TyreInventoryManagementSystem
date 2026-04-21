@@ -134,4 +134,25 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 
+// PDF downloads via HTTP (cookies) — reliable for Blazor Server vs large stream interop payloads
+app.MapGet("/api/sales/{saleId:guid}/receipt.pdf", async Task<IResult> (Guid saleId, ISaleService saleService) =>
+{
+    var sale = await saleService.GetByIdAsync(saleId);
+    if (sale == null) return Results.NotFound();
+    var pdf = await saleService.GenerateThermalReceiptPdfAsync(saleId);
+    if (pdf.Length == 0) return Results.NotFound();
+    var fileName = $"Receipt_{sale.SaleNumber ?? saleId.ToString("N")[..8]}.pdf";
+    return Results.File(pdf, contentType: "application/pdf", fileDownloadName: fileName);
+}).RequireAuthorization();
+
+app.MapGet("/api/sales/{saleId:guid}/invoice.pdf", async Task<IResult> (Guid saleId, ISaleService saleService) =>
+{
+    var sale = await saleService.GetByIdAsync(saleId);
+    if (sale == null) return Results.NotFound();
+    var pdf = await saleService.GenerateReceiptPdfAsync(saleId);
+    if (pdf.Length == 0) return Results.NotFound();
+    var fileName = $"Invoice_{sale.SaleNumber ?? saleId.ToString("N")[..8]}.pdf";
+    return Results.File(pdf, contentType: "application/pdf", fileDownloadName: fileName);
+}).RequireAuthorization();
+
 app.Run();
