@@ -186,13 +186,10 @@
                         </div>
                     }
                     
-                    @if (Sale.TaxAmount.HasValue && Sale.TaxAmount > 0)
-                    {
-                        <div class="total-row">
-                            <span>Tax (@Sale.TaxAmount%):</span>
-                            <span>£@((Sale.TotalAmount * (Sale.TaxAmount.Value / 100)).ToString("0.00"))</span>
-                        </div>
-                    }
+                    <div class="total-row">
+                        <span>VAT (20%):</span>
+                        <span>£@Sale.TaxAmount.GetValueOrDefault().ToString("0.00")</span>
+                    </div>
                     
                     <div class="total-row grand-total">
                         <span>Total:</span>
@@ -411,13 +408,10 @@
                                      class="form-control form-control-sm w-auto" style="max-width: 6rem;" />
                         <span class="text-success">-£@CalculateDiscount().ToString("0.00")</span>
                     </div>
-                    @if (Sale.TaxAmount.HasValue && Sale.TaxAmount > 0)
-                    {
-                        <div class="checkout-summary-row">
-                            <span class="checkout-heading">Tax (@Sale.TaxAmount%)</span>
-                            <span>£@((Sale.TotalAmount * (Sale.TaxAmount.Value / 100)).ToString("0.00"))</span>
-                        </div>
-                    }
+                    <div class="checkout-summary-row">
+                        <span class="checkout-heading">VAT (20%)</span>
+                        <span>£@Sale.TaxAmount.GetValueOrDefault().ToString("0.00")</span>
+                    </div>
                     <div class="checkout-summary-row checkout-total-row">
                         <span class="checkout-heading">Total</span>
                         <span>£@Sale.NetAmount.ToString("0.00")</span>
@@ -481,6 +475,7 @@
 }
 
 @code {
+    private const decimal VatRate = 0.20m;
     bool isFormValid = true;
     private Dictionary<Guid, string> quantityErrors = new();
     protected Sale Sale { get; set; } = new();
@@ -620,6 +615,9 @@
             Discount = 0,
             TaxAmount = 0
         };
+        _checkoutExtraDiscount = 0m;
+        _checkoutCardAmount = 0m;
+        _checkoutCashAmount = 0m;
     }
 
     private void OnCheckoutBillToChanged()
@@ -884,7 +882,7 @@
         StateHasChanged();
     }
 
-    private decimal CalculateDiscount()
+    private decimal CalculateCustomerDiscount()
     {
         var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
         decimal discount = 0;
@@ -903,10 +901,16 @@
             discount = CustomerCustomPrice.Value + percentageAmount;
         }
 
-        // Add any manual checkout discount
-        discount += _checkoutExtraDiscount;
+        return Math.Clamp(discount, 0m, total);
+    }
 
-        return discount;
+    private decimal CalculateDiscount()
+    {
+        var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
+        if (_checkoutExtraDiscount > 0m)
+            return Math.Clamp(_checkoutExtraDiscount, 0m, total);
+
+        return CalculateCustomerDiscount();
     }
 
     private void RecalculateTotals()
@@ -916,23 +920,19 @@
             Sale.TotalAmount = 0;
             Sale.NetAmount = 0;
             Sale.Discount = 0;
+            Sale.TaxAmount = 0;
             return;
         }
 
-        var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
-        Sale.TotalAmount = total;
+        var subtotal = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
+        var discount = CalculateDiscount();
+        var discountedSubtotal = Math.Max(subtotal - discount, 0m);
+        var vatAmount = Math.Round(discountedSubtotal * VatRate, 2);
 
-        decimal discount = CalculateDiscount();
-        Sale.Discount = discount;
-        Sale.NetAmount = total - discount;
-
-        if (Sale.TaxAmount.HasValue && Sale.TaxAmount > 0)
-        {
-            Sale.NetAmount += Sale.TotalAmount * (Sale.TaxAmount.Value / 100);
-        }
-
-        if (Sale.NetAmount < 0)
-            Sale.NetAmount = 0;
+        Sale.TotalAmount = Math.Round(subtotal, 2);
+        Sale.Discount = Math.Round(discount, 2);
+        Sale.TaxAmount = vatAmount;
+        Sale.NetAmount = Math.Round(discountedSubtotal + vatAmount, 2);
     }
 
     private void OnCheckoutExtraDiscountChanged()

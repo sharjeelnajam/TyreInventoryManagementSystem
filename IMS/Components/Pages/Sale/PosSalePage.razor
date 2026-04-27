@@ -278,12 +278,8 @@
                                                 </div>
 
                                                 <div class="col-md-4">
-                                                    <label class="small fw-semibold mb-1">Tax (%)</label>
-                                                    <InputNumber TValue="decimal?"
-                                                                 Value="Sale.TaxAmount"
-                                                                 ValueChanged="OnTaxChanged"
-                                                                 ValueExpression="@(() => Sale.TaxAmount)"
-                                                                 class="form-control form-control-sm" />
+                                                    <label class="small fw-semibold mb-1">VAT (20%)</label>
+                                                    <input class="form-control form-control-sm" value="@Sale.TaxAmount.GetValueOrDefault().ToString("N2")" readonly />
                                                 </div>
                                             }
                                             else
@@ -299,12 +295,8 @@
                                                 </div>
 
                                                 <div class="col-md-2">
-                                                    <label class="small fw-semibold mb-1">Tax (%)</label>
-                                                    <InputNumber TValue="decimal?"
-                                                                 Value="Sale.TaxAmount"
-                                                                 ValueChanged="OnTaxChanged"
-                                                                 ValueExpression="@(() => Sale.TaxAmount)"
-                                                                 class="form-control form-control-sm" />
+                                                    <label class="small fw-semibold mb-1">VAT (20%)</label>
+                                                    <input class="form-control form-control-sm" value="@Sale.TaxAmount.GetValueOrDefault().ToString("N2")" readonly />
                                                 </div>
                                             }
 
@@ -483,6 +475,7 @@
 }
 
 @code {
+    private const decimal VatRate = 0.20m;
     [Parameter] public Guid Id { get; set; }
 
     int availableStock;
@@ -870,42 +863,39 @@
         {
             Sale.TotalAmount = 0;
             Sale.NetAmount = 0;
+            Sale.Discount = 0;
+            Sale.TaxAmount = 0;
             return;
         }
 
-        var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
-        Sale.TotalAmount = total > 0 ? total - (Sale.Discount ?? 0) : 0;
-
+        var subtotal = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
+        decimal discount = Sale.Discount ?? 0m;
         if (!ShowOldDiscountField)
         {
-            decimal discount = 0;
-
-            // Rule 1 – Only CustomPrice
+            discount = 0m;
             if (CustomerCustomPrice.HasValue && (!CustomerPercentage.HasValue || CustomerPercentage == 0))
             {
                 discount = CustomerCustomPrice.Value;
             }
-            // Rule 2 – Only Percentage
             else if (!CustomerCustomPrice.HasValue && CustomerPercentage.HasValue && CustomerPercentage > 0)
             {
-                discount = total * (CustomerPercentage.Value / 100);
+                discount = subtotal * (CustomerPercentage.Value / 100);
             }
-            // Rule 3 – Both values
             else if (CustomerCustomPrice.HasValue && CustomerPercentage.HasValue && CustomerPercentage > 0)
             {
-                var percentageAmount = total * (CustomerPercentage.Value / 100);
+                var percentageAmount = subtotal * (CustomerPercentage.Value / 100);
                 discount = CustomerCustomPrice.Value + percentageAmount;
             }
-
-            Sale.NetAmount = total - discount;
-
-            if (Sale.NetAmount < 0)
-                Sale.NetAmount = 0;
         }
-        else
-        {
-            Sale.NetAmount = total > 0 ? total - (Sale.Discount ?? 0) + (Sale.TaxAmount ?? 0) : 0;
-        }
+
+        discount = Math.Clamp(discount, 0m, subtotal);
+        var discountedSubtotal = Math.Max(subtotal - discount, 0m);
+        var vatAmount = Math.Round(discountedSubtotal * VatRate, 2);
+
+        Sale.TotalAmount = Math.Round(subtotal, 2);
+        Sale.Discount = Math.Round(discount, 2);
+        Sale.TaxAmount = vatAmount;
+        Sale.NetAmount = Math.Round(discountedSubtotal + vatAmount, 2);
     }
 
     private bool isWholesalerMode

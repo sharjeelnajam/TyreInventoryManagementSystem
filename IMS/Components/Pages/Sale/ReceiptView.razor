@@ -104,16 +104,13 @@
                     <span>-@d.ToString("N2")</span>
                 </div>
             }
-            @if (sale.TaxAmount is decimal tx && tx > 0)
-            {
-                <div class="receipt-kv">
-                    <span>Tax</span>
-                    <span>@tx.ToString("N2")</span>
-                </div>
-            }
+            <div class="receipt-kv">
+                <span>VAT (20%)</span>
+                <span>@VatAmount.ToString("N2")</span>
+            </div>
             <div class="receipt-kv receipt-total-row">
                 <span>TOTAL</span>
-                <span>@sale.NetAmount.ToString("N2")</span>
+                <span>@TotalWithVat.ToString("N2")</span>
             </div>
 
             @if (IsSplitPayment(sale.PaymentMethod))
@@ -178,6 +175,20 @@
     private string? CustomerEmailDisplay =>
         !string.IsNullOrWhiteSpace(sale?.Customer?.Email) ? sale!.Customer!.Email!.Trim()
         : null;
+
+    private decimal Subtotal => sale?.TotalAmount ?? 0m;
+    private decimal DiscountAmount => sale?.Discount ?? 0m;
+    private decimal VatAmount
+    {
+        get
+        {
+            if (sale == null) return 0m;
+            if ((sale.TaxAmount ?? 0m) > 0m) return sale.TaxAmount!.Value;
+            var discountedSubtotal = Math.Max(Subtotal - DiscountAmount, 0m);
+            return Math.Round(discountedSubtotal * 0.20m, 2);
+        }
+    }
+    private decimal TotalWithVat => sale?.NetAmount ?? Math.Round(Math.Max(Subtotal - DiscountAmount, 0m) + VatAmount, 2);
 
     protected override async Task OnInitializedAsync()
     {

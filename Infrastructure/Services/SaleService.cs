@@ -560,11 +560,14 @@ namespace Infrastructure.Services
             QuestPDF.Settings.License = LicenseType.Community;
 
             var subTotal = sale.TotalAmount;
-            var vatAmount = sale.TaxAmount.HasValue && sale.TaxAmount.Value != 0
+            var discountAmount = sale.Discount ?? 0m;
+            var discountedSubtotal = Math.Max(subTotal - discountAmount, 0m);
+            var vatAmount = sale.TaxAmount.HasValue && sale.TaxAmount.Value > 0
                 ? sale.TaxAmount.Value
-                : Math.Round(subTotal * 0.20m, 2);
-
-            var totalDue = subTotal + vatAmount - (sale.Discount ?? 0m);
+                : Math.Round(discountedSubtotal * 0.20m, 2);
+            var totalDue = sale.NetAmount > 0
+                ? sale.NetAmount
+                : Math.Round(discountedSubtotal + vatAmount, 2);
 
             var accent = Color.FromHex("#1e3a5f");
             var muted = Color.FromHex("#64748b");
@@ -879,14 +882,14 @@ namespace Infrastructure.Services
                                     r.RelativeItem().AlignRight().Text($"-{disc:N2}").FontSize(8);
                                 });
                             }
-                            if (sale.TaxAmount is decimal tx && tx > 0)
+                            var thermalVat = sale.TaxAmount.HasValue && sale.TaxAmount.Value > 0
+                                ? sale.TaxAmount.Value
+                                : Math.Round(Math.Max(sale.TotalAmount - (sale.Discount ?? 0m), 0m) * 0.20m, 2);
+                            body.Item().Row(r =>
                             {
-                                body.Item().Row(r =>
-                                {
-                                    r.ConstantItem(labelWidth).Text("Tax").FontSize(8);
-                                    r.RelativeItem().AlignRight().Text(tx.ToString("N2")).FontSize(8);
-                                });
-                            }
+                                r.ConstantItem(labelWidth).Text("VAT (20%)").FontSize(8);
+                                r.RelativeItem().AlignRight().Text(thermalVat.ToString("N2")).FontSize(8);
+                            });
                             body.Item().PaddingTop(2).Row(r =>
                             {
                                 r.ConstantItem(labelWidth).Text("TOTAL").Bold().FontSize(10);

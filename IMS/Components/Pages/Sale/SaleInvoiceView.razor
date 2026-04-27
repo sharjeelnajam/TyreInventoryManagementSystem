@@ -49,16 +49,6 @@ else
                     <input class="form-control" value="@(sale.Customer?.Name ?? sale.CustomerName)" readonly />
                 </div>
             </div>
-            @if (showCustomerSpecialNote)
-            {
-                <div class="row mt-2">
-                    <div class="col-md-12">
-                        <label class="invoice-label">Customer special note</label>
-                        <input class="form-control" value="@(sale.Customer?.SpecialNote)" readonly />
-                    </div>
-                </div>
-            }
-
             <div class="row mt-2">
                 <div class="col-md-3">
                     <label class="invoice-label">Payment Method</label>
@@ -73,8 +63,8 @@ else
                     <input class="form-control" value="@sale.Discount?.ToString("N2")" readonly />
                 </div>
                 <div class="col-md-3">
-                    <label class="invoice-label">Tax</label>
-                    <input class="form-control" value="@sale.TaxAmount?.ToString("N2")" readonly />
+                    <label class="invoice-label">VAT (20%)</label>
+                    <input class="form-control" value="@VatAmount.ToString("N2")" readonly />
                 </div>
             </div>
             @if (IsSplitPayment(sale.PaymentMethod))
@@ -98,11 +88,11 @@ else
                 </div>
                 <div class="col-md-4">
                     <label class="invoice-label">Net</label>
-                    <input class="form-control" value="@sale.NetAmount.ToString("N2")" readonly />
+                    <input class="form-control" value="@InvoiceTotal.ToString("N2")" readonly />
                 </div>
                 <div class="col-md-4">
                     <label class="invoice-label">Invoice Total</label>
-                    <input class="form-control fw-bold" value="@sale.NetAmount.ToString("N2")" readonly />
+                    <input class="form-control fw-bold" value="@InvoiceTotal.ToString("N2")" readonly />
                 </div>
             </div>
 
@@ -170,7 +160,6 @@ else
 }
 
 @code {
-    private const string ShowSpecialNoteOnInvoiceViewKey = "ims.sales.showSpecialNoteOnInvoiceView";
     private const string ShowSaleSpecialNoteOnInvoiceDetailKey = "ims.sales.showSaleSpecialNoteOnInvoiceView";
 
     [Parameter] public Guid SaleId { get; set; }
@@ -179,8 +168,22 @@ else
     public string? From { get; set; }
 
     private Sale? sale;
-    private bool showCustomerSpecialNote;
     private bool showSaleSpecialNote = true;
+    private decimal VatAmount
+    {
+        get
+        {
+            if (sale == null) return 0m;
+            if ((sale.TaxAmount ?? 0m) > 0m) return sale.TaxAmount!.Value;
+            var discountedSubtotal = Math.Max(sale.TotalAmount - (sale.Discount ?? 0m), 0m);
+            return Math.Round(discountedSubtotal * 0.20m, 2);
+        }
+    }
+    private decimal InvoiceTotal => sale == null
+        ? 0m
+        : sale.NetAmount > 0m
+            ? sale.NetAmount
+            : Math.Round(Math.Max(sale.TotalAmount - (sale.Discount ?? 0m), 0m) + VatAmount, 2);
 
     protected override async Task OnInitializedAsync()
     {
@@ -193,9 +196,6 @@ else
             return;
         try
         {
-            var stored = await JS.InvokeAsync<string?>("localStorage.getItem", ShowSpecialNoteOnInvoiceViewKey);
-            showCustomerSpecialNote = stored != "false";
-
             var storedSaleNote = await JS.InvokeAsync<string?>("localStorage.getItem", ShowSaleSpecialNoteOnInvoiceDetailKey);
             showSaleSpecialNote = storedSaleNote != "false";
 
