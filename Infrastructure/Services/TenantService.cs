@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Domain.Enums;
 using Domain.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -79,68 +80,73 @@ namespace Infrastructure.Services
 
         public async Task<Tenant> AddTenantAsync(Tenant ten, Guid ownerUserId)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            try
+            return await strategy.ExecuteAsync(async () =>
             {
-                if (string.IsNullOrWhiteSpace(ten.Name))
-                    throw new ArgumentException("name is required.", nameof(ten.Name));
+                await using var transaction = await _context.Database.BeginTransactionAsync();
 
-                if (string.IsNullOrWhiteSpace(ten.Domain))
-                    throw new ArgumentException("domain is required.", nameof(ten.Domain));
-
-                var existing = await _context.Tenants
-                    .AnyAsync(t => t.Domain.ToLower() == ten.Domain.ToLower());
-
-                if (existing)
-                    throw new InvalidOperationException($"A tenant with domain '{ten.Domain}' already exists.");
-
-                var tenant = new Tenant
+                try
                 {
-                    Name = ten.Name.Trim(),
-                    Domain = ten.Domain.Trim().ToLower(),
-                    Email = ten.Email.Trim(),
-                    PhoneNumber = ten.PhoneNumber,
-                    City = ten.City,
-                    Address = ten.Address,
-                    TenantUrl = GenerateStringUrl()
-                };
+                    if (string.IsNullOrWhiteSpace(ten.Name))
+                        throw new ArgumentException("name is required.", nameof(ten.Name));
 
-                _context.Tenants.Add(tenant);
-                await _context.SaveChangesAsync();
-                // 3. Tenant ke liye Admin User create karo
-                var adminUser = new ApplicationUser
-                {
-                    UserName = ten.Email,
-                    Email = ten.Email,
-                    TenantId = tenant.Id,   // yahan Tenant assign kiya
-                    EmailConfirmed = true
-                };
+                    if (string.IsNullOrWhiteSpace(ten.Domain))
+                        throw new ArgumentException("domain is required.", nameof(ten.Domain));
 
-                var result = await _userManager.CreateAsync(adminUser, "Admin@123");
+                    var existing = await _context.Tenants
+                        .AnyAsync(t => t.Domain.ToLower() == ten.Domain.ToLower());
 
-                if (!result.Succeeded)
-                    throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+                    if (existing)
+                        throw new InvalidOperationException($"A tenant with domain '{ten.Domain}' already exists.");
 
-                var adminRole = await _roleManager.Roles
-              .FirstOrDefaultAsync(r => r.Name == "Admin" && r.TenantId == tenant.Id);
+                    var tenant = new Tenant
+                    {
+                        Name = ten.Name.Trim(),
+                        Domain = ten.Domain.Trim().ToLower(),
+                        Email = ten.Email.Trim(),
+                        PhoneNumber = ten.PhoneNumber,
+                        City = ten.City,
+                        Address = ten.Address,
+                        TenantUrl = GenerateStringUrl()
+                    };
 
-                if (adminRole == null)
-                {
-                    await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
+                    _context.Tenants.Add(tenant);
+                    await _context.SaveChangesAsync();
+
+                    // Create Admin user for this tenant
+                    var adminUser = new ApplicationUser
+                    {
+                        UserName = ten.Email,
+                        Email = ten.Email,
+                        TenantId = tenant.Id,
+                        EmailConfirmed = true
+                    };
+
+                    var result = await _userManager.CreateAsync(adminUser, "Admin@123");
+
+                    if (!result.Succeeded)
+                        throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                    var adminRole = await _roleManager.Roles
+                        .FirstOrDefaultAsync(r => r.Name == "Admin" && r.TenantId == tenant.Id);
+
+                    if (adminRole == null)
+                    {
+                        await _roleManager.CreateAsync(new ApplicationRole { Name = "Admin", TenantId = tenant.Id });
+                    }
+
+                    await _userManager.AddToRoleAsync(adminUser, "Admin");
+
+                    await transaction.CommitAsync();
+                    return tenant;
                 }
-
-                await _userManager.AddToRoleAsync(adminUser, "Admin");
-
-                await transaction.CommitAsync();
-                return tenant;
-            }
-            catch (Exception ex)
-            {
-
-                await transaction.RollbackAsync();
-                throw new Exception("Error while creating tenant", ex);
-            }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw new Exception("Error while creating tenant", ex);
+                }
+            });
 
         }
 
@@ -202,6 +208,37 @@ namespace Infrastructure.Services
             {
                 throw new Exception("An error occurred while deleting the tenant.", ex);
             }
+        }
+
+        public async Task<VatMode> GetVatModeAsync()
+        {
+            var tenantId = _tenantProvider.TenantId;
+            if (tenantId == Guid.Empty)
+                return VatMode.ExcludeVat;
+
+            var modeValue = await _context.Tenants
+                .Where(t => t.Id == tenantId)
+                .Select(t => (int?)t.VatMode)
+                .FirstOrDefaultAsync();
+
+            if (!modeValue.HasValue || !Enum.IsDefined(typeof(VatMode), modeValue.Value))
+                return VatMode.ExcludeVat;
+
+            return (VatMode)modeValue.Value;
+        }
+
+        public async Task UpdateVatModeAsync(VatMode mode)
+        {
+            var tenantId = _tenantProvider.TenantId;
+            if (tenantId == Guid.Empty)
+                return;
+
+            var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId);
+            if (tenant == null)
+                return;
+
+            tenant.VatMode = mode;
+            await _context.SaveChangesAsync();
         }
 
         private string GenerateStringUrl()

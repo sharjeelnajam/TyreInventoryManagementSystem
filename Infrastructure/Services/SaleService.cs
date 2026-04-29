@@ -1,5 +1,6 @@
 using Domain;
 using Domain.DTO;
+using Domain.Enums;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -297,6 +298,7 @@ namespace Infrastructure.Services
                 existingSales.TotalAmount = sale.TotalAmount;
                 existingSales.Discount = sale.Discount;
                 existingSales.TaxAmount = sale.TaxAmount;
+                existingSales.VatMode = sale.VatMode;
                 existingSales.NetAmount = sale.NetAmount;
                 existingSales.PaymentMethod = sale.PaymentMethod;
                 existingSales.PaymentStatus = sale.PaymentStatus;
@@ -561,13 +563,17 @@ namespace Infrastructure.Services
 
             var subTotal = sale.TotalAmount;
             var discountAmount = sale.Discount ?? 0m;
-            var discountedSubtotal = Math.Max(subTotal - discountAmount, 0m);
-            var vatAmount = sale.TaxAmount.HasValue && sale.TaxAmount.Value > 0
-                ? sale.TaxAmount.Value
-                : Math.Round(discountedSubtotal * 0.20m, 2);
-            var totalDue = sale.NetAmount > 0
-                ? sale.NetAmount
-                : Math.Round(discountedSubtotal + vatAmount, 2);
+            var vatMode = GetVatModeFromSale(sale);
+            var vatBreakdown = VatCalculator.Calculate(subTotal, discountAmount, vatMode);
+            var vatAmount = vatBreakdown.VatAmount;
+            var totalDue = vatBreakdown.NetAmount;
+            var vatLabel = vatMode == VatMode.IncludingVat ? "VAT Included (20%)" : "VAT (20%)";
+            var vatStatusLabel = vatMode switch
+            {
+                VatMode.PlusVat => "Plus VAT",
+                VatMode.IncludingVat => "Including VAT",
+                _ => "Exclude VAT"
+            };
 
             var accent = Color.FromHex("#1e3a5f");
             var muted = Color.FromHex("#64748b");
@@ -676,8 +682,18 @@ namespace Infrastructure.Services
                             });
                             totalsCol.Item().PaddingTop(6).Row(r =>
                             {
-                                r.RelativeItem().Text("VAT (20%)").FontSize(10).FontColor(muted);
+                                r.RelativeItem().Text("Discount").FontSize(10).FontColor(muted);
+                                r.ConstantItem(100).AlignRight().Text($"-£{discountAmount:0.00}").FontSize(10);
+                            });
+                            totalsCol.Item().PaddingTop(6).Row(r =>
+                            {
+                                r.RelativeItem().Text(vatLabel).FontSize(10).FontColor(muted);
                                 r.ConstantItem(100).AlignRight().Text($"£{vatAmount:0.00}").FontSize(10);
+                            });
+                            totalsCol.Item().PaddingTop(6).Row(r =>
+                            {
+                                r.RelativeItem().Text("VAT Status").FontSize(10).FontColor(muted);
+                                r.ConstantItem(100).AlignRight().Text(vatStatusLabel).FontSize(10);
                             });
                             totalsCol.Item().PaddingTop(12).LineHorizontal(1).LineColor(accent);
                             totalsCol.Item().PaddingTop(10).Row(r =>
@@ -781,6 +797,17 @@ namespace Infrastructure.Services
             const string sep = "********************************";
             var receiptDate = sale.SaleDate.ToString("dd MMM yyyy HH:mm");
             var refText = sale.SaleNumber ?? sale.Id.ToString("N")[..8];
+            var thermalVatMode = GetVatModeFromSale(sale);
+            var thermalBreakdown = VatCalculator.Calculate(sale.TotalAmount, sale.Discount ?? 0m, thermalVatMode);
+            var thermalVat = thermalBreakdown.VatAmount;
+            var thermalTotal = thermalBreakdown.NetAmount;
+            var thermalVatLabel = thermalVatMode == VatMode.IncludingVat ? "VAT Included (20%)" : "VAT (20%)";
+            var thermalVatStatusLabel = thermalVatMode switch
+            {
+                VatMode.PlusVat => "Plus VAT",
+                VatMode.IncludingVat => "Including VAT",
+                _ => "Exclude VAT"
+            };
 
             QuestPDF.Settings.License = LicenseType.Community;
 
@@ -882,18 +909,20 @@ namespace Infrastructure.Services
                                     r.RelativeItem().AlignRight().Text($"-{disc:N2}").FontSize(8);
                                 });
                             }
-                            var thermalVat = sale.TaxAmount.HasValue && sale.TaxAmount.Value > 0
-                                ? sale.TaxAmount.Value
-                                : Math.Round(Math.Max(sale.TotalAmount - (sale.Discount ?? 0m), 0m) * 0.20m, 2);
                             body.Item().Row(r =>
                             {
-                                r.ConstantItem(labelWidth).Text("VAT (20%)").FontSize(8);
+                                r.ConstantItem(labelWidth).Text(thermalVatLabel).FontSize(8);
                                 r.RelativeItem().AlignRight().Text(thermalVat.ToString("N2")).FontSize(8);
+                            });
+                            body.Item().Row(r =>
+                            {
+                                r.ConstantItem(labelWidth).Text("VAT Status").FontSize(8);
+                                r.RelativeItem().AlignRight().Text(thermalVatStatusLabel).FontSize(8);
                             });
                             body.Item().PaddingTop(2).Row(r =>
                             {
                                 r.ConstantItem(labelWidth).Text("TOTAL").Bold().FontSize(10);
-                                r.RelativeItem().AlignRight().Text(sale.NetAmount.ToString("N2")).Bold().FontSize(10);
+                                r.RelativeItem().AlignRight().Text(thermalTotal.ToString("N2")).Bold().FontSize(10);
                             });
 
                             if (IsSplitPaymentThermal(sale.PaymentMethod))
@@ -939,6 +968,15 @@ namespace Infrastructure.Services
             !string.IsNullOrWhiteSpace(paymentMethod) &&
             paymentMethod.Contains("card", StringComparison.OrdinalIgnoreCase) &&
             paymentMethod.Contains("cash", StringComparison.OrdinalIgnoreCase);
+
+        private static VatMode GetVatModeFromSale(Sale sale)
+        {
+            var value = (int)sale.VatMode;
+            if (!Enum.IsDefined(typeof(VatMode), value))
+                return VatMode.ExcludeVat;
+
+            return sale.VatMode;
+        }
 
         public async Task<List<TopProductDto>> GetTopSellingProductsByDateAsync(DateTime start, DateTime end)
         {

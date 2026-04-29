@@ -1,5 +1,7 @@
 @page "/receipts/view/{SaleId:guid}"
 @using Domain
+@using Domain.DTO
+@using Domain.Enums
 @using Infrastructure.Services
 @using Microsoft.EntityFrameworkCore
 @inject ISaleService SaleService
@@ -105,8 +107,12 @@
                 </div>
             }
             <div class="receipt-kv">
-                <span>VAT (20%)</span>
+                <span>@VatLabel</span>
                 <span>@VatAmount.ToString("N2")</span>
+            </div>
+            <div class="receipt-kv receipt-muted">
+                <span>VAT Status</span>
+                <span>@VatStatusLabel</span>
             </div>
             <div class="receipt-kv receipt-total-row">
                 <span>TOTAL</span>
@@ -159,6 +165,7 @@
 
     private Sale? sale;
     private bool loadFailed;
+    private VatMode vatMode = VatMode.ExcludeVat;
 
     private readonly List<ReceiptLine> lines = new();
 
@@ -178,17 +185,27 @@
 
     private decimal Subtotal => sale?.TotalAmount ?? 0m;
     private decimal DiscountAmount => sale?.Discount ?? 0m;
+    private VatBreakdown VatBreakdown => VatCalculator.Calculate(Subtotal, DiscountAmount, vatMode);
+    private string VatStatusLabel => vatMode switch
+    {
+        VatMode.PlusVat => "Plus VAT",
+        VatMode.IncludingVat => "Including VAT",
+        _ => "Exclude VAT"
+    };
+    private string VatLabel => vatMode switch
+    {
+        VatMode.IncludingVat => "VAT Included (20%)",
+        _ => "VAT (20%)"
+    };
     private decimal VatAmount
     {
         get
         {
             if (sale == null) return 0m;
-            if ((sale.TaxAmount ?? 0m) > 0m) return sale.TaxAmount!.Value;
-            var discountedSubtotal = Math.Max(Subtotal - DiscountAmount, 0m);
-            return Math.Round(discountedSubtotal * 0.20m, 2);
+            return vatMode == VatMode.ExcludeVat ? 0m : VatBreakdown.VatAmount;
         }
     }
-    private decimal TotalWithVat => sale?.NetAmount ?? Math.Round(Math.Max(Subtotal - DiscountAmount, 0m) + VatAmount, 2);
+    private decimal TotalWithVat => sale == null ? 0m : VatBreakdown.NetAmount;
 
     protected override async Task OnInitializedAsync()
     {
@@ -198,6 +215,8 @@
             loadFailed = true;
             return;
         }
+        if (Enum.IsDefined(typeof(VatMode), (int)sale.VatMode))
+            vatMode = sale.VatMode;
 
         if (sale.ShopServiceBillId is Guid billId)
         {

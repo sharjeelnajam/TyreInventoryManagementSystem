@@ -4,6 +4,7 @@
 @using Domain.DTO
 @using Domain.Enums
 @using Infrastructure.Services
+@using IMS.Services
 @using IMS.Components.Pages.Customer
 @inject ISaleService SaleService
 @inject ICustomerService CustomerService
@@ -14,6 +15,7 @@
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IVatSettingsClientService VatSettingsService
 @rendermode InteractiveServer
 
 <PageTitle>Point of Sale</PageTitle>
@@ -185,11 +187,6 @@
                             <span>-£@CalculateDiscount().ToString("0.00")</span>
                         </div>
                     }
-                    
-                    <div class="total-row">
-                        <span>VAT (20%):</span>
-                        <span>£@Sale.TaxAmount.GetValueOrDefault().ToString("0.00")</span>
-                    </div>
                     
                     <div class="total-row grand-total">
                         <span>Total:</span>
@@ -409,7 +406,11 @@
                         <span class="text-success">-£@CalculateDiscount().ToString("0.00")</span>
                     </div>
                     <div class="checkout-summary-row">
-                        <span class="checkout-heading">VAT (20%)</span>
+                        <span class="checkout-heading">VAT Status</span>
+                        <span>@GetVatStatusLabel(Sale.VatMode)</span>
+                    </div>
+                    <div class="checkout-summary-row">
+                        <span class="checkout-heading">VAT Value</span>
                         <span>£@Sale.TaxAmount.GetValueOrDefault().ToString("0.00")</span>
                     </div>
                     <div class="checkout-summary-row checkout-total-row">
@@ -475,7 +476,6 @@
 }
 
 @code {
-    private const decimal VatRate = 0.20m;
     bool isFormValid = true;
     private Dictionary<Guid, string> quantityErrors = new();
     protected Sale Sale { get; set; } = new();
@@ -502,6 +502,7 @@
     private bool EnableCustomPricing { get; set; } = false;
     private bool _isWholesalerMode;
     private List<CustomerSalerPrice> wholeSalerPrices = new List<CustomerSalerPrice>();
+    private VatMode _vatMode = VatMode.ExcludeVat;
 
     private bool isWholesalerMode
     {
@@ -515,6 +516,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _vatMode = await VatSettingsService.GetModeAsync();
+
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         cashierName = authState.User.Identity?.Name ?? "—";
 
@@ -535,7 +538,8 @@
             SaleNumber = await SaleService.GetNextSaleReferencePreviewAsync(),
             SaleDetails = new List<SaleDetail>(),
             Discount = 0,
-            TaxAmount = 0
+            TaxAmount = 0,
+            VatMode = _vatMode
         };
     }
 
@@ -613,7 +617,8 @@
             SaleNumber = await SaleService.GetNextSaleReferencePreviewAsync(),
             SaleDetails = new List<SaleDetail>(),
             Discount = 0,
-            TaxAmount = 0
+            TaxAmount = 0,
+            VatMode = _vatMode
         };
         _checkoutExtraDiscount = 0m;
         _checkoutCardAmount = 0m;
@@ -882,6 +887,13 @@
         StateHasChanged();
     }
 
+    private static string GetVatStatusLabel(VatMode mode) => mode switch
+    {
+        VatMode.PlusVat => "Plus VAT",
+        VatMode.IncludingVat => "Including VAT",
+        _ => "Exclude VAT"
+    };
+
     private decimal CalculateCustomerDiscount()
     {
         var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
@@ -926,13 +938,13 @@
 
         var subtotal = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
         var discount = CalculateDiscount();
-        var discountedSubtotal = Math.Max(subtotal - discount, 0m);
-        var vatAmount = Math.Round(discountedSubtotal * VatRate, 2);
+        var vat = VatCalculator.Calculate(subtotal, discount, _vatMode);
 
-        Sale.TotalAmount = Math.Round(subtotal, 2);
-        Sale.Discount = Math.Round(discount, 2);
-        Sale.TaxAmount = vatAmount;
-        Sale.NetAmount = Math.Round(discountedSubtotal + vatAmount, 2);
+        Sale.TotalAmount = vat.Subtotal;
+        Sale.Discount = vat.Discount;
+        Sale.TaxAmount = vat.VatAmount;
+        Sale.NetAmount = vat.NetAmount;
+        Sale.VatMode = _vatMode;
     }
 
     private void OnCheckoutExtraDiscountChanged()

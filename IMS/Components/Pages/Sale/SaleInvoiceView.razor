@@ -1,5 +1,7 @@
 @page "/sales/view/{SaleId:guid}"
 @using Domain
+@using Domain.DTO
+@using Domain.Enums
 @using Infrastructure.Services
 @inject ISaleService SaleService
 @inject NavigationManager Navigation
@@ -63,8 +65,14 @@ else
                     <input class="form-control" value="@sale.Discount?.ToString("N2")" readonly />
                 </div>
                 <div class="col-md-3">
-                    <label class="invoice-label">VAT (20%)</label>
+                    <label class="invoice-label">@VatLabel</label>
                     <input class="form-control" value="@VatAmount.ToString("N2")" readonly />
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-3">
+                    <label class="invoice-label">VAT Status</label>
+                    <input class="form-control" value="@VatStatusLabel" readonly />
                 </div>
             </div>
             @if (IsSplitPayment(sale.PaymentMethod))
@@ -169,25 +177,37 @@ else
 
     private Sale? sale;
     private bool showSaleSpecialNote = true;
+    private VatMode vatMode = VatMode.ExcludeVat;
+    private VatBreakdown VatBreakdown => VatCalculator.Calculate(sale?.TotalAmount ?? 0m, sale?.Discount ?? 0m, vatMode);
+    private string VatStatusLabel => vatMode switch
+    {
+        VatMode.PlusVat => "Plus VAT",
+        VatMode.IncludingVat => "Including VAT",
+        _ => "Exclude VAT"
+    };
+    private string VatLabel => vatMode switch
+    {
+        VatMode.PlusVat => "VAT (20%)",
+        VatMode.IncludingVat => "VAT Included (20%)",
+        _ => "VAT (20%)"
+    };
     private decimal VatAmount
     {
         get
         {
             if (sale == null) return 0m;
-            if ((sale.TaxAmount ?? 0m) > 0m) return sale.TaxAmount!.Value;
-            var discountedSubtotal = Math.Max(sale.TotalAmount - (sale.Discount ?? 0m), 0m);
-            return Math.Round(discountedSubtotal * 0.20m, 2);
+            return vatMode == VatMode.ExcludeVat ? 0m : VatBreakdown.VatAmount;
         }
     }
     private decimal InvoiceTotal => sale == null
         ? 0m
-        : sale.NetAmount > 0m
-            ? sale.NetAmount
-            : Math.Round(Math.Max(sale.TotalAmount - (sale.Discount ?? 0m), 0m) + VatAmount, 2);
+        : VatBreakdown.NetAmount;
 
     protected override async Task OnInitializedAsync()
     {
         sale = await SaleService.GetByIdAsync(SaleId);
+        if (sale != null && Enum.IsDefined(typeof(VatMode), (int)sale.VatMode))
+            vatMode = sale.VatMode;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

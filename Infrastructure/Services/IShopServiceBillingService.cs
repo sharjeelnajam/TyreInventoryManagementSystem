@@ -15,6 +15,6 @@ namespace Infrastructure.Services
         Task UpdateItemAsync(Guid itemId, int quantity, decimal unitPrice);
         Task RemoveItemAsync(Guid itemId);
         Task SaveBillAsync(Guid billId);
-        Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, string? jobDescription = null, decimal? cashAmount = null, decimal? cardAmount = null);
+        Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, VatMode vatMode, string? notes = null, string? jobDescription = null, decimal? cashAmount = null, decimal? cardAmount = null);
     }
 }

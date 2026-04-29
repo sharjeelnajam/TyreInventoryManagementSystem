@@ -1,5 +1,6 @@
 using System.Data;
 using Domain;
+using Domain.DTO;
 using Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Shared.MultiTenancy;
@@ -175,7 +176,7 @@ namespace Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, string? notes = null, string? jobDescription = null, decimal? cashAmount = null, decimal? cardAmount = null)
+        public async Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, VatMode vatMode, string? notes = null, string? jobDescription = null, decimal? cashAmount = null, decimal? cardAmount = null)
         {
             var bill = await ApplyTenantScope(_context.ShopServiceBills
                     .Include(b => b.Items)
@@ -185,7 +186,8 @@ namespace Infrastructure.Services
                 throw new InvalidOperationException("Bill not found or already closed.");
 
             var subtotal = bill.Items.Sum(i => i.TotalPrice);
-            var netAmount = Math.Max(0, subtotal - bill.Discount);
+            var vat = VatCalculator.Calculate(subtotal, bill.Discount, vatMode);
+            var netAmount = vat.NetAmount;
 
             // Validate split payment: Card + Cash must equal total when using "Card & Cash"
             if (string.Equals(paymentMethod, "Card & Cash", StringComparison.OrdinalIgnoreCase))
@@ -223,8 +225,9 @@ namespace Infrastructure.Services
                 CustomerId = bill.CustomerId,
                 CustomerName = bill.CustomerName,
                 TotalAmount = subtotal,
-                Discount = bill.Discount,
-                TaxAmount = 0,
+                Discount = vat.Discount,
+                TaxAmount = vat.VatAmount,
+                VatMode = vatMode,
                 NetAmount = netAmount,
                 PaymentMethod = paymentMethod ?? "Cash",
                 PaymentStatus = paymentStatus ?? "Paid",

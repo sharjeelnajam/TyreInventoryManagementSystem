@@ -11,6 +11,7 @@ using Domain.Identity;
 using Infrastructure.Services;
 using Infrastructure.Persistence.Data;
 using Domain;
+using IMS.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +50,7 @@ builder.Services.AddScoped<IShopServiceBillingService, ShopServiceBillingService
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IWholesalerPriceService, WholesalerPriceService>();
 builder.Services.AddScoped<IExcelImportService, ExcelImportService>();
+builder.Services.AddScoped<IVatSettingsClientService, VatSettingsClientService>();
 
 
 builder.Services.AddServerSideBlazor()

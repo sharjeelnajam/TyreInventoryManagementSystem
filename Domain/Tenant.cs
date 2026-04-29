@@ -1,4 +1,5 @@
 ﻿using Domain.Identity;
+using Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace Domain
         public string? Address { get; set; }
         public string? City { get; set; }
         public string TenantUrl { get; set; }
+        public VatMode VatMode { get; set; } = VatMode.ExcludeVat;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public Guid? CreatedBy { get; set; }

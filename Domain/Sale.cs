@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -32,6 +33,7 @@ namespace Domain
         public decimal? Discount { get; set; }
         [Precision(18, 2)]
         public decimal? TaxAmount { get; set; }
+        public VatMode VatMode { get; set; } = VatMode.ExcludeVat;
 
         [Required(ErrorMessage = "Net amount is required.")]
         [Precision(18, 2)]

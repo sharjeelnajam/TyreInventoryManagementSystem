@@ -4,12 +4,14 @@
 @using Domain.DTO
 @using Infrastructure.Services
 @using IMS.Components.Pages.Customer
+@using IMS.Services
 @inject IShopServiceBillingService BillingService
 @inject ISaleService SaleService
 @inject IListManagementService ListManagementService
 @inject ICustomerService CustomerService
 @inject IProductService ProductService
 @inject IWholesalerPriceService WholesalerPriceService
+@inject IVatSettingsClientService VatSettingsService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -299,6 +301,14 @@
                                         <span>Subtotal:</span>
                                         <span>£@(Bill.Items.Sum(i => i.TotalPrice).ToString("N2"))</span>
                                     </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>@OpenBillVatLabel:</span>
+                                        <span>£@OpenBillVatAmount.ToString("N2")</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>VAT Status:</span>
+                                        <span>@GetVatModeLabel(_vatMode)</span>
+                                    </div>
                                     @if (Bill.Status == ShopServiceBillStatus.Open)
                                     {
                                         <div class="d-flex justify-content-between align-items-center mb-1">
@@ -318,7 +328,7 @@
                                     }
                                     <div class="d-flex justify-content-between fw-bold fs-5 mt-2">
                                         <span>Total:</span>
-                                        <span>£@(Math.Max(0, Bill.Items.Sum(i => i.TotalPrice) - Bill.Discount).ToString("N2"))</span>
+                                        <span>£@CurrentOpenBillTotal.ToString("N2")</span>
                                     </div>
                                 </div>
                             }
@@ -377,9 +387,12 @@
                         </table>
                         var cSubtotal = Bill.Items.Sum(i => i.TotalPrice);
                         var cDiscount = Bill.Discount;
-                        var cTotal = Math.Max(0, cSubtotal - cDiscount);
+                        var cVat = VatCalculator.Calculate(cSubtotal, cDiscount, _vatMode).VatAmount;
+                        var cTotal = VatCalculator.Calculate(cSubtotal, cDiscount, _vatMode).NetAmount;
                         <div class="p-3 border-top bg-light">
                             <div class="d-flex justify-content-between mb-1"><span>Subtotal:</span><span>£@cSubtotal.ToString("N2")</span></div>
+                            <div class="d-flex justify-content-between mb-1"><span>@(GetVatLabel(_vatMode)):</span><span>£@cVat.ToString("N2")</span></div>
+                            <div class="d-flex justify-content-between mb-1"><span>VAT Status:</span><span>@GetVatModeLabel(_vatMode)</span></div>
                             @if (cDiscount > 0)
                             {
                                 <div class="d-flex justify-content-between mb-1"><span>Discount:</span><span>-£@cDiscount.ToString("N2")</span></div>
@@ -495,8 +508,10 @@
                     <div class="modal-body">
                         @{
                             var checkoutSubtotal = Bill?.Items?.Sum(i => i.TotalPrice) ?? 0;
-                            var checkoutTotal = Math.Max(0, checkoutSubtotal - billDiscount);
+                            var checkoutVat = VatCalculator.Calculate(checkoutSubtotal, billDiscount, _vatMode);
+                            var checkoutTotal = checkoutVat.NetAmount;
                         }
+                        <p class="mb-1 small text-muted">VAT Status: <strong>@GetVatModeLabel(_vatMode)</strong></p>
                         <p class="mb-2">Total amount: <strong>£@checkoutTotal.ToString("N2")</strong></p>
                         <div class="mb-3">
                             <label class="form-label">Payment method</label>
@@ -588,9 +603,21 @@
     private bool showAddWholesalerModal;
     private Customer NewWholesalerCustomer = new();
     private List<CustomerSalerPrice> managedPricesForBillCustomer = new();
+    private VatMode _vatMode = VatMode.ExcludeVat;
+
+    private decimal CurrentOpenBillTotal =>
+        Bill == null
+            ? 0m
+            : VatCalculator.Calculate(Bill.Items.Sum(i => i.TotalPrice), billDiscount, _vatMode).NetAmount;
+    private decimal OpenBillVatAmount =>
+        Bill == null
+            ? 0m
+            : VatCalculator.Calculate(Bill.Items.Sum(i => i.TotalPrice), billDiscount, _vatMode).VatAmount;
+    private string OpenBillVatLabel => GetVatLabel(_vatMode);
 
     protected override async Task OnInitializedAsync()
     {
+        _vatMode = await VatSettingsService.GetModeAsync();
         ShopServices = await ListManagementService.GetByTypeAsync(ListType.ShopService);
         var customerTypes = await ListManagementService.GetByTypeAsync(ListType.CustomerType);
         _wholesalerTypeId = customerTypes.FirstOrDefault(t => t.Name == "Wholesaler")?.Id;
@@ -929,7 +956,7 @@
         checkoutCashAmount = 0m;
         if (checkoutPaymentMethod == "CardAndCash" && Bill != null)
         {
-            var total = Math.Max(0, (Bill.Items?.Sum(i => i.TotalPrice) ?? 0) - billDiscount);
+            var total = VatCalculator.Calculate(Bill.Items?.Sum(i => i.TotalPrice) ?? 0m, billDiscount, _vatMode).NetAmount;
             checkoutCardAmount = Math.Round(total / 2, 2);
             checkoutCashAmount = total - checkoutCardAmount;
         }
@@ -941,7 +968,7 @@
         get
         {
             if (Bill == null) return false;
-            var total = Math.Max(0, (Bill.Items?.Sum(i => i.TotalPrice) ?? 0) - billDiscount);
+            var total = VatCalculator.Calculate(Bill.Items?.Sum(i => i.TotalPrice) ?? 0m, billDiscount, _vatMode).NetAmount;
             if (checkoutPaymentMethod == "CardAndCash")
             {
                 var sum = checkoutCardAmount + checkoutCashAmount;
@@ -955,7 +982,7 @@
     {
         if (checkoutPaymentMethod == "CardAndCash" && Bill != null)
         {
-            var total = Math.Max(0, (Bill.Items?.Sum(i => i.TotalPrice) ?? 0) - billDiscount);
+            var total = VatCalculator.Calculate(Bill.Items?.Sum(i => i.TotalPrice) ?? 0m, billDiscount, _vatMode).NetAmount;
             checkoutCardAmount = Math.Round(total / 2, 2);
             checkoutCashAmount = total - checkoutCardAmount;
         }
@@ -983,7 +1010,7 @@
             var paymentMethod = checkoutPaymentMethod == "CardAndCash" ? "Card & Cash" : checkoutPaymentMethod;
             decimal? cashAmt = checkoutPaymentMethod == "CardAndCash" ? checkoutCashAmount : null;
             decimal? cardAmt = checkoutPaymentMethod == "CardAndCash" ? checkoutCardAmount : null;
-            var saleId = await BillingService.CheckoutAsync(BillId, paymentMethod, "Paid", checkoutNotes, checkoutJobDescription, cashAmt, cardAmt);
+            var saleId = await BillingService.CheckoutAsync(BillId, paymentMethod, "Paid", _vatMode, checkoutNotes, checkoutJobDescription, cashAmt, cardAmt);
             checkoutSuccessSaleId = saleId;
             await LoadBill();
             StateHasChanged();
@@ -1019,4 +1046,17 @@
             StateHasChanged();
         }
     }
+
+    private static string GetVatModeLabel(VatMode mode) => mode switch
+    {
+        VatMode.PlusVat => "Plus VAT",
+        VatMode.IncludingVat => "Including VAT",
+        _ => "Exclude VAT"
+    };
+
+    private static string GetVatLabel(VatMode mode) => mode switch
+    {
+        VatMode.IncludingVat => "VAT Included (20%)",
+        _ => "VAT (20%)"
+    };
 }

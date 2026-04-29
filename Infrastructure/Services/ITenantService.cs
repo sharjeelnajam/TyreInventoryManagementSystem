@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,8 @@ namespace Infrastructure.Services
         Task<Tenant> AddTenantAsync(Tenant tenant, Guid ownerUserId);
         Task<Tenant?> UpdateTenantAsync(Tenant tenant, Guid? ownerUserId);
         Task<bool> DeleteTenantAsync(Guid id);
+        Task<VatMode> GetVatModeAsync();
+        Task UpdateVatModeAsync(VatMode mode);
 
     }
 }
