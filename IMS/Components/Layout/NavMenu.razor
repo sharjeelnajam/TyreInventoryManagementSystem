@@ -274,6 +274,19 @@
         @* --- STAFF: limited modules --- *@
         <AuthorizeView Roles="Staff">
             <Authorized>
+                <div class="nav-section-header" @onclick="ToggleDashboard">
+                    <span class="header-text">Dashboard</span>
+                    <i class="@GetChevronClass(isDashboardOpen)"></i>
+                </div>
+                @if (isDashboardOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/dashboard" Match="NavLinkMatch.All">
+                            <i class="fa fa-dashboard me-3"></i> Dashboard
+                        </NavLink>
+                    </div>
+                }
+
                 <div class="nav-section-header" @onclick="TogglePartners">
                     <span class="header-text">Customers</span>
                     <i class="@GetChevronClass(isPartnersOpen)"></i>
