@@ -190,7 +190,7 @@
                     
                     <div class="total-row grand-total">
                         <span>Total:</span>
-                        <span>£@Sale.NetAmount.ToString("0.00")</span>
+                        <span>£@CartLevelTotal.ToString("0.00")</span>
                     </div>
                 </div>
 
@@ -322,6 +322,9 @@
                         </button>
                     </div>
                 </div>
+                <div class="d-flex justify-content-end mb-2" style="margin-top: -20px;">
+                    <button type="button" class="btn btn-sm btn-outline-danger px-4 py-0" @onclick="OpenPosVatSettingsModal">VAT</button>
+                </div>
                 <div class="checkout-payment-row checkout-payment-row-2 mt-2">
                     <div class="checkout-payment-field">
                         <label class="form-label small mb-1 checkout-heading">Payment Method</label>
@@ -431,6 +434,49 @@
     </div>
 }
 
+@if (showPosVatSettingsModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.45)" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">VAT Settings</h5>
+                    <button type="button" class="btn-close" @onclick="ClosePosVatSettingsModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-grid gap-2">
+                        <button type="button"
+                                class="btn @(selectedPosVatMode == VatMode.PlusVat ? "btn-primary" : "btn-outline-primary")"
+                                @onclick="() => selectedPosVatMode = VatMode.PlusVat">
+                            Plus VAT
+                        </button>
+                        <button type="button"
+                                class="btn @(selectedPosVatMode == VatMode.IncludingVat ? "btn-primary" : "btn-outline-primary")"
+                                @onclick="() => selectedPosVatMode = VatMode.IncludingVat">
+                            Including VAT
+                        </button>
+                        <button type="button"
+                                class="btn @(selectedPosVatMode == VatMode.ExcludeVat ? "btn-primary" : "btn-outline-primary")"
+                                @onclick="() => selectedPosVatMode = VatMode.ExcludeVat">
+                            Exclude VAT
+                        </button>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(posVatSettingsError))
+                    {
+                        <div class="alert alert-danger py-2 mt-3 mb-0">@posVatSettingsError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="ClosePosVatSettingsModal" disabled="@isSavingPosVatMode">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SavePosVatMode" disabled="@isSavingPosVatMode">
+                        @(isSavingPosVatMode ? "Saving..." : "Apply")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <!-- Wholesaler Modal -->
 @if (showWholesalerModal)
 {
@@ -493,6 +539,10 @@
     private List<ListManagement> _customerTypes = new();
     private bool showOutOfStockModal = false;
     private bool showCheckoutModal = false;
+    private bool showPosVatSettingsModal = false;
+    private VatMode selectedPosVatMode = VatMode.ExcludeVat;
+    private bool isSavingPosVatMode;
+    private string? posVatSettingsError;
     private Guid? checkoutSuccessSaleId;
     private bool receiptLoading;
     private string cashierName = "";
@@ -503,6 +553,7 @@
     private bool _isWholesalerMode;
     private List<CustomerSalerPrice> wholeSalerPrices = new List<CustomerSalerPrice>();
     private VatMode _vatMode = VatMode.ExcludeVat;
+    private decimal CartLevelTotal => Math.Max((Sale.TotalAmount) - (Sale.Discount ?? 0m), 0m);
 
     private bool isWholesalerMode
     {
@@ -604,9 +655,52 @@
     private async Task CloseCheckoutModal()
     {
         showCheckoutModal = false;
+        showPosVatSettingsModal = false;
+        posVatSettingsError = null;
         checkoutSuccessSaleId = null;
         await ResetCartForNewSaleAsync();
         StateHasChanged();
+    }
+
+    private void OpenPosVatSettingsModal()
+    {
+        selectedPosVatMode = _vatMode;
+        posVatSettingsError = null;
+        showPosVatSettingsModal = true;
+    }
+
+    private void ClosePosVatSettingsModal()
+    {
+        showPosVatSettingsModal = false;
+        posVatSettingsError = null;
+    }
+
+    private async Task SavePosVatMode()
+    {
+        isSavingPosVatMode = true;
+        posVatSettingsError = null;
+        try
+        {
+            await VatSettingsService.SetModeAsync(selectedPosVatMode);
+            _vatMode = selectedPosVatMode;
+            Sale.VatMode = _vatMode;
+            RecalculateTotals();
+            if (_checkoutPaymentMethod == "CardAndCash")
+            {
+                _checkoutCardAmount = Math.Round(Sale.NetAmount / 2, 2);
+                _checkoutCashAmount = Sale.NetAmount - _checkoutCardAmount;
+            }
+            showPosVatSettingsModal = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            posVatSettingsError = ex.Message;
+        }
+        finally
+        {
+            isSavingPosVatMode = false;
+        }
     }
 
     private async Task ResetCartForNewSaleAsync()

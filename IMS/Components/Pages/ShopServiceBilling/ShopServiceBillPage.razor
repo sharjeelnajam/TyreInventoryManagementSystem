@@ -301,14 +301,6 @@
                                         <span>Subtotal:</span>
                                         <span>£@(Bill.Items.Sum(i => i.TotalPrice).ToString("N2"))</span>
                                     </div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>@OpenBillVatLabel:</span>
-                                        <span>£@OpenBillVatAmount.ToString("N2")</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span>VAT Status:</span>
-                                        <span>@GetVatModeLabel(_vatMode)</span>
-                                    </div>
                                     @if (Bill.Status == ShopServiceBillStatus.Open)
                                     {
                                         <div class="d-flex justify-content-between align-items-center mb-1">
@@ -387,12 +379,9 @@
                         </table>
                         var cSubtotal = Bill.Items.Sum(i => i.TotalPrice);
                         var cDiscount = Bill.Discount;
-                        var cVat = VatCalculator.Calculate(cSubtotal, cDiscount, _vatMode).VatAmount;
-                        var cTotal = VatCalculator.Calculate(cSubtotal, cDiscount, _vatMode).NetAmount;
+                        var cTotal = Math.Max(cSubtotal - cDiscount, 0m);
                         <div class="p-3 border-top bg-light">
                             <div class="d-flex justify-content-between mb-1"><span>Subtotal:</span><span>£@cSubtotal.ToString("N2")</span></div>
-                            <div class="d-flex justify-content-between mb-1"><span>@(GetVatLabel(_vatMode)):</span><span>£@cVat.ToString("N2")</span></div>
-                            <div class="d-flex justify-content-between mb-1"><span>VAT Status:</span><span>@GetVatModeLabel(_vatMode)</span></div>
                             @if (cDiscount > 0)
                             {
                                 <div class="d-flex justify-content-between mb-1"><span>Discount:</span><span>-£@cDiscount.ToString("N2")</span></div>
@@ -511,8 +500,28 @@
                             var checkoutVat = VatCalculator.Calculate(checkoutSubtotal, billDiscount, _vatMode);
                             var checkoutTotal = checkoutVat.NetAmount;
                         }
-                        <p class="mb-1 small text-muted">VAT Status: <strong>@GetVatModeLabel(_vatMode)</strong></p>
-                        <p class="mb-2">Total amount: <strong>£@checkoutTotal.ToString("N2")</strong></p>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <p class="mb-0 small text-muted">VAT Status: <strong>@GetVatModeLabel(_vatMode)</strong></p>
+                            <button type="button" class="btn btn-sm btn-outline-danger px-3 py-0" @onclick="OpenVatSettingsModal">VAT</button>
+                        </div>
+                        <div class="border rounded p-2 mb-3 bg-light">
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>Subtotal:</span>
+                                <strong>£@checkoutSubtotal.ToString("N2")</strong>
+                            </div>
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>Discount:</span>
+                                <strong>-£@billDiscount.ToString("N2")</strong>
+                            </div>
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span>VAT Amount:</span>
+                                <strong>£@checkoutVat.VatAmount.ToString("N2")</strong>
+                            </div>
+                            <div class="d-flex justify-content-between fw-bold">
+                                <span>Total:</span>
+                                <strong>£@checkoutTotal.ToString("N2")</strong>
+                            </div>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Payment method</label>
                             <select class="form-select" @bind="checkoutPaymentMethod" @bind:after="OnCheckoutPaymentMethodChanged">
@@ -569,6 +578,49 @@
     </div>
 }
 
+@if (showVatSettingsModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.45)" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">VAT Settings</h5>
+                    <button type="button" class="btn-close" @onclick="CloseVatSettingsModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-grid gap-2">
+                        <button type="button"
+                                class="btn @(selectedVatMode == VatMode.PlusVat ? "btn-primary" : "btn-outline-primary")"
+                                @onclick="() => selectedVatMode = VatMode.PlusVat">
+                            Plus VAT
+                        </button>
+                        <button type="button"
+                                class="btn @(selectedVatMode == VatMode.IncludingVat ? "btn-primary" : "btn-outline-primary")"
+                                @onclick="() => selectedVatMode = VatMode.IncludingVat">
+                            Including VAT
+                        </button>
+                        <button type="button"
+                                class="btn @(selectedVatMode == VatMode.ExcludeVat ? "btn-primary" : "btn-outline-primary")"
+                                @onclick="() => selectedVatMode = VatMode.ExcludeVat">
+                            Exclude VAT
+                        </button>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(vatSettingsError))
+                    {
+                        <div class="alert alert-danger py-2 mt-3 mb-0">@vatSettingsError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseVatSettingsModal" disabled="@isSavingVatMode">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SaveVatModeFromCheckout" disabled="@isSavingVatMode">
+                        @(isSavingVatMode ? "Saving..." : "Apply")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter]
     public Guid BillId { get; set; }
@@ -598,6 +650,10 @@
     private string? checkoutNotes;
     private string? checkoutJobDescription;
     private string? checkoutError;
+    private bool showVatSettingsModal;
+    private VatMode selectedVatMode = VatMode.ExcludeVat;
+    private bool isSavingVatMode;
+    private string? vatSettingsError;
     private bool showAddCustomerModal;
     private Customer selectedCustomerForModal = new();
     private bool showAddWholesalerModal;
@@ -608,12 +664,7 @@
     private decimal CurrentOpenBillTotal =>
         Bill == null
             ? 0m
-            : VatCalculator.Calculate(Bill.Items.Sum(i => i.TotalPrice), billDiscount, _vatMode).NetAmount;
-    private decimal OpenBillVatAmount =>
-        Bill == null
-            ? 0m
-            : VatCalculator.Calculate(Bill.Items.Sum(i => i.TotalPrice), billDiscount, _vatMode).VatAmount;
-    private string OpenBillVatLabel => GetVatLabel(_vatMode);
+            : Math.Max(Bill.Items.Sum(i => i.TotalPrice) - billDiscount, 0m);
 
     protected override async Task OnInitializedAsync()
     {
@@ -999,6 +1050,42 @@
         showCheckoutModal = false;
         checkoutSuccessSaleId = null;
         checkoutError = null;
+        showVatSettingsModal = false;
+        vatSettingsError = null;
+    }
+
+    private void OpenVatSettingsModal()
+    {
+        selectedVatMode = _vatMode;
+        vatSettingsError = null;
+        showVatSettingsModal = true;
+    }
+
+    private void CloseVatSettingsModal()
+    {
+        showVatSettingsModal = false;
+        vatSettingsError = null;
+    }
+
+    private async Task SaveVatModeFromCheckout()
+    {
+        isSavingVatMode = true;
+        vatSettingsError = null;
+        try
+        {
+            await VatSettingsService.SetModeAsync(selectedVatMode);
+            _vatMode = selectedVatMode;
+            showVatSettingsModal = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            vatSettingsError = ex.Message;
+        }
+        finally
+        {
+            isSavingVatMode = false;
+        }
     }
 
     private async Task ConfirmCheckout()
@@ -1054,9 +1141,4 @@
         _ => "Exclude VAT"
     };
 
-    private static string GetVatLabel(VatMode mode) => mode switch
-    {
-        VatMode.IncludingVat => "VAT Included (20%)",
-        _ => "VAT (20%)"
-    };
 }

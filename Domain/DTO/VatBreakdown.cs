@@ -31,8 +31,8 @@ namespace Domain.DTO
                     netAmount = Math.Round(discountedAmount + vatAmount, 2);
                     break;
                 case VatMode.IncludingVat:
-                    // Per requested behavior: VAT is 20% of entered/discounted total.
-                    vatAmount = Math.Round(discountedAmount * VatRate, 2);
+                    // Total already includes VAT, so extract VAT portion from the inclusive amount.
+                    vatAmount = Math.Round(discountedAmount * VatRate / (1m + VatRate), 2);
                     netAmount = Math.Round(discountedAmount, 2);
                     break;
                 default:
