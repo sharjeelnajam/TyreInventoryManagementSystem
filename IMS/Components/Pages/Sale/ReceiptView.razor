@@ -110,10 +110,13 @@
                 <span>@VatLabel</span>
                 <span>@VatAmount.ToString("N2")</span>
             </div>
-            <div class="receipt-kv receipt-muted">
-                <span>VAT Status</span>
-                <span>@VatStatusLabel</span>
-            </div>
+            @if (vatMode != VatMode.ExcludeVat)
+            {
+                <div class="receipt-kv receipt-muted">
+                    <span>VAT Status</span>
+                    <span>@VatStatusLabel</span>
+                </div>
+            }
             <div class="receipt-kv receipt-total-row">
                 <span>TOTAL</span>
                 <span>@TotalWithVat.ToString("N2")</span>
@@ -195,7 +198,8 @@
     private string VatLabel => vatMode switch
     {
         VatMode.IncludingVat => "VAT Included (20%)",
-        _ => "VAT (20%)"
+        VatMode.PlusVat => "VAT (20%)",
+        _ => "VAT (0%)"
     };
     private decimal VatAmount
     {

@@ -271,6 +271,59 @@
             </Authorized>
         </AuthorizeView>
 
+        @* --- STAFF: limited modules --- *@
+        <AuthorizeView Roles="Staff">
+            <Authorized>
+                <div class="nav-section-header" @onclick="TogglePartners">
+                    <span class="header-text">Customers</span>
+                    <i class="@GetChevronClass(isPartnersOpen)"></i>
+                </div>
+                @if (isPartnersOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/customers"><span class="bi bi-person me-2"></span> Customers</NavLink>
+                    </div>
+                }
+
+                <div class="nav-section-header" @onclick="ToggleProduct">
+                    <span class="header-text">Products</span>
+                    <i class="@GetChevronClass(isProductOpen)"></i>
+                </div>
+                @if (isProductOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/products"><span class="bi bi-box-fill me-2"></span> Products</NavLink>
+                    </div>
+                }
+
+                <div class="nav-section-header" @onclick="ToggleSales">
+                    <span class="header-text">Sales</span>
+                    <i class="@GetChevronClass(isSalesOpen)"></i>
+                </div>
+                @if (isSalesOpen)
+                {
+                    <div class="nav-sub-items">
+                        <a class="nav-link" href="/pos" target="_blank"><span class="bi bi-cart-fill me-2"></span> POS</a>
+                        <NavLink class="nav-link" href="/sales"><span class="bi bi-file-earmark-text me-2"></span> Invoices</NavLink>
+                        <NavLink class="nav-link" href="/receipts"><span class="bi bi-receipt-cutoff me-2"></span> Receipts</NavLink>
+                    </div>
+                }
+
+                <div class="nav-section-header" @onclick="ToggleProfile">
+                    <span class="header-text">Settings</span>
+                    <i class="@GetChevronClass(isProfileOpen)"></i>
+                </div>
+                @if (isProfileOpen)
+                {
+                    <div class="nav-sub-items">
+                        <NavLink class="nav-link" href="/import"><span class="bi bi-file-earmark-excel me-2"></span> Import</NavLink>
+                        <NavLink class="nav-link" href="/listmanagement"><span class="bi bi-gear-fill me-2"></span> Settings</NavLink>
+                        <NavLink class="nav-link" href="/settings/vat"><span class="bi bi-sliders me-2"></span> VAT Setting</NavLink>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+
         @* --- LOGIN --- *@
         <AuthorizeView>
             <NotAuthorized>

@@ -565,9 +565,14 @@ namespace Infrastructure.Services
             var discountAmount = sale.Discount ?? 0m;
             var vatMode = GetVatModeFromSale(sale);
             var vatBreakdown = VatCalculator.Calculate(subTotal, discountAmount, vatMode);
-            var vatAmount = vatBreakdown.VatAmount;
+            var vatAmount = vatMode == VatMode.ExcludeVat ? 0m : vatBreakdown.VatAmount;
             var totalDue = vatBreakdown.NetAmount;
-            var vatLabel = vatMode == VatMode.IncludingVat ? "VAT Included (20%)" : "VAT (20%)";
+            var vatLabel = vatMode switch
+            {
+                VatMode.IncludingVat => "VAT Included (20%)",
+                VatMode.PlusVat => "VAT (20%)",
+                _ => "VAT (0%)"
+            };
             var vatStatusLabel = vatMode switch
             {
                 VatMode.PlusVat => "Plus VAT",
@@ -690,11 +695,14 @@ namespace Infrastructure.Services
                                 r.RelativeItem().Text(vatLabel).FontSize(10).FontColor(muted);
                                 r.ConstantItem(100).AlignRight().Text($"£{vatAmount:0.00}").FontSize(10);
                             });
-                            totalsCol.Item().PaddingTop(6).Row(r =>
+                            if (vatMode != VatMode.ExcludeVat)
                             {
-                                r.RelativeItem().Text("VAT Status").FontSize(10).FontColor(muted);
-                                r.ConstantItem(100).AlignRight().Text(vatStatusLabel).FontSize(10);
-                            });
+                                totalsCol.Item().PaddingTop(6).Row(r =>
+                                {
+                                    r.RelativeItem().Text("VAT Status").FontSize(10).FontColor(muted);
+                                    r.ConstantItem(100).AlignRight().Text(vatStatusLabel).FontSize(10);
+                                });
+                            }
                             totalsCol.Item().PaddingTop(12).LineHorizontal(1).LineColor(accent);
                             totalsCol.Item().PaddingTop(10).Row(r =>
                             {
@@ -799,9 +807,14 @@ namespace Infrastructure.Services
             var refText = sale.SaleNumber ?? sale.Id.ToString("N")[..8];
             var thermalVatMode = GetVatModeFromSale(sale);
             var thermalBreakdown = VatCalculator.Calculate(sale.TotalAmount, sale.Discount ?? 0m, thermalVatMode);
-            var thermalVat = thermalBreakdown.VatAmount;
+            var thermalVat = thermalVatMode == VatMode.ExcludeVat ? 0m : thermalBreakdown.VatAmount;
             var thermalTotal = thermalBreakdown.NetAmount;
-            var thermalVatLabel = thermalVatMode == VatMode.IncludingVat ? "VAT Included (20%)" : "VAT (20%)";
+            var thermalVatLabel = thermalVatMode switch
+            {
+                VatMode.IncludingVat => "VAT Included (20%)",
+                VatMode.PlusVat => "VAT (20%)",
+                _ => "VAT (0%)"
+            };
             var thermalVatStatusLabel = thermalVatMode switch
             {
                 VatMode.PlusVat => "Plus VAT",
@@ -914,11 +927,14 @@ namespace Infrastructure.Services
                                 r.ConstantItem(labelWidth).Text(thermalVatLabel).FontSize(8);
                                 r.RelativeItem().AlignRight().Text(thermalVat.ToString("N2")).FontSize(8);
                             });
-                            body.Item().Row(r =>
+                            if (thermalVatMode != VatMode.ExcludeVat)
                             {
-                                r.ConstantItem(labelWidth).Text("VAT Status").FontSize(8);
-                                r.RelativeItem().AlignRight().Text(thermalVatStatusLabel).FontSize(8);
-                            });
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("VAT Status").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text(thermalVatStatusLabel).FontSize(8);
+                                });
+                            }
                             body.Item().PaddingTop(2).Row(r =>
                             {
                                 r.ConstantItem(labelWidth).Text("TOTAL").Bold().FontSize(10);
