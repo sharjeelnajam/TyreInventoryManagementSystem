@@ -64,10 +64,13 @@ else
                     <label class="invoice-label">Discount</label>
                     <input class="form-control" value="@sale.Discount?.ToString("N2")" readonly />
                 </div>
-                <div class="col-md-3">
-                    <label class="invoice-label">@VatLabel</label>
-                    <input class="form-control" value="@VatAmount.ToString("N2")" readonly />
-                </div>
+                @if (vatMode != VatMode.ExcludeVat)
+                {
+                    <div class="col-md-3">
+                        <label class="invoice-label">@VatLabel</label>
+                        <input class="form-control" value="@VatAmount.ToString("N2")" readonly />
+                    </div>
+                }
             </div>
             @if (vatMode != VatMode.ExcludeVat)
             {

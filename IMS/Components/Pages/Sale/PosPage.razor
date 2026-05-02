@@ -408,14 +408,17 @@
                                      class="form-control form-control-sm w-auto" style="max-width: 6rem;" />
                         <span class="text-success">-£@CalculateDiscount().ToString("0.00")</span>
                     </div>
-                    <div class="checkout-summary-row">
-                        <span class="checkout-heading">VAT Status</span>
-                        <span>@GetVatStatusLabel(Sale.VatMode)</span>
-                    </div>
-                    <div class="checkout-summary-row">
-                        <span class="checkout-heading">VAT Value</span>
-                        <span>£@Sale.TaxAmount.GetValueOrDefault().ToString("0.00")</span>
-                    </div>
+                    @if (Sale.VatMode != VatMode.ExcludeVat)
+                    {
+                        <div class="checkout-summary-row">
+                            <span class="checkout-heading">VAT Status</span>
+                            <span>@GetVatStatusLabel(Sale.VatMode)</span>
+                        </div>
+                        <div class="checkout-summary-row">
+                            <span class="checkout-heading">VAT Value</span>
+                            <span>£@Sale.TaxAmount.GetValueOrDefault().ToString("0.00")</span>
+                        </div>
+                    }
                     <div class="checkout-summary-row checkout-total-row">
                         <span class="checkout-heading">Total</span>
                         <span>£@Sale.NetAmount.ToString("0.00")</span>
@@ -638,6 +641,8 @@
         if (isFormValid && Sale.SaleDetails != null && Sale.SaleDetails.Any())
         {
             _checkoutPaymentMethod = Sale.PaymentMethod ?? "";
+            // Snapshot effective discount before checkout mode (manual field is authoritative while modal is open).
+            _checkoutExtraDiscount = CalculateDiscount();
             if (_checkoutPaymentMethod == "CardAndCash")
             {
                 _checkoutCardAmount = Sale.CardAmount > 0 ? Sale.CardAmount : Math.Round(Sale.NetAmount / 2, 2);
@@ -649,6 +654,12 @@
                 _checkoutCashAmount = 0m;
             }
             showCheckoutModal = true;
+            RecalculateTotals();
+            if (_checkoutPaymentMethod == "CardAndCash")
+            {
+                _checkoutCardAmount = Math.Round(Sale.NetAmount / 2, 2);
+                _checkoutCashAmount = Sale.NetAmount - _checkoutCardAmount;
+            }
         }
     }
 
@@ -778,6 +789,9 @@
                 detail.TotalPrice = detail.Quantity * detail.UnitPrice;
             }
         }
+
+        if (showCheckoutModal)
+            _checkoutExtraDiscount = CalculateCustomerDiscount();
 
         RecalculateTotals();
         StateHasChanged();
@@ -1013,6 +1027,10 @@
     private decimal CalculateDiscount()
     {
         var total = Sale.SaleDetails.Sum(s => s.Quantity * s.UnitPrice);
+        // During checkout the input is the authoritative total discount (includes customer custom £ / percentage).
+        if (showCheckoutModal)
+            return Math.Clamp(_checkoutExtraDiscount, 0m, total);
+
         if (_checkoutExtraDiscount > 0m)
             return Math.Clamp(_checkoutExtraDiscount, 0m, total);
 

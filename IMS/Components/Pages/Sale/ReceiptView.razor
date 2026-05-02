@@ -106,12 +106,12 @@
                     <span>-@d.ToString("N2")</span>
                 </div>
             }
-            <div class="receipt-kv">
-                <span>@VatLabel</span>
-                <span>@VatAmount.ToString("N2")</span>
-            </div>
             @if (vatMode != VatMode.ExcludeVat)
             {
+                <div class="receipt-kv">
+                    <span>@VatLabel</span>
+                    <span>@VatAmount.ToString("N2")</span>
+                </div>
                 <div class="receipt-kv receipt-muted">
                     <span>VAT Status</span>
                     <span>@VatStatusLabel</span>

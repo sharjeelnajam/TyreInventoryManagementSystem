@@ -1,5 +1,6 @@
 ﻿@page "/sale-view/{SaleId:guid}/{ProductId:guid}"
 @using Domain
+@using Domain.Enums
 @using Infrastructure.Services
 @inject ISaleService SaleService
 @inject NavigationManager Navigation
@@ -36,10 +37,13 @@ else
                 <label>Discount</label>
                 <input class="form-control" value="@sale.Discount?.ToString("N2")" readonly />
             </div>
-            <div class="col-md-3">
-                <label>Tax</label>
-                <input class="form-control" value="@sale.TaxAmount?.ToString("N2")" readonly />
-            </div>
+            @if (sale.VatMode != VatMode.ExcludeVat)
+            {
+                <div class="col-md-3">
+                    <label>Tax</label>
+                    <input class="form-control" value="@sale.TaxAmount?.ToString("N2")" readonly />
+                </div>
+            }
             <div class="col-md-3">
                 <label>Total</label>
                 <input class="form-control" value="@sale.TotalAmount.ToString("N2")" readonly />

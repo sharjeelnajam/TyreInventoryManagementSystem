@@ -277,10 +277,13 @@
                                                                  class="form-control form-control-sm" />
                                                 </div>
 
-                                                <div class="col-md-4">
-                                                    <label class="small fw-semibold mb-1">VAT (20%)</label>
-                                                    <input class="form-control form-control-sm" value="@Sale.TaxAmount.GetValueOrDefault().ToString("N2")" readonly />
-                                                </div>
+                                                @if (Sale.VatMode != VatMode.ExcludeVat)
+                                                {
+                                                    <div class="col-md-4">
+                                                        <label class="small fw-semibold mb-1">VAT (20%)</label>
+                                                        <input class="form-control form-control-sm" value="@Sale.TaxAmount.GetValueOrDefault().ToString("N2")" readonly />
+                                                    </div>
+                                                }
                                             }
                                             else
                                             {
@@ -294,10 +297,13 @@
                                                     <InputNumber @bind-Value="CustomerPercentage" class="form-control form-control-sm" />
                                                 </div>
 
-                                                <div class="col-md-2">
-                                                    <label class="small fw-semibold mb-1">VAT (20%)</label>
-                                                    <input class="form-control form-control-sm" value="@Sale.TaxAmount.GetValueOrDefault().ToString("N2")" readonly />
-                                                </div>
+                                                @if (Sale.VatMode != VatMode.ExcludeVat)
+                                                {
+                                                    <div class="col-md-2">
+                                                        <label class="small fw-semibold mb-1">VAT (20%)</label>
+                                                        <input class="form-control form-control-sm" value="@Sale.TaxAmount.GetValueOrDefault().ToString("N2")" readonly />
+                                                    </div>
+                                                }
                                             }
 
                                             <div class="col-md-2 text-end">

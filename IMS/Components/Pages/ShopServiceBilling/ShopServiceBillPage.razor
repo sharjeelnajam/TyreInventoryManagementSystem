@@ -500,8 +500,11 @@
                             var checkoutVat = VatCalculator.Calculate(checkoutSubtotal, billDiscount, _vatMode);
                             var checkoutTotal = checkoutVat.NetAmount;
                         }
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <p class="mb-0 small text-muted">VAT Status: <strong>@GetVatModeLabel(_vatMode)</strong></p>
+                        <div class="d-flex align-items-center mb-1 @(_vatMode != VatMode.ExcludeVat ? "justify-content-between" : "justify-content-end")">
+                            @if (_vatMode != VatMode.ExcludeVat)
+                            {
+                                <p class="mb-0 small text-muted">VAT Status: <strong>@GetVatModeLabel(_vatMode)</strong></p>
+                            }
                             <button type="button" class="btn btn-sm btn-outline-danger px-3 py-0" @onclick="OpenVatSettingsModal">VAT</button>
                         </div>
                         <div class="border rounded p-2 mb-3 bg-light">
@@ -513,10 +516,13 @@
                                 <span>Discount:</span>
                                 <strong>-£@billDiscount.ToString("N2")</strong>
                             </div>
-                            <div class="d-flex justify-content-between small mb-1">
-                                <span>VAT Amount:</span>
-                                <strong>£@checkoutVat.VatAmount.ToString("N2")</strong>
-                            </div>
+                            @if (_vatMode != VatMode.ExcludeVat)
+                            {
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span>VAT Amount:</span>
+                                    <strong>£@checkoutVat.VatAmount.ToString("N2")</strong>
+                                </div>
+                            }
                             <div class="d-flex justify-content-between fw-bold">
                                 <span>Total:</span>
                                 <strong>£@checkoutTotal.ToString("N2")</strong>

@@ -690,13 +690,13 @@ namespace Infrastructure.Services
                                 r.RelativeItem().Text("Discount").FontSize(10).FontColor(muted);
                                 r.ConstantItem(100).AlignRight().Text($"-£{discountAmount:0.00}").FontSize(10);
                             });
-                            totalsCol.Item().PaddingTop(6).Row(r =>
-                            {
-                                r.RelativeItem().Text(vatLabel).FontSize(10).FontColor(muted);
-                                r.ConstantItem(100).AlignRight().Text($"£{vatAmount:0.00}").FontSize(10);
-                            });
                             if (vatMode != VatMode.ExcludeVat)
                             {
+                                totalsCol.Item().PaddingTop(6).Row(r =>
+                                {
+                                    r.RelativeItem().Text(vatLabel).FontSize(10).FontColor(muted);
+                                    r.ConstantItem(100).AlignRight().Text($"£{vatAmount:0.00}").FontSize(10);
+                                });
                                 totalsCol.Item().PaddingTop(6).Row(r =>
                                 {
                                     r.RelativeItem().Text("VAT Status").FontSize(10).FontColor(muted);
@@ -922,13 +922,13 @@ namespace Infrastructure.Services
                                     r.RelativeItem().AlignRight().Text($"-{disc:N2}").FontSize(8);
                                 });
                             }
-                            body.Item().Row(r =>
-                            {
-                                r.ConstantItem(labelWidth).Text(thermalVatLabel).FontSize(8);
-                                r.RelativeItem().AlignRight().Text(thermalVat.ToString("N2")).FontSize(8);
-                            });
                             if (thermalVatMode != VatMode.ExcludeVat)
                             {
+                                body.Item().Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text(thermalVatLabel).FontSize(8);
+                                    r.RelativeItem().AlignRight().Text(thermalVat.ToString("N2")).FontSize(8);
+                                });
                                 body.Item().Row(r =>
                                 {
                                     r.ConstantItem(labelWidth).Text("VAT Status").FontSize(8);
