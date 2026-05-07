@@ -13,6 +13,7 @@ namespace Infrastructure.Services
         Task UpdateBillDiscountAsync(Guid billId, decimal discount);
         Task<ShopServiceBillItem> AddItemAsync(Guid billId, Guid? serviceId, Guid? productId, string serviceName, int quantity, decimal unitPrice, string? remarks = null);
         Task UpdateItemAsync(Guid itemId, int quantity, decimal unitPrice);
+        Task UpdateItemNameAsync(Guid itemId, string serviceName);
         Task RemoveItemAsync(Guid itemId);
         Task SaveBillAsync(Guid billId);
         Task<Guid> CheckoutAsync(Guid billId, string paymentMethod, string paymentStatus, VatMode vatMode, string? notes = null, string? jobDescription = null, decimal? cashAmount = null, decimal? cardAmount = null);

@@ -372,6 +372,8 @@ namespace Infrastructure.Services
                                 existingDetail.TotalPrice = detail.Quantity * detail.UnitPrice;
                             }
 
+                            existingDetail.LineDisplayName = detail.LineDisplayName;
+
                             ctx.SaleDetail.Update(existingDetail);
 
                             // 🟢 NEW: Update ProfitHistory record for edited detail
@@ -550,7 +552,7 @@ namespace Infrastructure.Services
             else
             {
                 lineItems = (sale.SaleDetails ?? new List<SaleDetail>())
-                    .Select(d => (d.Product?.ProductName ?? "N/A", d.Quantity, d.UnitPrice, d.TotalPrice))
+                    .Select(d => (SaleDetailLineDisplay.InvoiceDescription(d), d.Quantity, d.UnitPrice, d.TotalPrice))
                     .ToList();
             }
 
@@ -779,12 +781,7 @@ namespace Infrastructure.Services
             else
             {
                 foreach (var d in (sale.SaleDetails ?? new List<SaleDetail>()).OrderBy(x => x.CreatedAt))
-                {
-                    var name = d.Product?.ProductName ?? "Item";
-                    var brand = d.Brand ?? d.Product?.Brand;
-                    var desc = string.IsNullOrWhiteSpace(brand) ? name : $"{name} ({brand})";
-                    thermalLines.Add((desc, null, d.Quantity, d.UnitPrice, d.TotalPrice));
-                }
+                    thermalLines.Add((SaleDetailLineDisplay.ReceiptDescription(d), null, d.Quantity, d.UnitPrice, d.TotalPrice));
             }
 
             var customerDisplay =

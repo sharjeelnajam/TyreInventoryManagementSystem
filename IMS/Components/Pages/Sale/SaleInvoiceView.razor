@@ -3,7 +3,9 @@
 @using Domain.DTO
 @using Domain.Enums
 @using Infrastructure.Services
+@using Microsoft.EntityFrameworkCore
 @inject ISaleService SaleService
+@inject ApplicationDbContext Db
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @rendermode InteractiveServer
@@ -141,12 +143,25 @@ else
                         </tr>
                     </thead>
                     <tbody>
-                        @if (sale.SaleDetails != null && sale.SaleDetails.Any())
+                        @if (sale.ShopServiceBillId.HasValue && billItems.Any())
+                        {
+                            @foreach (var item in billItems)
+                            {
+                                <tr>
+                                    <td>@(string.IsNullOrWhiteSpace(item.ServiceName) ? "Service" : item.ServiceName)</td>
+                                    <td>—</td>
+                                    <td class="text-end">@item.Quantity</td>
+                                    <td class="text-end">@item.UnitPrice.ToString("N2")</td>
+                                    <td class="text-end fw-semibold">@item.TotalPrice.ToString("N2")</td>
+                                </tr>
+                            }
+                        }
+                        else if (sale.SaleDetails != null && sale.SaleDetails.Any())
                         {
                             @foreach (var detail in sale.SaleDetails)
                             {
                                 <tr>
-                                    <td>@detail.Product?.ProductName</td>
+                                    <td>@SaleDetailLineDisplay.InvoiceDescription(detail)</td>
                                     <td>@(detail.Brand ?? detail.Product?.Brand)</td>
                                     <td class="text-end">@detail.Quantity</td>
                                     <td class="text-end">@detail.UnitPrice.ToString("N2")</td>
@@ -182,6 +197,7 @@ else
     public string? From { get; set; }
 
     private Sale? sale;
+    private List<ShopServiceBillItem> billItems = new();
     private bool showSaleSpecialNote = true;
     private VatMode vatMode = VatMode.ExcludeVat;
     private VatBreakdown VatBreakdown => VatCalculator.Calculate(sale?.TotalAmount ?? 0m, sale?.Discount ?? 0m, vatMode);
@@ -214,6 +230,14 @@ else
         sale = await SaleService.GetByIdAsync(SaleId);
         if (sale != null && Enum.IsDefined(typeof(VatMode), (int)sale.VatMode))
             vatMode = sale.VatMode;
+        if (sale?.ShopServiceBillId is Guid billId)
+        {
+            billItems = await Db.ShopServiceBillItems
+                .AsNoTracking()
+                .Where(i => i.ShopServiceBillId == billId)
+                .OrderBy(i => i.CreatedAt)
+                .ToListAsync();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

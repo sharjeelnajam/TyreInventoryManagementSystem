@@ -190,6 +190,10 @@
                                                 </div>
 
                                                 <ValidationMessage For="@(() => detail.ProductId)" />
+                                                <label class="form-label small mt-2 mb-0 text-muted">Name on invoice / receipt</label>
+                                                <InputText class="form-control form-control-sm"
+                                                           @bind-Value="detail.LineDisplayName"
+                                                           placeholder="@GetInvoiceLinePlaceholder(detail)" />
                                             </td>
 
                                             <td>
@@ -689,8 +693,17 @@
         searchTexts[detail.Id] = $"{product.ProductName} {product.Brand} {product.TyreSize}";
         dropdownStates[detail.Id] = false;
 
+        if (previousProductId != product.Id)
+            detail.LineDisplayName = product.ProductName;
+
         RecalculateTotals();
         StateHasChanged();
+    }
+
+    private string GetInvoiceLinePlaceholder(SaleDetail detail)
+    {
+        var product = products.FirstOrDefault(p => p.Id == detail.ProductId);
+        return product?.ProductName ?? "Uses catalogue name if empty";
     }
 
     private void HandleKeyDown(KeyboardEventArgs e, SaleDetail detail, ProductDto product)

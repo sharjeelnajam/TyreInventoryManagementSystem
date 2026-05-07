@@ -213,7 +213,11 @@
                                 @foreach (var detail in Sale.SaleDetails)
                                 {
                                     <tr>
-                                        <td class="small">@GetProductName(detail.ProductId)</td>
+                                        <td class="small" style="min-width: 160px;">
+                                            <InputText class="form-control form-control-sm"
+                                                       @bind-Value="detail.LineDisplayName"
+                                                       placeholder="@GetProductInvoicePlaceholder(detail)" />
+                                        </td>
                                         <td>
                                             <InputNumber TValue="int"
                                                          Value="detail.Quantity"
@@ -672,8 +676,17 @@
         searchTexts[detail.Id] = $"{product.ProductName} {product.Brand} {product.TyreSize}";
         dropdownStates[detail.Id] = false;
 
+        if (previousProductId != product.Id)
+            detail.LineDisplayName = product.ProductName;
+
         RecalculateTotals();
         StateHasChanged();
+    }
+
+    private string GetProductInvoicePlaceholder(SaleDetail detail)
+    {
+        var product = products.FirstOrDefault(p => p.Id == detail.ProductId);
+        return product?.ProductName ?? "Line name on invoice";
     }
 
     private string GetProductName(Guid productId)

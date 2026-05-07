@@ -74,7 +74,7 @@ else
                     @foreach (var detail in sale.SaleDetails)
                     {
                         <tr>
-                            <td>@detail.Product?.ProductName</td>
+                            <td>@SaleDetailLineDisplay.InvoiceDescription(detail)</td>
                             <td>@detail.Product?.Brand</td>
                             <td>@detail.Quantity</td>
                             <td>@detail.UnitPrice.ToString("N2")</td>

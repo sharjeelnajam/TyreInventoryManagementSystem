@@ -197,9 +197,11 @@
     font-weight: 600;
 }
 
-.cart-col-name .item-name {
-    font-size: 0.9rem;
+.cart-col-name .line-display-name-input {
+    font-size: 0.85rem;
     font-weight: 600;
+    min-width: 0;
+    padding: 0.2rem 0.35rem;
 }
 
 .cart-col-total strong {

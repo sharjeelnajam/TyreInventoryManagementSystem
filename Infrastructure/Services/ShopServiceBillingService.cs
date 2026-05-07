@@ -151,6 +151,21 @@ namespace Infrastructure.Services
             await _context.SaveChangesAsync();
         }
 
+        public async Task UpdateItemNameAsync(Guid itemId, string serviceName)
+        {
+            var item = await _context.ShopServiceBillItems
+                .Include(i => i.ShopServiceBill)
+                .FirstOrDefaultAsync(i => i.Id == itemId);
+            if (item == null || item.ShopServiceBill.Status != ShopServiceBillStatus.Open)
+                throw new InvalidOperationException("Item not found or bill is closed.");
+            var tid = _tenantProvider.TenantId;
+            if (tid != Guid.Empty && item.ShopServiceBill.TenantId != tid)
+                throw new InvalidOperationException("Item not found or bill is closed.");
+
+            item.ServiceName = string.IsNullOrWhiteSpace(serviceName) ? "Item" : serviceName.Trim();
+            await _context.SaveChangesAsync();
+        }
+
         public async Task RemoveItemAsync(Guid itemId)
         {
             var item = await _context.ShopServiceBillItems

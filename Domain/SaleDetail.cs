@@ -46,5 +46,11 @@ namespace Domain
         public string? ProductSize { get; set; }   // e.g., "195/65 R15"
         public string? Brand { get; set; }         // e.g., "Michelin"
         public string? Remarks { get; set; }
+
+        /// <summary>
+        /// Optional label for this sale line only (invoices/receipts). Does not change the catalog product name.
+        /// </summary>
+        [MaxLength(512)]
+        public string? LineDisplayName { get; set; }
     }
 }

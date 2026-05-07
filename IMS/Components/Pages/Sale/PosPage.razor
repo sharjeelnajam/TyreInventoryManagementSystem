@@ -144,7 +144,10 @@
                                     }
                                 </div>
                                 <div class="cart-col cart-col-name">
-                                    <div class="item-name" title="@GetProductName(detail.ProductId)">@GetProductName(detail.ProductId)</div>
+                                    <InputText class="form-control form-control-sm line-display-name-input"
+                                               @bind-Value="detail.LineDisplayName"
+                                               placeholder="@GetProductName(detail.ProductId)"
+                                               title="Name on invoice/receipt only — does not change the product catalogue" />
                                 </div>
                                 <div class="cart-col cart-col-price text-end">
                                     <InputNumber TValue="decimal"
@@ -380,7 +383,7 @@
                         @foreach (var detail in Sale.SaleDetails)
                         {
                             <div class="checkout-table-row">
-                                <span class="checkout-col-product">@GetProductName(detail.ProductId)</span>
+                                <span class="checkout-col-product">@GetCartLineLabel(detail)</span>
                                 <span class="checkout-col-qty">x @detail.Quantity</span>
                                 <span class="checkout-col-total">£@((detail.Quantity * detail.UnitPrice).ToString("0.00"))</span>
                             </div>
@@ -627,6 +630,7 @@
         {
             Id = Guid.NewGuid(),
             ProductId = product.Id,
+            LineDisplayName = product.ProductName,
             Quantity = 1,
             UnitPrice = product.SellingPrice,
             TotalPrice = product.SellingPrice
@@ -872,6 +876,11 @@
         var product = products.FirstOrDefault(p => p.Id == productId);
         return product != null ? $"{product.ProductName}" : "Unknown";
     }
+
+    private string GetCartLineLabel(SaleDetail detail) =>
+        !string.IsNullOrWhiteSpace(detail.LineDisplayName)
+            ? detail.LineDisplayName.Trim()
+            : GetProductName(detail.ProductId);
 
     private string GetCustomerName()
     {

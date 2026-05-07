@@ -243,12 +243,7 @@
         else if (sale.SaleDetails != null)
         {
             foreach (var d in sale.SaleDetails.OrderBy(x => x.CreatedAt))
-            {
-                var name = d.Product?.ProductName ?? "Item";
-                var brand = d.Brand ?? d.Product?.Brand;
-                var desc = string.IsNullOrWhiteSpace(brand) ? name : $"{name} ({brand})";
-                lines.Add(new ReceiptLine(desc, d.Quantity, d.UnitPrice, d.TotalPrice, null));
-            }
+                lines.Add(new ReceiptLine(SaleDetailLineDisplay.ReceiptDescription(d), d.Quantity, d.UnitPrice, d.TotalPrice, null));
         }
     }
 

@@ -18,7 +18,7 @@
 
 <PageTitle>Bill @(Bill?.BillNumber ?? "…")</PageTitle>
 
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-2 shop-billing-screen">
     @if (Bill == null && string.IsNullOrEmpty(errorMessage))
     {
         <div class="text-center py-5">
@@ -33,17 +33,17 @@
     }
     else
     {
-        <div class="mb-3">
-            <h3 class="fw-bold">
+        <div class="mb-2">
+            <h3 class="fw-bold mb-0 fs-4">
                 <i class="bi bi-receipt me-2"></i> @Bill!.BillNumber
                 <span class="badge @(Bill.Status == ShopServiceBillStatus.Open ? "bg-warning" : "bg-success") ms-2">@Bill.Status</span>
             </h3>
         </div>
 
         <!-- Bill details: open/close dates and notes -->
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="row g-3">
+        <div class="card mb-2 compact-top-card">
+            <div class="card-body py-2">
+                <div class="row g-2">
                     <div class="col-md-4">
                         <span class="text-muted small d-block">Opened</span>
                         <span class="fw-semibold">@Bill.OpenedAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</span>
@@ -56,25 +56,16 @@
                         </div>
                     }
                 </div>
-                <div class="row g-3 mt-2">
-                    <div class="col-md-6">
-                        <span class="text-muted small d-block">Job description</span>
-                        <span class="@(string.IsNullOrWhiteSpace(Bill.JobDescription) ? "text-muted fst-italic" : "")">@(string.IsNullOrWhiteSpace(Bill.JobDescription) ? "—" : Bill.JobDescription)</span>
-                    </div>
-                    <div class="col-md-6">
-                        <span class="text-muted small d-block">Special Note</span>
-                        <span class="@(string.IsNullOrWhiteSpace(Bill.Notes) ? "text-muted fst-italic" : "")">@(string.IsNullOrWhiteSpace(Bill.Notes) ? "—" : Bill.Notes)</span>
-                    </div>
-                </div>
+                @* Job description / Special Note row removed to save vertical space *@
             </div>
         </div>
 
         <!-- Bill to: Customer type selection -->
-        <div class="card mb-3">
-            <div class="card-body">
+        <div class="card mb-2 compact-top-card">
+            <div class="card-body py-2">
                 @if (Bill.Status == ShopServiceBillStatus.Open)
                 {
-                    <div class="row g-3 align-items-end">
+                    <div class="row g-2 align-items-end">
                         <div class="col-sm-4 col-md-3">
                             <label class="form-label small fw-semibold">Customer type</label>
                             <select class="form-select" @onchange="OnCustomerTypeChanged">
@@ -127,10 +118,10 @@
 
         @if (Bill.Status == ShopServiceBillStatus.Open)
         {
-            <div class="row align-items-stretch">
+            <div class="row align-items-stretch shop-billing-main-row">
                 <!-- LEFT: Product list (card stretches to match Items on bill) -->
-                <div class="col-lg-5 mb-3 d-flex flex-column">
-                    <div class="card flex-grow-1 d-flex flex-column mb-0">
+                <div class="col-lg-5 mb-2 d-flex flex-column shop-billing-col">
+                    <div class="card flex-grow-1 d-flex flex-column mb-0 panel-card">
                         <div class="card-header bg-light flex-shrink-0">
                             <strong>Products</strong>
                         </div>
@@ -139,7 +130,7 @@
                                    placeholder="Search by name, SKU, size, brand, tread..."
                                    @bind="productSearchText"
                                    @bind:event="oninput" />
-                            <div class="border rounded p-2 flex-grow-1 overflow-auto" style="min-height: 0;">
+                            <div class="border rounded p-2 flex-grow-1 overflow-auto product-scroll-region" style="min-height: 0;">
                                 @{
                                     var filteredProducts = products
                                         .Where(p => string.IsNullOrWhiteSpace(productSearchText) ||
@@ -202,8 +193,8 @@
                 </div>
 
                 <!-- RIGHT: Line items + totals -->
-                <div class="col-lg-7 mb-3 d-flex flex-column">
-                    <div class="card flex-grow-1 d-flex flex-column mb-0">
+                <div class="col-lg-7 mb-2 d-flex flex-column shop-billing-col">
+                    <div class="card flex-grow-1 d-flex flex-column mb-0 panel-card">
                         <div class="card-header bg-light flex-shrink-0">
                             <strong>Items on bill</strong>
                         </div>
@@ -231,7 +222,7 @@
                             }
                             else
                             {
-                                <div class="table-responsive">
+                                <div class="table-responsive bill-items-scroll-region">
                                     <table class="table table-hover align-middle mb-0">
                                         <thead class="table-light">
                                             <tr>
@@ -249,7 +240,13 @@
                                             @foreach (var item in Bill.Items)
                                             {
                                                 <tr>
-                                                    <td>@item.ServiceName</td>
+                                                    <td>
+                                                        <input type="text"
+                                                               class="form-control form-control-sm"
+                                                               value="@item.ServiceName"
+                                                               placeholder="Item name on bill/invoice"
+                                                               @onchange="e => UpdateItemName(item, e)" />
+                                                    </td>
                                                     @if (Bill.Status == ShopServiceBillStatus.Open)
                                                     {
                                                         <td>
@@ -397,6 +394,50 @@
         }
     }
 </div>
+
+<style>
+    /* Overall page wrapper – no fixed height so checkout can always be visible */
+    .shop-billing-screen {
+        padding-bottom: 0.75rem;
+    }
+
+    .compact-top-card .text-muted.small {
+        margin-bottom: 0;
+        line-height: 1.1;
+    }
+
+    .compact-top-card .fw-semibold,
+    .compact-top-card span {
+        line-height: 1.2;
+    }
+
+    .shop-billing-main-row {
+        min-height: 420px;
+    }
+
+    .shop-billing-col,
+    .panel-card {
+        min-height: 0;
+    }
+
+    /* Limit inner lists by viewport height so they don't grow too tall,
+       but allow the page itself to scroll if needed. */
+    .product-scroll-region,
+    .bill-items-scroll-region {
+        max-height: calc(100vh - 340px);
+    }
+
+    .bill-items-scroll-region table {
+        margin-bottom: 0;
+    }
+
+    @@media (max-width: 991.98px) {
+        .product-scroll-region,
+        .bill-items-scroll-region {
+            max-height: none;
+        }
+    }
+</style>
 
 <!-- Add Customer modal: use existing AddCustomer component -->
 @if (showAddCustomerModal)
@@ -968,6 +1009,17 @@
             }
             catch { /* ignore */ }
         }
+    }
+
+    private async Task UpdateItemName(ShopServiceBillItem item, ChangeEventArgs e)
+    {
+        var name = e.Value?.ToString() ?? string.Empty;
+        try
+        {
+            await BillingService.UpdateItemNameAsync(item.Id, name);
+            await LoadBill();
+        }
+        catch { /* ignore */ }
     }
 
     private async Task RemoveItem(Guid itemId)
