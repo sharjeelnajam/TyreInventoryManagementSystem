@@ -215,6 +215,12 @@
                     NavigationManager.NavigateTo("/products", forceLoad: true);
                     return;
                 }
+                else if (await SignInManager.UserManager.IsInRoleAsync(user, "Staff"))
+                {
+                    _roleToSaveAfterRender = "Staff";
+                    NavigationManager.NavigateTo("/products", forceLoad: true);
+                    return;
+                }
                 else
                 {
                     _roleToSaveAfterRender = "User";

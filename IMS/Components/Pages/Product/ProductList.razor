@@ -106,11 +106,14 @@
                                    title="View"
                                    @onclick="() => ViewProduct(item.Id)"></i>
 
-                                @if (isSuperAdmin)
+                                @if (canEditProducts)
                                 {
                                     <i class="bi bi-pencil-square text-primary fs-5 me-3 cursor-pointer"
                                        title="Edit"
                                        @onclick="() => EditProduct(item.Id)"></i>
+                                }
+                                @if (isSuperAdmin)
+                                {
                                     <i class="bi bi-trash text-danger fs-5 me-3 cursor-pointer"
                                        title="Delete"
                                        @onclick="() => DeleteProduct(item.Id)"></i>
@@ -219,8 +222,10 @@
     private ProductDto selectedProduct = new();
     private decimal leastSellingPrice;
     private bool isSuperAdmin = false;
+    private bool isAdmin = false;
     private bool isStaff = false;
     private bool isSupplier = false;
+    private bool canEditProducts => isSuperAdmin || isAdmin || isStaff;
 
     private List<ListManagement>? units;
     private Dictionary<Guid, string> unitsLookup = new();
@@ -231,6 +236,7 @@
         var user = authState.User;
 
         isSuperAdmin = user.IsInRole("SuperAdmin");
+        isAdmin = user.IsInRole("Admin");
         isStaff = user.IsInRole("Staff");
         isSupplier = user.IsInRole("Supplier");
 
