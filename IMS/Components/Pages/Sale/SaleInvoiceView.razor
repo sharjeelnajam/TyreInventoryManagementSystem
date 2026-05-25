@@ -21,7 +21,7 @@ else
         <h4 class="mb-0 invoice-page-title-text">🧾 Invoice Details</h4>
         <div class="d-flex align-items-center gap-2 ms-auto">
             <button type="button" class="btn btn-outline-success btn-sm" @onclick="DownloadReceipt">
-                <i class="bi bi-download me-1"></i> Download Receipt
+                <i class="bi bi-download me-1"></i> Download Invoice
             </button>
             <label class="form-label small mb-0 text-nowrap" for="invoiceToggleSaleSpecialNote">Special note</label>
             <div class="form-check form-switch mb-0">
@@ -281,9 +281,9 @@ else
     private async Task DownloadReceipt()
     {
         if (sale == null) return;
-        var name = $"Receipt_{sale.SaleNumber ?? SaleId.ToString("N")[..8]}.pdf";
+        var name = $"Invoice_{sale.SaleNumber ?? SaleId.ToString("N")[..8]}.pdf";
         await BrowserFileDownload.DownloadPdfFromAuthenticatedUrlAsync(
-            JS, Navigation, $"/api/sales/{SaleId}/receipt.pdf", name);
+            JS, Navigation, $"/api/sales/{SaleId}/invoice.pdf", name);
     }
 
     private void GoBack()

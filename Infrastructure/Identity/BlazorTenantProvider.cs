@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Shared.MultiTenancy;
 using System.Security.Claims;
@@ -7,11 +8,16 @@ namespace Infrastructure.Identity
     public class BlazorTenantProvider : ITenantProvider
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly AuthenticationStateProvider _authenticationStateProvider;
         private readonly ISuperAdminBranchService? _superAdminBranchService;
 
-        public BlazorTenantProvider(IHttpContextAccessor httpContextAccessor, ISuperAdminBranchService? superAdminBranchService = null)
+        public BlazorTenantProvider(
+            IHttpContextAccessor httpContextAccessor,
+            AuthenticationStateProvider authenticationStateProvider,
+            ISuperAdminBranchService? superAdminBranchService = null)
         {
             _httpContextAccessor = httpContextAccessor;
+            _authenticationStateProvider = authenticationStateProvider;
             _superAdminBranchService = superAdminBranchService;
         }
 
@@ -19,7 +25,7 @@ namespace Infrastructure.Identity
         {
             get
             {
-                var user = _httpContextAccessor.HttpContext?.User;
+                var user = GetCurrentUser();
 
                 if (user?.Identity?.IsAuthenticated == true)
                 {
@@ -37,7 +43,8 @@ namespace Infrastructure.Identity
                         return selected ?? Guid.Empty;
                     }
 
-                    var claimValue = user.FindFirst("TenantId")?.Value;
+                    var claimValue = user.FindFirst("TenantId")?.Value
+                        ?? user.FindFirst("tid")?.Value;
 
                     if (!string.IsNullOrWhiteSpace(claimValue) && Guid.TryParse(claimValue, out var tid))
                         return tid;
@@ -45,6 +52,20 @@ namespace Infrastructure.Identity
 
                 throw new UnauthorizedAccessException("Tenant could not be resolved from current user.");
             }
+        }
+
+        private ClaimsPrincipal? GetCurrentUser()
+        {
+            var httpUser = _httpContextAccessor.HttpContext?.User;
+            if (httpUser?.Identity?.IsAuthenticated == true)
+                return httpUser;
+
+            var authState = _authenticationStateProvider
+                .GetAuthenticationStateAsync()
+                .GetAwaiter()
+                .GetResult();
+
+            return authState.User;
         }
     }
 }

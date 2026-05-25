@@ -28,13 +28,14 @@ namespace Infrastructure.Services
             {
                 var start = fromDate.Date;
                 var end = toDate.Date.AddDays(1); // exclusive: whole day(s)
+                var tenantId = TenantId;
 
                 return await _context.PurchaseDetails
                     .Where(pd =>
                         !pd.IsDeleted &&
                         pd.Purchase.PurchaseDate >= start &&
                         pd.Purchase.PurchaseDate < end &&
-                        (TenantId == null || pd.Purchase.TenantId == TenantId)
+                        (tenantId == null || pd.Purchase.TenantId == tenantId)
                     )
                     .Select(pd => new TodayPurchaseReportDto
                     {
@@ -61,6 +62,7 @@ namespace Infrastructure.Services
             {
                 var start = fromDate.Date;
                 var end = toDate.Date.AddDays(1); // exclusive: whole day(s)
+                var tenantId = TenantId;
 
                 // POS sales (from SaleDetail - product sales); NetPrice = proportional share of sale net after discount
                 var posSales = await (
@@ -73,7 +75,7 @@ namespace Infrastructure.Services
                        && s.SaleDate < end
                        && !s.IsReturn
                        && s.ShopServiceBillId == null  // POS only
-                       && (TenantId == null || s.TenantId == TenantId)
+                       && (tenantId == null || s.TenantId == tenantId)
                     select new TodaySaleReportDto
                     {
                         ReferenceNumber = s.SaleNumber ?? "",
@@ -96,7 +98,7 @@ namespace Infrastructure.Services
                        && s.SaleDate < end
                        && !s.IsReturn
                        && s.ShopServiceBillId != null
-                       && (TenantId == null || s.TenantId == TenantId)
+                       && (tenantId == null || s.TenantId == tenantId)
                     select new TodaySaleReportDto
                     {
                         ReferenceNumber = s.SaleNumber ?? bill.BillNumber ?? "",
@@ -124,13 +126,14 @@ namespace Infrastructure.Services
             {
                 var start = fromDate.Date;
                 var end = toDate.Date.AddDays(1); // exclusive: whole day(s)
+                var tenantId = TenantId;
 
                 var query = _context.Sale
                     .Where(s =>
                         s.SaleDate >= start &&
                         s.SaleDate < end &&
                         !s.IsReturn &&
-                        (TenantId == null || s.TenantId == TenantId));
+                        (tenantId == null || s.TenantId == tenantId));
 
                 var totalCash = await query.SumAsync(s => s.CashAmount);
                 var totalCard = await query.SumAsync(s => s.CardAmount);
@@ -151,8 +154,10 @@ namespace Infrastructure.Services
         {
             try
             {
+                var tenantId = TenantId;
+
                 return await _context.StockHistories
-                  .Where(x => !x.IsDeleted && (TenantId == null || x.TenantId == TenantId))
+                  .Where(x => !x.IsDeleted && (tenantId == null || x.TenantId == tenantId))
                   .GroupBy(x => new { x.ProductId, x.Product.ProductName })
                   .Select(g => new AvailableStockDto
                   {
@@ -170,7 +175,23 @@ namespace Infrastructure.Services
             }
         }
 
-        private Guid? TenantId => _tenantProvider.TenantId != Guid.Empty ? _tenantProvider.TenantId : null;
+        private Guid? TenantId
+        {
+            get
+            {
+                try
+                {
+                    var tenantId = _tenantProvider.TenantId;
+                    return tenantId != Guid.Empty ? tenantId : null;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Keep reports from crashing during auth state transitions.
+                    // Guid.Empty is used as a no-match tenant filter, not as "all tenants".
+                    return Guid.Empty;
+                }
+            }
+        }
     }
 
 

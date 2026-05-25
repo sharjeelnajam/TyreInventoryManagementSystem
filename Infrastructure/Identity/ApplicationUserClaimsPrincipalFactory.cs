@@ -25,9 +25,9 @@ namespace Infrastructure.Identity
             var identity = await base.GenerateClaimsAsync(user);
 
             // TenantId ko claim me inject karna
-            if (user.TenantId != Guid.Empty)
+            if (user.TenantId.HasValue && user.TenantId.Value != Guid.Empty)
             {
-                identity.AddClaim(new Claim("TenantId", user.TenantId.ToString()));
+                identity.AddClaim(new Claim("TenantId", user.TenantId.Value.ToString()));
             }
 
             return identity;

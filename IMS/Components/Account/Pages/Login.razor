@@ -193,9 +193,21 @@
             if (user != null)
             {
                 var claims = await SignInManager.UserManager.GetClaimsAsync(user);
-                if (!claims.Any(c => c.Type == "TenantId"))
+                if (user.TenantId.HasValue && user.TenantId.Value != Guid.Empty)
                 {
-                    await SignInManager.UserManager.AddClaimAsync(user, new System.Security.Claims.Claim("TenantId", user.TenantId.ToString()));
+                    var tenantId = user.TenantId.Value.ToString();
+                    var tenantClaims = claims.Where(c => c.Type == "TenantId").ToList();
+
+                    if (!tenantClaims.Any(c => c.Value == tenantId))
+                    {
+                        if (tenantClaims.Any())
+                        {
+                            await SignInManager.UserManager.RemoveClaimsAsync(user, tenantClaims);
+                        }
+
+                        await SignInManager.UserManager.AddClaimAsync(user, new System.Security.Claims.Claim("TenantId", tenantId));
+                        await SignInManager.RefreshSignInAsync(user);
+                    }
                 }
                 // ✅ Check if user is Admin
                 if (await SignInManager.UserManager.IsInRoleAsync(user, "Admin"))

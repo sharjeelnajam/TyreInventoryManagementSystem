@@ -431,10 +431,12 @@ namespace Infrastructure.Services
             const int colSku = 1;           // A
             const int colName = 2;          // B
             const int colRegularPrice = 6;  // F
+            const int importQuantity = 100;
 
             var productsToAdd = new List<Product>();
             var purchasesToAdd = new List<Purchase>();
             var stockHistoriesToAdd = new List<StockHistory>();
+            var seenSkus = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var row in rows)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -451,9 +453,15 @@ namespace Infrastructure.Services
                     continue;
                 }
 
+                var normalizedSku = sku.Trim();
+                if (!seenSkus.Add(normalizedSku))
+                {
+                    continue;
+                }
+
                 if (string.IsNullOrWhiteSpace(name))
                 {
-                    result.RowErrors.Add(new ExcelImportRowError { RowNumber = rowNum, Error = "Name (column B) is required.", Value = sku });
+                    result.RowErrors.Add(new ExcelImportRowError { RowNumber = rowNum, Error = "Name (column B) is required.", Value = normalizedSku });
                     result.ErrorCount++;
                     continue;
                 }
@@ -473,7 +481,7 @@ namespace Infrastructure.Services
                     TenantId = tenantId,
                     CreatedAt = DateTime.UtcNow,
                     ProductName = name.Trim(),
-                    SKU = sku.Trim(),
+                    SKU = normalizedSku,
                     AverageCostPrice = regularPrice,
                     Unit = null,
                     ThreadId = null
@@ -487,9 +495,9 @@ namespace Infrastructure.Services
                     CreatedAt = DateTime.UtcNow,
                     ProductId = product.Id,
                     ActionType = "Import",
-                    QuantityChanged = 100,
+                    QuantityChanged = importQuantity,
                     PreviousStockLevel = 0,
-                    NewStockLevel = 100,
+                    NewStockLevel = importQuantity,
                     ActionDate = DateTime.UtcNow,
                     ReferenceNumber = "ExcelImport-SKU"
                 };
@@ -504,8 +512,8 @@ namespace Infrastructure.Services
                     PurchaseNumber = $"PO-SKU-{DateTime.UtcNow:yyyyMMddHHmmss}-{rowNum}",
                     PurchaseDate = DateTime.UtcNow,
                     SupplierId = null,
-                    TotalAmount = regularPrice,
-                    NetAmount = regularPrice,
+                    TotalAmount = regularPrice * importQuantity,
+                    NetAmount = regularPrice * importQuantity,
                     PaymentStatus = string.Empty,
                     PaymentMethod = string.Empty,
                     IsApproved = false,
@@ -518,9 +526,9 @@ namespace Infrastructure.Services
                             CreatedAt = DateTime.UtcNow,
                             PurchaseId = Guid.Empty, // set below after purchase id is available
                             ProductId = product.Id,
-                            Quantity = 100,
+                            Quantity = importQuantity,
                             UnitPrice = regularPrice,
-                            TotalPrice = regularPrice,
+                            TotalPrice = regularPrice * importQuantity,
                             SellingPrice = regularPrice,
                             Brand = null
                         }
@@ -535,10 +543,52 @@ namespace Infrastructure.Services
 
             if (productsToAdd.Count > 0 && result.ErrorCount == 0)
             {
-                await _context.Products.AddRangeAsync(productsToAdd, cancellationToken);
-                await _context.StockHistories.AddRangeAsync(stockHistoriesToAdd, cancellationToken);
-                await _context.Purchase.AddRangeAsync(purchasesToAdd, cancellationToken);
-                await _context.SaveChangesAsync(cancellationToken);
+                var skus = productsToAdd
+                    .Select(p => p.SKU!)
+                    .ToList();
+
+                var existingSkus = await _context.Products
+                    .Where(p => p.TenantId == tenantId && p.SKU != null && skus.Contains(p.SKU))
+                    .Select(p => p.SKU!)
+                    .ToListAsync(cancellationToken);
+
+                if (existingSkus.Count > 0)
+                {
+                    foreach (var existingSku in existingSkus.Distinct(StringComparer.OrdinalIgnoreCase))
+                    {
+                        result.RowErrors.Add(new ExcelImportRowError
+                        {
+                            RowNumber = 0,
+                            Error = "SKU already exists in products.",
+                            Value = existingSku
+                        });
+                    }
+
+                    result.ErrorCount = result.RowErrors.Count;
+                    result.ImportedCount = 0;
+                    return;
+                }
+
+                try
+                {
+                    await _context.Products.AddRangeAsync(productsToAdd, cancellationToken);
+                    await _context.StockHistories.AddRangeAsync(stockHistoriesToAdd, cancellationToken);
+                    await _context.Purchase.AddRangeAsync(purchasesToAdd, cancellationToken);
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateException ex)
+                {
+                    result.Success = false;
+                    result.ImportedCount = 0;
+                    result.ErrorCount++;
+                    result.Message = "Import failed while saving products.";
+                    result.RowErrors.Add(new ExcelImportRowError
+                    {
+                        RowNumber = 0,
+                        Error = ex.InnerException?.Message ?? ex.Message
+                    });
+                    _context.ChangeTracker.Clear();
+                }
             }
             else if (result.ErrorCount > 0)
             {

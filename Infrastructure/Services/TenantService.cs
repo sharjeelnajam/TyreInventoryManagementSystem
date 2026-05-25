@@ -8,6 +8,7 @@ using Shared.MultiTenancy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -127,6 +128,8 @@ namespace Infrastructure.Services
 
                     if (!result.Succeeded)
                         throw new Exception(string.Join(", ", result.Errors.Select(e => e.Description)));
+
+                    await _userManager.AddClaimAsync(adminUser, new Claim("TenantId", tenant.Id.ToString()));
 
                     var adminRole = await _roleManager.Roles
                         .FirstOrDefaultAsync(r => r.Name == "Admin" && r.TenantId == tenant.Id);
