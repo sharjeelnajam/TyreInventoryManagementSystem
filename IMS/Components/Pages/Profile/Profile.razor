@@ -1,0 +1,327 @@
+@page "/profile"
+@rendermode InteractiveServer
+
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Domain.Identity
+@using Infrastructure.Services
+
+@attribute [Authorize]
+
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ITenantService TenantService
+@inject ILogger<Profile> Logger
+
+<PageTitle>Profile</PageTitle>
+
+<div class="container mt-4" style="max-width: 720px;">
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    }
+    else if (user is null)
+    {
+        <div class="alert alert-warning">Unable to load the current user.</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(pageMessage))
+        {
+            <div class="alert alert-success d-flex align-items-center">
+                <i class="bi bi-check-circle-fill me-2"></i> @pageMessage
+            </div>
+        }
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+                    <div class="d-flex align-items-center">
+                        <div class="profile-avatar me-3">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0 fw-bold">@username</h4>
+                            <span class="text-muted small">@(roles.Count > 0 ? string.Join(", ", roles) : "User")</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary" @onclick="OpenPasswordModal">
+                        <i class="bi bi-key me-2"></i> Change Password
+                    </button>
+                </div>
+
+                <ul class="list-group list-group-flush profile-details">
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-person me-2"></i>Username</span>
+                        <span class="fw-semibold">@username</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-envelope me-2"></i>Email</span>
+                        <span class="fw-semibold">
+                            @email
+                            @if (emailConfirmed)
+                            {
+                                <span class="badge bg-success-subtle text-success ms-2">Confirmed</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning-subtle text-warning ms-2">Unconfirmed</span>
+                            }
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-telephone me-2"></i>Phone</span>
+                        <span class="fw-semibold">@(string.IsNullOrWhiteSpace(phoneNumber) ? "—" : phoneNumber)</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-shield-lock me-2"></i>Role</span>
+                        <span class="fw-semibold">@(roles.Count > 0 ? string.Join(", ", roles) : "—")</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span class="text-muted"><i class="bi bi-shop me-2"></i>Branch</span>
+                        <span class="fw-semibold">@(string.IsNullOrWhiteSpace(branchName) ? "—" : branchName)</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    }
+</div>
+
+@if (showPasswordModal)
+{
+    <div class="modal-backdrop-custom" @onclick="ClosePasswordModal"></div>
+    <div class="modal-custom">
+        <div class="modal-custom-dialog">
+            <div class="modal-custom-header">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-key me-2"></i>Change Password</h5>
+                <button type="button" class="btn-close" @onclick="ClosePasswordModal"></button>
+            </div>
+
+            <div class="modal-custom-body">
+                <p class="text-muted small mb-3">Your new password is saved and used the next time you log in.</p>
+
+                @if (!string.IsNullOrEmpty(modalError))
+                {
+                    <div class="alert alert-danger py-2">@modalError</div>
+                }
+
+                <EditForm Model="Input" OnValidSubmit="ChangePasswordAsync">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Current password</label>
+                        <InputText type="password" @bind-Value="Input.OldPassword" class="form-control" autocomplete="current-password" placeholder="Enter current password" />
+                        <ValidationMessage For="() => Input.OldPassword" class="text-danger small mt-1" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">New password</label>
+                        <InputText type="password" @bind-Value="Input.NewPassword" class="form-control" autocomplete="new-password" placeholder="Enter new password" />
+                        <ValidationMessage For="() => Input.NewPassword" class="text-danger small mt-1" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Confirm new password</label>
+                        <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Re-enter new password" />
+                        <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger small mt-1" />
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-light" @onclick="ClosePasswordModal" disabled="@isSaving">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check2-circle me-2"></i>
+                            }
+                            Update Password
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .profile-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #4e73df, #224abe);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+
+    .profile-details .list-group-item {
+        background: transparent;
+    }
+
+    .modal-backdrop-custom {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+    }
+
+    .modal-custom {
+        position: fixed;
+        inset: 0;
+        z-index: 1055;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    .modal-custom-dialog {
+        background: #fff;
+        width: 100%;
+        max-width: 460px;
+        border-radius: 14px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        animation: modalPop 0.15s ease-out;
+    }
+
+    @@keyframes modalPop {
+        from { transform: translateY(8px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-custom-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid #eef1f5;
+    }
+
+    .modal-custom-body {
+        padding: 20px;
+    }
+</style>
+
+@code {
+    private ApplicationUser? user;
+    private string? username;
+    private string? email;
+    private string? phoneNumber;
+    private bool emailConfirmed;
+    private IList<string> roles = new List<string>();
+    private string? branchName;
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool showPasswordModal;
+    private string? modalError;
+    private string? pageMessage;
+
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var principal = authState.User;
+
+        if (principal?.Identity?.IsAuthenticated == true)
+        {
+            user = await UserManager.GetUserAsync(principal);
+        }
+
+        if (user is not null)
+        {
+            username = await UserManager.GetUserNameAsync(user);
+            email = await UserManager.GetEmailAsync(user);
+            phoneNumber = await UserManager.GetPhoneNumberAsync(user);
+            emailConfirmed = await UserManager.IsEmailConfirmedAsync(user);
+            roles = await UserManager.GetRolesAsync(user);
+
+            if (user.TenantId.HasValue && user.TenantId.Value != Guid.Empty)
+            {
+                try
+                {
+                    var tenant = await TenantService.GetTenantByIdAsync(user.TenantId.Value);
+                    branchName = tenant?.Name;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Could not load branch name for tenant {TenantId}.", user.TenantId);
+                }
+            }
+        }
+
+        isLoading = false;
+    }
+
+    private void OpenPasswordModal()
+    {
+        Input = new InputModel();
+        modalError = null;
+        pageMessage = null;
+        showPasswordModal = true;
+    }
+
+    private void ClosePasswordModal()
+    {
+        if (isSaving) return;
+        showPasswordModal = false;
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        if (user is null) return;
+
+        isSaving = true;
+        modalError = null;
+
+        var result = await UserManager.ChangePasswordAsync(user, Input.OldPassword, Input.NewPassword);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User {UserId} changed their password successfully.", user.Id);
+            Input = new InputModel();
+            showPasswordModal = false;
+            pageMessage = "Your password has been changed. Use the new password the next time you log in.";
+        }
+        else
+        {
+            modalError = string.Join(", ", result.Errors.Select(e => e.Description));
+        }
+
+        isSaving = false;
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "Current password is required.")]
+        [DataType(DataType.Password)]
+        [Display(Name = "Current password")]
+        public string OldPassword { get; set; } = "";
+
+        [Required(ErrorMessage = "New password is required.")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters.")]
+        [DataType(DataType.Password)]
+        [Display(Name = "New password")]
+        public string NewPassword { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Confirm new password")]
+        [Compare(nameof(NewPassword), ErrorMessage = "The new password and confirmation do not match.")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}
