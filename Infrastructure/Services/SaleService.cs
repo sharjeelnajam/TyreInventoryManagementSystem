@@ -642,6 +642,20 @@ namespace Infrastructure.Services
                                 });
                             });
 
+                        if (!string.IsNullOrWhiteSpace(sale.JobDescription))
+                        {
+                            contentCol.Item().PaddingTop(12)
+                                .Border(1)
+                                .BorderColor(border)
+                                .Background(Color.FromHex("#f8fafc"))
+                                .Padding(16)
+                                .Column(jobCol =>
+                                {
+                                    jobCol.Item().Text("Job Description").FontSize(9).FontColor(muted).Bold();
+                                    jobCol.Item().PaddingTop(4).Text(sale.JobDescription).FontSize(10);
+                                });
+                        }
+
                         contentCol.Item().PaddingTop(24).Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
@@ -875,6 +889,15 @@ namespace Infrastructure.Services
                                 {
                                     r.ConstantItem(labelWidth).Text("Email").FontSize(8);
                                     r.RelativeItem().AlignRight().Text(emailDisplay).FontSize(8);
+                                });
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(sale.JobDescription))
+                            {
+                                body.Item().PaddingTop(4).Row(r =>
+                                {
+                                    r.ConstantItem(labelWidth).Text("Job").FontSize(8);
+                                    r.RelativeItem().AlignRight().Text(sale.JobDescription).FontSize(8);
                                 });
                             }
 
