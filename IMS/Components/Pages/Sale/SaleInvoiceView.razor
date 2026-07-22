@@ -42,18 +42,29 @@ else
     <div class="card invoice-detail-card shadow-sm border-0">
         <div class="card-body">
             <!-- Header Info -->
+            @{
+                var rego = !string.IsNullOrWhiteSpace(sale.Customer?.VehicleNumber)
+                    ? sale.Customer!.VehicleNumber!.Trim()
+                    : !string.IsNullOrWhiteSpace(sale.VehicleNumber)
+                        ? sale.VehicleNumber.Trim()
+                        : null;
+            }
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label class="invoice-label">Sale #</label>
                     <input class="form-control" value="@sale.SaleNumber" readonly />
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="invoice-label">Date</label>
                     <input class="form-control" value="@sale.SaleDate.ToString("dd-MMM-yyyy")" readonly />
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <label class="invoice-label">Customer</label>
                     <input class="form-control" value="@(sale.Customer?.Name ?? sale.CustomerName)" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label class="invoice-label">Registration</label>
+                    <input class="form-control" value="@(rego ?? "—")" readonly />
                 </div>
             </div>
             <div class="row mt-2">
@@ -121,6 +132,7 @@ else
                     <textarea class="form-control" rows="2" readonly>@sale.JobDescription</textarea>
                 </div>
             </div>
+
             @if (showSaleSpecialNote)
             {
                 <div class="row mt-2">
