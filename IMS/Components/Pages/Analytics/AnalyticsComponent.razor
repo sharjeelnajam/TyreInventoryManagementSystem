@@ -79,6 +79,7 @@ else
                 <div class="card-body">
                     @if (TopCustomers.Any())
                     {
+                        <div class="table-responsive">
                         <table class="table table-striped">
                             <thead class="table-dark">
                                 <tr>
@@ -102,6 +103,7 @@ else
                                 }
                             </tbody>
                         </table>
+                        </div>
                     }
                     else
                     {
@@ -118,6 +120,7 @@ else
                 </div>
 
                 <div class="card-body">
+                    <div class="table-responsive">
                     <table class="table table-striped">
                         <thead class="table-dark">
                             <tr>
@@ -158,6 +161,7 @@ else
                             }
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -172,6 +176,7 @@ else
                 <div class="card-body">
                     @if (TopSuppliers.Any())
                     {
+                        <div class="table-responsive">
                         <table class="table table-striped">
                             <thead class="table-dark">
                                 <tr>
@@ -195,6 +200,7 @@ else
                                 }
                             </tbody>
                         </table>
+                        </div>
                     }
                     else
                     {
@@ -253,6 +259,15 @@ else
     display: grid;
     grid-template-columns: 150px 1fr 50px;
     align-items: center;
+    gap: 0.5rem;
+    }
+
+    @@media (max-width: 575.98px) {
+        .bar-row {
+            grid-template-columns: 1fr;
+            gap: 0.25rem;
+            margin-bottom: 0.75rem;
+        }
     }
 </style>
 

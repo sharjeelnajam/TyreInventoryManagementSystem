@@ -1,9 +1,45 @@
-﻿body {
+﻿/* ===============================
+   POS SALE PAGE LAYOUT
+================================ */
 
+.pos-sale-container {
+    height: calc(100vh - 120px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
+
+.pos-sale-body {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.pos-sale-search {
+    max-width: 240px;
+    flex: 1 1 180px;
+}
+
+.pos-sale-products {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.pos-sale-cart {
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* PRODUCT CARDS */
 .product-card {
-    width: 120px;
-    height: 150px;
+    width: 100%;
+    max-width: 140px;
+    aspect-ratio: 3 / 4;
     border: 1px solid #e3e3e3;
     border-radius: 6px;
     background: #fff;
@@ -63,4 +99,82 @@
     font-size: 12px;
     font-weight: 700;
     color: #198754;
+}
+
+/* ===============================
+   TABLET – stack panels vertically
+================================ */
+@media (max-width: 992px) {
+    .pos-sale-container {
+        height: auto;
+        min-height: calc(100vh - 120px);
+        overflow: visible;
+    }
+
+    .pos-sale-body {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+    }
+
+    .pos-sale-products {
+        height: auto;
+        max-height: 50vh;
+        overflow-y: auto;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .pos-sale-cart {
+        height: auto;
+        overflow-y: visible;
+    }
+
+    .product-card {
+        max-width: 120px;
+    }
+
+    .product-image {
+        height: 55px;
+    }
+}
+
+/* ===============================
+   MOBILE – full width stacking
+================================ */
+@media (max-width: 576px) {
+    .pos-sale-container {
+        height: auto;
+        min-height: auto;
+    }
+
+    .pos-sale-products {
+        max-height: 45vh;
+        padding: 0.5rem;
+    }
+
+    .pos-sale-cart {
+        padding: 0.5rem;
+    }
+
+    .pos-sale-search {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .product-card {
+        max-width: 100%;
+        aspect-ratio: 2 / 1;
+    }
+
+    .product-image {
+        height: 45px;
+    }
+
+    .product-name {
+        font-size: 10px;
+    }
+
+    .product-price {
+        font-size: 11px;
+    }
 }

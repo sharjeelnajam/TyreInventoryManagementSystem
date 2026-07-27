@@ -13,12 +13,12 @@
     <main>
         <AuthorizeView>
             <Authorized>
-                 <div class="top-row px-4 d-flex justify-content-between align-items-center">
+                 <div class="top-row px-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div class="d-flex align-items-center gap-3">
                     <SuperAdminBranchDropdown />
                 </div>
                 <div class="d-flex align-items-center gap-2 ms-auto">
-                    <NavLink class="nav-link py-0" href="Account/Manage">
+                    <NavLink class="nav-link py-0 text-nowrap" href="Account/Manage">
                         <span class="bi bi-person-fill-nav-menu me-1" aria-hidden="true"></span>@context.User.Identity?.Name
                     </NavLink>
                     <a class="nav-link py-0" href="/Account/Logout">

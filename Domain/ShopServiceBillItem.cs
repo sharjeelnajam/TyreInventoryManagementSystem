@@ -12,6 +12,7 @@ namespace Domain
         public Guid? ServiceId { get; set; }
         /// <summary>When selling a product (tyre), links to Product for stock update.</summary>
         public Guid? ProductId { get; set; }
+        public Product? Product { get; set; }
         public string ServiceName { get; set; } = string.Empty;
 
         public int Quantity { get; set; } = 1;

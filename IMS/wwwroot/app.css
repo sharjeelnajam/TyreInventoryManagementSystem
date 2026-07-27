@@ -87,3 +87,156 @@ h1:focus {
     border: 1px solid #ced4da;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
+
+/* ═══════════════ RESPONSIVE UTILITIES ═══════════════ */
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    overflow-x: hidden;
+}
+
+/* Ensure all tables don't overflow their containers */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Tables: prevent horizontal overflow on mobile */
+.table {
+    min-width: 0;
+}
+
+/* Page toolbars: title + action button */
+.page-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.page-toolbar h3,
+.page-toolbar h4,
+.page-toolbar h5 {
+    margin-bottom: 0;
+}
+
+/* Sticky action columns on mobile */
+@media (max-width: 767.98px) {
+    .table td:last-child,
+    .table th:last-child {
+        white-space: nowrap;
+    }
+
+    .content.px-4 {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    .container,
+    .container-fluid {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .d-flex.gap-2,
+    .d-flex.gap-3 {
+        flex-wrap: wrap;
+    }
+}
+
+/* Cards with fixed heights should adapt */
+@media (max-width: 575.98px) {
+    .card-body {
+        padding: 0.75rem;
+    }
+
+    .card-header {
+        padding: 0.6rem 0.75rem;
+    }
+
+    h3 {
+        font-size: 1.25rem;
+    }
+
+    h4 {
+        font-size: 1.1rem;
+    }
+
+    h5 {
+        font-size: 1rem;
+    }
+
+    .btn {
+        font-size: 0.85rem;
+        padding: 0.3rem 0.6rem;
+    }
+
+    .btn-lg {
+        font-size: 0.95rem;
+        padding: 0.45rem 0.85rem;
+    }
+
+    .form-label {
+        font-size: 0.8rem;
+    }
+
+    .form-control,
+    .form-select {
+        font-size: 0.875rem;
+    }
+
+    .page-toolbar .btn {
+        width: 100%;
+    }
+}
+
+/* Modal responsive fix */
+@media (max-width: 575.98px) {
+    .modal-dialog {
+        margin: 0.5rem;
+        max-width: calc(100vw - 1rem);
+    }
+
+    .modal-dialog.modal-xl,
+    .modal-dialog.modal-lg {
+        max-width: calc(100vw - 1rem);
+    }
+
+    .modal-content {
+        border-radius: 0.5rem;
+    }
+}
+
+/* Dashboard card columns stack on mobile */
+@media (max-width: 767.98px) {
+    .dashboard-card {
+        min-height: 80px;
+    }
+}
+
+/* Bare Bootstrap cols (col-1 … col-11 without sm/md/lg) stay fixed at all sizes.
+   Force those to stack on phones so forms like Discount/Tax rows don't crush. */
+@media (max-width: 575.98px) {
+    .row > .col-1,
+    .row > .col-2,
+    .row > .col-3,
+    .row > .col-4,
+    .row > .col-5 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* Tablet: keep two-up where useful for col-md-6 patterns (already handled by Bootstrap).
+   Soften oversized fixed widths inside forms/tables. */
+@media (max-width: 991.98px) {
+    .table-responsive .form-control,
+    .table-responsive .form-select {
+        min-width: 0;
+    }
+}

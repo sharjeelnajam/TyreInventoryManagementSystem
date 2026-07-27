@@ -14,6 +14,7 @@
     <button class="btn btn-primary" @onclick="OpenAddPurchase"> + Purchase</button>
 </div>
 
+<div class="table-responsive">
 <table class="table table-bordered table-striped">
     <thead>
         <tr>
@@ -60,11 +61,12 @@
         }
     </tbody>
 </table>
+</div>
 
 @if (showForm)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-xl">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
             <div class="modal-content">
                 <div class="modal-body">
                     <AddPurchase PurchaseId="@selectedPurchaseId" OnClose="CloseForm" />

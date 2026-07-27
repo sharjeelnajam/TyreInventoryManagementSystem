@@ -65,6 +65,7 @@ namespace Infrastructure.Services
                 var tenantId = TenantId;
 
                 // POS sales (from SaleDetail - product sales); NetPrice = proportional share of sale net after discount
+                // Always prefer live Product.ProductName so renamed products appear correctly on the daily report.
                 var posSales = await (
                     from sd in _context.SaleDetail
                     join s in _context.Sale on sd.SaleId equals s.Id
@@ -81,7 +82,9 @@ namespace Infrastructure.Services
                         ReferenceNumber = s.SaleNumber ?? "",
                         PaymentMethod = s.PaymentMethod ?? string.Empty,
                         CustomerName = c != null ? c.Name : (s.CustomerName ?? "Walk-in Customer"),
-                        ProductName = sd.Product.ProductName,
+                        ProductName = sd.Product != null
+                            ? sd.Product.ProductName
+                            : (sd.LineDisplayName ?? string.Empty),
                         Quantity = sd.Quantity,
                         TotalPrice = sd.TotalPrice,
                         NetPrice = s.TotalAmount != 0 ? sd.TotalPrice * s.NetAmount / s.TotalAmount : sd.TotalPrice,
@@ -90,6 +93,7 @@ namespace Infrastructure.Services
                 ).ToListAsync();
 
                 // Shop Service sales (from ShopServiceBillItem - service bills); NetPrice = proportional share of sale net after discount
+                // Prefer live Product.ProductName when the line is a product; ServiceName is only a sale-time snapshot.
                 var shopSales = await (
                     from s in _context.Sale
                     join bill in _context.ShopServiceBills on s.ShopServiceBillId equals bill.Id
@@ -104,7 +108,9 @@ namespace Infrastructure.Services
                         ReferenceNumber = s.SaleNumber ?? bill.BillNumber ?? "",
                         PaymentMethod = s.PaymentMethod ?? bill.PaymentMethod ?? string.Empty,
                         CustomerName = s.CustomerName ?? bill.CustomerName ?? "Walk-in Customer",
-                        ProductName = item.ServiceName,
+                        ProductName = item.Product != null && !string.IsNullOrWhiteSpace(item.Product.ProductName)
+                            ? item.Product.ProductName
+                            : item.ServiceName,
                         Quantity = item.Quantity,
                         TotalPrice = item.TotalPrice,
                         NetPrice = s.TotalAmount != 0 ? item.TotalPrice * s.NetAmount / s.TotalAmount : item.TotalPrice,

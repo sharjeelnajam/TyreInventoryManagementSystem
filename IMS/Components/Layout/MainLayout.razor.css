@@ -38,11 +38,24 @@ main {
 
 @media (max-width: 640.98px) {
     .top-row {
+        height: auto;
+        min-height: 3.5rem;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
         justify-content: space-between;
     }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
         margin-left: 0;
+    }
+
+    article.content {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    .sidebar {
+        width: 100%;
     }
 }
 

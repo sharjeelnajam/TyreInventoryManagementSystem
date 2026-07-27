@@ -65,6 +65,7 @@ namespace Infrastructure.Services
         public async Task<List<ShopServiceBill>> GetOpenBillsAsync()
         {
             var query = ApplyTenantScope(_context.ShopServiceBills
+                .Include(b => b.Items).ThenInclude(i => i.Product)
                 .Where(b => b.Status == ShopServiceBillStatus.Open));
             return await query.OrderByDescending(b => b.OpenedAt).ToListAsync();
         }
@@ -72,6 +73,7 @@ namespace Infrastructure.Services
         public async Task<List<ShopServiceBill>> GetClosedBillsAsync(DateTime? from = null, DateTime? to = null)
         {
             var query = ApplyTenantScope(_context.ShopServiceBills
+                .Include(b => b.Items).ThenInclude(i => i.Product)
                 .Where(b => b.Status == ShopServiceBillStatus.Closed));
             if (from.HasValue)
                 query = query.Where(b => b.ClosedAt >= from.Value);

@@ -409,6 +409,8 @@ namespace Infrastructure.Services
                 if (existing == null)
                     throw new KeyNotFoundException("Product not found.");
 
+                var oldProductName = existing.ProductName;
+
                 existing.ProductName = dto.ProductName;
                 existing.Description = dto.Description;
                 existing.DOT = dto.DOT;
@@ -427,6 +429,25 @@ namespace Infrastructure.Services
                     existing.ImagePath = dto.ImagePath;
                 else if (dto.ImagePath == null)
                     existing.ImagePath = null;
+
+                // Keep sale/bill name snapshots in sync when they still matched the old catalog name.
+                // Custom line overrides (different from the old product name) are left unchanged.
+                if (!string.IsNullOrWhiteSpace(oldProductName)
+                    && !string.Equals(oldProductName, dto.ProductName, StringComparison.Ordinal)
+                    && !string.IsNullOrWhiteSpace(dto.ProductName))
+                {
+                    var saleDetailsToSync = await _context.SaleDetail
+                        .Where(d => d.ProductId == dto.Id && d.LineDisplayName == oldProductName)
+                        .ToListAsync();
+                    foreach (var detail in saleDetailsToSync)
+                        detail.LineDisplayName = dto.ProductName;
+
+                    var billItemsToSync = await _context.ShopServiceBillItems
+                        .Where(i => i.ProductId == dto.Id && i.ServiceName == oldProductName)
+                        .ToListAsync();
+                    foreach (var item in billItemsToSync)
+                        item.ServiceName = dto.ProductName;
+                }
 
                 // 2️⃣ GET PURCHASE & DETAILS
                 var purchaseDetail = await _context.PurchaseDetails

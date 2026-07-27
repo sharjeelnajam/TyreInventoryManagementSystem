@@ -77,8 +77,8 @@
                             @if (!isWholesalerMode)
                             {
                                 <label class="form-label small fw-semibold">Customer</label>
-                                <div class="d-flex gap-2 align-items-center">
-                                    <select class="form-select" style="max-width: 300px;" @bind="selectedCustomerId" @bind:after="OnCustomerSelectedThenSave">
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <select class="form-select" style="max-width: 300px; flex: 1 1 180px;" @bind="selectedCustomerId" @bind:after="OnCustomerSelectedThenSave">
                                         <option value="">Walk-in (no customer)</option>
                                         @foreach (var c in Customers)
                                         {
@@ -93,8 +93,8 @@
                             else
                             {
                                 <label class="form-label small fw-semibold">Wholesaler</label>
-                                <div class="d-flex gap-2 align-items-center">
-                                    <select class="form-select" style="max-width: 300px;" @bind="selectedWholesalerCustomerId" @bind:after="OnWholesalerCustomerSelectedThenSave">
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <select class="form-select" style="max-width: 300px; flex: 1 1 180px;" @bind="selectedWholesalerCustomerId" @bind:after="OnWholesalerCustomerSelectedThenSave">
                                         <option value="">-- Select Wholesaler --</option>
                                         @foreach (var w in WholesalerCustomers)
                                         {
@@ -146,11 +146,11 @@
                                 {
                                     var stockLevel = p.Quantity;
                                     var inStock = stockLevel > 0;
-                                    <div class="d-flex justify-content-between align-items-center border-bottom py-2 @(inStock ? "" : "opacity-50")"
+                                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 border-bottom py-2 @(inStock ? "" : "opacity-50")"
                                          style="cursor: @(inStock ? "pointer" : "not-allowed")"
                                          @onclick="() => TryAddProduct(p, stockLevel)">
-                                        <div class="small">
-                                            <div class="fw-semibold">@p.ProductName</div>
+                                        <div class="small flex-grow-1" style="min-width: 0;">
+                                            <div class="fw-semibold text-break">@p.ProductName</div>
                                             @if (!string.IsNullOrWhiteSpace(p.SKU))
                                             {
                                                 <div class="text-muted">SKU: @p.SKU</div>
@@ -162,7 +162,7 @@
                                             </div>
                                             <div class="@(inStock ? "text-success fw-semibold" : "text-danger fw-semibold")">@(inStock ? $"{stockLevel} in stock" : "Out of stock")</div>
                                         </div>
-                                        <div class="fw-semibold">£@p.SellingPrice.ToString("N2")</div>
+                                        <div class="fw-semibold text-nowrap">£@p.SellingPrice.ToString("N2")</div>
                                     </div>
                                 }
                             </div>
@@ -353,6 +353,7 @@
                     }
                     else
                     {
+                        <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
@@ -374,6 +375,7 @@
                                 }
                             </tbody>
                         </table>
+                        </div>
                         var cSubtotal = Bill.Items.Sum(i => i.TotalPrice);
                         var cDiscount = Bill.Discount;
                         var cTotal = Math.Max(cSubtotal - cDiscount, 0m);
@@ -432,6 +434,10 @@
     }
 
     @@media (max-width: 991.98px) {
+        .shop-billing-main-row {
+            min-height: 0;
+        }
+
         .product-scroll-region,
         .bill-items-scroll-region {
             max-height: none;
